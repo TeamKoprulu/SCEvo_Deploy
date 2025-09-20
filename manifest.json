@@ -1,6 +1,7 @@
 {
   "version": "2025-09-20T22:53:10.8260565Z",
-  "baseUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/payload/",
+  "baseUrl": "https://media.githubusercontent.com/media/TeamKoprulu/SCEvo_Deploy/main/payload/",
+
   "files": [
     {
       "path": "Mods/SCEvo_Assets.SC2Mod",
