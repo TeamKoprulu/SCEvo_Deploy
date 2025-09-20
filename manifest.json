@@ -1,0 +1,16 @@
+{
+  "version": "2025-09-20T22:53:10.8260565Z",
+  "baseUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/payload/",
+  "files": [
+    {
+      "path": "Mods/SCEvo_Assets.SC2Mod",
+      "size": 421754632,
+      "sha256": "6019347e7e8c5c022d07d2c428305a6f17a08fed76f113958f3f4b8a805c717c"
+    },
+    {
+      "path": "Mods/SCEvo_Core.SC2Mod",
+      "size": 5105764,
+      "sha256": "62f36d3ee7e659975e68d2f1013e7ed836708f16b0cfb877f8dbe9ef70555106"
+    }
+  ]
+}
