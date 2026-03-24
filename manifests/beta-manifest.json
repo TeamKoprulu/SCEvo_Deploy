@@ -7,7 +7,7 @@
   "majorVersion": "0.3",
   "fullVersion": "0.3.1",
 
-  "codeHash": "PUT_SHA256_HASH_OF_YOUR_CODE_HERE",
+  "codeHash": "6c7a5c4c6a0d3c3f2d8cba3e7d7d5f8e5d2b4c3d5b2d2e7f1c9a0f6b8e2c1d4a",
 
   "theme": {
     "accentColor": "#ff6600",
@@ -19,21 +19,20 @@
   },
 
   "patchNotes": {
-    "version": "0.2.0",
-    "date": "2025-09-20",
-    "title": "Operation Thunderstrike — Closed Beta",
+    "version": "0.3.1",
+    "date": "2026-03-20",
+    "title": "Loomings Beta - 0.3.1",
     "highlights": [
-      "New Terran unit: Warhound reintroduced with reworked abilities",
-      "Zerg Defiler available in multiplayer",
-      "3 new beta maps for testing",
-      "Major economy rebalance"
+      "Mission 5 is now available during the progression",
+      "Adjusted several achievement conditions",
+      "Several other minor bugfixes"
     ],
-    "fullNotesUrl": "https://your-website.com/beta/0.2"
+    "fullNotesUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3"
   },
 
   "criticalUpdate": {
     "enabled": false,
-    "minVersion": "0.1.0",
+    "minVersion": "0.3.0",
     "message": "A critical beta patch is required."
   },
 
