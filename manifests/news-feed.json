@@ -6,57 +6,54 @@
     {
       "id": "news-1.18",
       "title": "SC: Evo 1.18",
-      "date": "2026-03-20",
+      "date": "March 20, 2026",
       "category": "update",
       "image": {
         "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_18.png",
         "alt": "SC Evo 1.18 Update Banner"
       },
       "excerpt": "This much-belated patch is the first of the year 2026! We are grateful to be able to publish content once again, and are excited to bring you this latest round of balance updates.",
-      "linkUrl": "https://your-website.com/news/sc-evo-1-17-ptr",
+      "linkUrl": "https://scevo.net/posts/evo-update-1_18",
       "linkLabel": "Read more",
       "badge": "NEW",
-      "badgeColor": "#00ff88"
+      "badgeColor": "#00ff88",
+      "imageLabel": "1.18",
+      "imageBg": "#0a2a1a",
+      "imageAccent": "#00ff88"
     },
     {
       "id": "news-campaignea",
       "title": "Campaign Closed Beta",
-      "date": "2026-01-09",
+      "date": "January 29, 2026",
       "category": "update",
       "image": {
         "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-campaign-eaep0.png",
         "alt": "SC Evo Early Access Banner"
       },
       "excerpt": "Over the last few months however, Campaign development has picked up significantly and we're finally ready to begin the Legacy Campaign Closed Beta for our Suporters or as we've dubbed it: Early Access.",
-      "linkUrl": "https://your-website.com/news/sc-evo-1-16-5",
+      "linkUrl": "https://scevo.net/posts/evo-devblog-campaignea",
       "linkLabel": "Read more",
-      "badge": null,
-      "badgeColor": null
+      "badge": "NEW",
+      "badgeColor": "#00ff88",
+      "imageLabel": "News",
+      "imageBg": "#2a1a0a",
+      "imageAccent": "#ff8800"
     },
     {
       "id": "news-1.17.1",
       "title": "SC: Evo 1.16.1",
-      "date": "2025-08-08",
+      "date": "October 8, 2025",
       "category": "update",
       "image": {
         "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_17.png",
         "alt": "SC Evo 1.17 Update Banner"
       },
       "excerpt": "This update introduces a hotfix along with several incremental improvements to the SC: Evo Extensions and their AIs. Work on the AI updates is still ongoing, and we’ll continue to roll out further refinements as development and testing progress.",
-      "linkUrl": "https://your-website.com/news/sc-evo-1-16-4",
+      "linkUrl": "https://scevo.net/posts/evo-update-1_17",
       "linkLabel": "Read more",
       "badge": null,
-      "badgeColor": null
-    },
-    {
-      "id": 1,
-      "title": "SC: Evo 1.18",
-      "date": "March 24, 2026",
-      "excerpt": "Patch summary here.",
-      "badge": "NEW",
-      "badgeColor": "#00ff88",
-      "linkUrl": "https://your-site/post-1",
-      "imageLabel": "1.18",
+      "badgeColor": null,
+      "imageLabel": "1.17.1",
       "imageBg": "#0a2a1a",
       "imageAccent": "#00ff88"
     }
