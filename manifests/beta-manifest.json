@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "lastUpdated": "2025-09-20T00:00:00Z",
+
+  "betaEnabled": true,
+  "betaName": "Closed Beta 0.3.1 — Loomings",
+  "majorVersion": "0.3",
+  "fullVersion": "0.3.1",
+
+  "codeHash": "PUT_SHA256_HASH_OF_YOUR_CODE_HERE",
+
+  "theme": {
+    "accentColor": "#ff6600",
+    "accentColorDim": "#ff660044",
+    "particleColor": "255, 102, 0",
+    "bgGlow": "#ff660015",
+    "badgeText": "BETA",
+    "badgeColor": "#ff6600"
+  },
+
+  "patchNotes": {
+    "version": "0.2.0",
+    "date": "2025-09-20",
+    "title": "Operation Thunderstrike — Closed Beta",
+    "highlights": [
+      "New Terran unit: Warhound reintroduced with reworked abilities",
+      "Zerg Defiler available in multiplayer",
+      "3 new beta maps for testing",
+      "Major economy rebalance"
+    ],
+    "fullNotesUrl": "https://your-website.com/beta/0.2"
+  },
+
+  "criticalUpdate": {
+    "enabled": false,
+    "minVersion": "0.1.0",
+    "message": "A critical beta patch is required."
+  },
+
+  "modules": [
+    {
+      "id": "beta-core",
+      "name": "Beta Core",
+      "files": [
+        {
+          "name": "SCEvo_Core.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_Core.SC2Mod",
+          "size": 201326592,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "beta-assets",
+      "name": "Beta Assets",
+      "files": [
+        {
+          "name": "SCEvo_Assets.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_Assets.SC2Mod",
+          "size": 440401920,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "beta-data",
+      "name": "Beta Data",
+      "files": [
+        {
+          "name": "SCEvo_Data.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_Data.SC2Mod",
+          "size": 285212672,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "beta-ui",
+      "name": "Beta UI",
+      "files": [
+        {
+          "name": "SCEvo_UI.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_UI.SC2Mod",
+          "size": 62914560,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "beta-maps",
+      "name": "Beta Maps",
+      "files": [
+        {
+          "name": "SCEvo_Maps.SC2Map",
+          "path": "Maps/SCEvo/SCEvo_Maps.SC2Map",
+          "size": 146800640,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    }
+  ]
+}

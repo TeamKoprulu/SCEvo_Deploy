@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "lastUpdated": "2025-09-16T00:00:00Z",
+
+  "versions": {
+    "multiplayer": "1.18.0",
+    "campaign": "0.3.0"
+  },
+
+  "criticalUpdate": {
+    "enabled": false,
+    "minVersion": "1.18.0",
+    "message": "A critical core patch is available. Please update to continue.",
+    "severity": "critical"
+  },
+
+  "patchNotes": {
+    "multiplayer": {
+      "version": "1.18.0",
+      "date": "2026-03-20",
+      "title": "SC: Evo 1.18 — Zerg and Protoss Reworks",
+      "highlights": [
+        "Terran buffs",
+        "Protoss and Zerg Reworks",
+        "New Protoss Building Models"
+      ],
+      "fullNotesUrl": "https://scevo.net/posts/evo-update-1_18"
+    },
+    "campaign": {
+      "version": "0.3.1",
+      "date": "2026-02-20",
+      "title": "Hotfix 0.3.1",
+      "highlights": [
+        "Mission 5 is now properly available",
+        "Updated achievement conditions"
+      ],
+      "fullNotesUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3"
+    }
+  },
+
+  "modules": [
+    {
+      "id": "core",
+      "name": "SC Evo Core",
+      "description": "Core data for Evo Races",
+      "files": [
+        {
+          "name": "SCEvo_Core.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_Core.SC2Mod",
+          "size": 196083712,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "assets",
+      "name": "SC Evo Assets",
+      "description": "Models, textures, sounds",
+      "files": [
+        {
+          "name": "SCEvo_Assets.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_Assets.SC2Mod",
+          "size": 421527552,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "legacydata",
+      "name": "SC Evo Legacy",
+      "description": "Legacy balance data.",
+      "files": [
+        {
+          "name": "SCEvo_Data.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_Data.SC2Mod",
+          "size": 276824064,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "achievements",
+      "name": "SC Evo UI",
+      "description": "Interface modifications",
+      "files": [
+        {
+          "name": "SCEvo_UI.SC2Mod",
+          "path": "Mods/SCEvo/SCEvo_UI.SC2Mod",
+          "size": 60817408,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    },
+    {
+      "id": "maps",
+      "name": "SC Evo Maps",
+      "description": "Multiplayer and campaign maps",
+      "files": [
+        {
+          "name": "SCEvo_Maps.SC2Map",
+          "path": "Maps/SCEvo/SCEvo_Maps.SC2Map",
+          "size": 140509184,
+          "hash": "REPLACE_WITH_SHA256_HASH"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "lastUpdated": "2025-09-16T00:00:00Z",
+
+  "cards": [
+    {
+      "id": "news-1.18",
+      "title": "SC: Evo 1.18",
+      "date": "2026-03-20",
+      "category": "update",
+      "image": {
+        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_18.png",
+        "alt": "SC Evo 1.18 Update Banner"
+      },
+      "excerpt": "This much-belated patch is the first of the year 2026! We are grateful to be able to publish content once again, and are excited to bring you this latest round of balance updates.",
+      "linkUrl": "https://your-website.com/news/sc-evo-1-17-ptr",
+      "linkLabel": "Read more",
+      "badge": "NEW",
+      "badgeColor": "#00ff88"
+    },
+    {
+      "id": "news-campaignea",
+      "title": "Campaign Closed Beta",
+      "date": "2026-01-09",
+      "category": "update",
+      "image": {
+        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-campaign-eaep0.png",
+        "alt": "SC Evo Early Access Banner"
+      },
+      "excerpt": "Over the last few months however, Campaign development has picked up significantly and we're finally ready to begin the Legacy Campaign Closed Beta for our Suporters or as we've dubbed it: Early Access.",
+      "linkUrl": "https://your-website.com/news/sc-evo-1-16-5",
+      "linkLabel": "Read more",
+      "badge": null,
+      "badgeColor": null
+    },
+    {
+      "id": "news-1.17.1",
+      "title": "SC: Evo 1.16.1",
+      "date": "2025-08-08",
+      "category": "update",
+      "image": {
+        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_17.png",
+        "alt": "SC Evo 1.17 Update Banner"
+      },
+      "excerpt": "This update introduces a hotfix along with several incremental improvements to the SC: Evo Extensions and their AIs. Work on the AI updates is still ongoing, and we’ll continue to roll out further refinements as development and testing progress.",
+      "linkUrl": "https://your-website.com/news/sc-evo-1-16-4",
+      "linkLabel": "Read more",
+      "badge": null,
+      "badgeColor": null
+    }
+  ],
+
+  "announcement": {
+    "enabled": false,
+    "message": "SEL Season 2 playoffs are live! Watch at twitch.tv/example",
+    "linkUrl": "https://twitch.tv/example",
+    "type": "info"
+  }
+}
