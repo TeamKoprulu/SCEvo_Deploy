@@ -135,7 +135,8 @@
           "name": "SCEvo_Assets.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
           "size": 435079338,
-          "hash": "1fa55a79a57b34d77f7bde521917b75a8cd09ef44e06115894735c3d811f8d6b"
+          "hash": "1fa55a79a57b34d77f7bde521917b75a8cd09ef44e06115894735c3d811f8d6b",
+          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.3/SCEvo_Assets.SC2Mod"
         }
       ]
     },
@@ -161,7 +162,8 @@
           "name": "SCEvo_CampaignAssets.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
           "size": 512012490,
-          "hash": "fa59c676b9ad298f3e3a3e5ace5b185c281276c316dbbc726682d886a058c47f"
+          "hash": "fa59c676b9ad298f3e3a3e5ace5b185c281276c316dbbc726682d886a058c47f",
+          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.3/SCEvo_CampaignAssets.SC2Mod"
         }
       ]
     },
