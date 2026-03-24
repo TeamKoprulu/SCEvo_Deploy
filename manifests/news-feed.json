@@ -47,6 +47,18 @@
       "linkLabel": "Read more",
       "badge": null,
       "badgeColor": null
+    },
+    {
+      "id": 1,
+      "title": "SC: Evo 1.18",
+      "date": "March 24, 2026",
+      "excerpt": "Patch summary here.",
+      "badge": "NEW",
+      "badgeColor": "#00ff88",
+      "linkUrl": "https://your-site/post-1",
+      "imageLabel": "1.18",
+      "imageBg": "#0a2a1a",
+      "imageAccent": "#00ff88"
     }
   ],
 
