@@ -7,7 +7,7 @@
   },
   "criticalUpdate": {
     "enabled": true,
-    "minVersion": "1.18.1",
+    "minVersion": "1.18.0",
     "message": "A critical core patch is available. Please update to continue.",
     "severity": "critical"
   },

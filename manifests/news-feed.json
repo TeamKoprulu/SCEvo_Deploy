@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2025-09-16T00:00:00Z",
+  "lastUpdated": "2026-03-24T00:00:00Z",
 
   "cards": [
     {
@@ -60,9 +60,9 @@
   ],
 
   "announcement": {
-    "enabled": false,
-    "message": "SEL Season 2 playoffs are live! Watch at twitch.tv/example",
-    "linkUrl": "https://twitch.tv/example",
+    "enabled": true,
+    "message": "Testing the announcement system during the Launcher testing",
+    "linkUrl": "https://scevoo.net",
     "type": "info"
   }
 }
