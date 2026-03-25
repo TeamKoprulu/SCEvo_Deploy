@@ -51,7 +51,61 @@
       "excerpt": "Over the last few months however, Campaign development has picked up significantly and we're finally ready to begin the Legacy Campaign Closed Beta for our Suporters or as we've dubbed it: Early Access.",
       "linkUrl": "https://scevo.net/posts/evo-devblog-campaignea",
       "linkLabel": "Read more",
-      "badge": "NEW",
+      "badge": null,
+      "badgeColor": "#00ff88",
+      "imageLabel": "News",
+      "imageBg": "#2a150a",
+      "imageAccent": "#ff5e00"
+    },
+    {
+      "id": "news-campaignea",
+      "title": "Campaign Closed Beta",
+      "date": "January 29, 2026",
+      "category": "update",
+      "image": {
+        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-campaign-eaep0.png",
+        "alt": "SC Evo Early Access Banner"
+      },
+      "excerpt": "Over the last few months however, Campaign development has picked up significantly and we're finally ready to begin the Legacy Campaign Closed Beta for our Suporters or as we've dubbed it: Early Access.",
+      "linkUrl": "https://scevo.net/posts/evo-devblog-campaignea",
+      "linkLabel": "Read more",
+      "badge": null,
+      "badgeColor": "#00ff88",
+      "imageLabel": "News",
+      "imageBg": "#2a150a",
+      "imageAccent": "#ff5e00"
+    },
+    {
+      "id": "news-campaignea",
+      "title": "Campaign Closed Beta",
+      "date": "January 29, 2026",
+      "category": "update",
+      "image": {
+        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-campaign-eaep0.png",
+        "alt": "SC Evo Early Access Banner"
+      },
+      "excerpt": "Over the last few months however, Campaign development has picked up significantly and we're finally ready to begin the Legacy Campaign Closed Beta for our Suporters or as we've dubbed it: Early Access.",
+      "linkUrl": "https://scevo.net/posts/evo-devblog-campaignea",
+      "linkLabel": "Read more",
+      "badge": null,
+      "badgeColor": "#00ff88",
+      "imageLabel": "News",
+      "imageBg": "#2a150a",
+      "imageAccent": "#ff5e00"
+    },
+    {
+      "id": "news-campaignea",
+      "title": "Campaign Closed Beta",
+      "date": "January 29, 2026",
+      "category": "update",
+      "image": {
+        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-campaign-eaep0.png",
+        "alt": "SC Evo Early Access Banner"
+      },
+      "excerpt": "Over the last few months however, Campaign development has picked up significantly and we're finally ready to begin the Legacy Campaign Closed Beta for our Suporters or as we've dubbed it: Early Access.",
+      "linkUrl": "https://scevo.net/posts/evo-devblog-campaignea",
+      "linkLabel": "Read more",
+      "badge": null,
       "badgeColor": "#00ff88",
       "imageLabel": "News",
       "imageBg": "#2a150a",
