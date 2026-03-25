@@ -3,6 +3,24 @@
   "lastUpdated": "2026-03-24T00:00:00Z",
 
   "cards": [
+      {
+      "id": "news-campaigntest",
+      "title": "Launcher Testing Announcement",
+      "date": "March 25, 2026",
+      "category": "update",
+      "image": {
+        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_17.png",
+        "alt": "SC Evo 1.17 Update Banner"
+      },
+      "excerpt": "Testing the announcement systems by utilizing an empty card.",
+      "linkUrl": "https://scevo.net/posts/evo-update-1_17",
+      "linkLabel": null,
+      "badge": null,
+      "badgeColor": null,
+      "imageLabel": "PSA",
+      "imageBg": "#0a282a",
+      "imageAccent": "#00e4ff"
+    },
     {
       "id": "news-1.18",
       "title": "SC: Evo 1.18",
@@ -18,8 +36,8 @@
       "badge": "NEW",
       "badgeColor": "#00ff88",
       "imageLabel": "1.18",
-      "imageBg": "#0a2a1a",
-      "imageAccent": "#00ff88"
+      "imageBg": "#280a2a",
+      "imageAccent": "#fa00ff"
     },
     {
       "id": "news-campaignea",
@@ -36,26 +54,8 @@
       "badge": "NEW",
       "badgeColor": "#00ff88",
       "imageLabel": "News",
-      "imageBg": "#2a1a0a",
-      "imageAccent": "#ff8800"
-    },
-    {
-      "id": "news-1.17.1",
-      "title": "SC: Evo 1.16.1",
-      "date": "October 8, 2025",
-      "category": "update",
-      "image": {
-        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_17.png",
-        "alt": "SC Evo 1.17 Update Banner"
-      },
-      "excerpt": "This update introduces a hotfix along with several incremental improvements to the SC: Evo Extensions and their AIs. Work on the AI updates is still ongoing, and we’ll continue to roll out further refinements as development and testing progress.",
-      "linkUrl": "https://scevo.net/posts/evo-update-1_17",
-      "linkLabel": "Read more",
-      "badge": null,
-      "badgeColor": null,
-      "imageLabel": "1.17.1",
-      "imageBg": "#0a2a1a",
-      "imageAccent": "#00ff88"
+      "imageBg": "#2a150a",
+      "imageAccent": "#ff5e00"
     }
   ],
 
