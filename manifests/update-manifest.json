@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-03-24T00:00:00Z",
+  "lastUpdated": "2026-03-25T00:00:00Z",
   "versions": {
-    "multiplayer": "1.18.2",
+    "multiplayer": "1.18.3",
     "campaign": "0.3.1"
   },
   "criticalUpdate": {
     "enabled": true,
-    "minVersion": "1.18.1",
+    "minVersion": "1.18.3",
     "message": "A critical core patch is available. Please update to continue.",
     "severity": "critical"
   },
   "patchNotes": {
     "multiplayer": {
-      "version": "1.18.2",
-      "date": "2026-03-24",
-      "title": "SC: Evo 1.18.2 — Zerg and Protoss Reworks",
+      "version": "1.18.3",
+      "date": "2026-03-25",
+      "title": "SC: Evo 1.18.3 — Zerg and Protoss Reworks",
       "highlights": [
         "Terran buffs",
         "Protoss and Zerg Reworks",
@@ -161,9 +161,9 @@
         {
           "name": "SCEvo_CampaignAssets.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
-          "size": 517147117,
-          "hash": "517a2d65a588b76a6bd6754a8b2bf77409f40cc866cbd6c6d55fa83cb1473dc7",
-          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.3.1/SCEvo_CampaignAssets.SC2Mod"
+          "size": 962167522,
+          "hash": "ced00a5a9a3fc259dbe108afa2a032f217b8461c7dab8efde9a1832c80d3c1d8",
+          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.3.1.1/SCEvo_CampaignAssets.SC2Mod"
         }
       ]
     },
