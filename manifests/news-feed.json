@@ -161,6 +161,7 @@
         "ru": {
           "title": "SC: Evo 1.18",
           "date": "20 марта, 2026",
+          "readMoreLabel": "Читать далее",
           "highlights":["Демо", "Миссии 0, 1, 2, 4 доступны", "Попробуйте пройти первые несколько миссий кампании!"]
         }
       }
@@ -235,6 +236,12 @@
           "date": "20 de marzo, 2026",
           "readMoreLabel": "Leer más",
           "excerpt": "¡Esta actualización, tan esperada, es la primera del año 2026! Estamos muy agradecidos de poder volver a publicar contenido y nos alegra mucho presentaros esta nueva ronda de ajustes de equilibrio."
+        },
+        "ru": {
+          "title": "SC: Evo 1.18",
+          "date": "20 марта, 2026",
+          "readMoreLabel": "Читать далее",
+          "excerpt": "Это сильно-запоздалый, но первый патч в 2026 году! Мы благодарим за то, что мы можем публиковать контент снова, и рады представить вам эту последнюю серию обновлений баланса."
         }
       }
     },
@@ -272,10 +279,10 @@
           "excerpt": "¡Hola chicos, ha pasado un tiempo desde que tuve tiempo de sentarme y escribir una actualización completa sobre lo que ha estado pasando, pero ahora tenemos una actualización bastante grande en nuestras manos que podemos subir al Arcade una vez más!"
         },
         "ru": {
-          "title": "SC: Evo 1.18",
-          "date": "20 марта, 2026",
+          "title": "Февральное обновление о разработке",
+          "date": "15 марта, 2026",
           "readMoreLabel": "Читать далее",
-          "excerpt": "Это сильно-запоздалый, но первый патч в 2026 году! Мы благодарим за то, что мы можем публиковать контент снова, и рады представить вам эту последнюю серию обновлений баланса."
+          "excerpt": "Эй, ребята, прошло много времени с тех пор, как у меня было время сесть и написать полный список о том, что происходит в разработке, но теперь, когда мы снова можем публиковать эти обновления в Игротеку, у нас в руках целый набор этих обновлений!"
         }
       }
     }
