@@ -52,6 +52,7 @@
       "newVersionAvailable": "Nueva versión disponible (v{version})",
 
       "criticalUpdateTitle": "ACTUALIZACION CRITICA REQUERIDA",
+      "criticalUpdateMessage": "Una actualización crítica para SC: Evo está disponible.",
       "betaAccess": "ACCESO ANTICIPADO",
       "betaEnterCode": "Introduce tu código de acceso a la beta cerrada",
       "betaActivatedLabel": "BETA ACTIVADA",
@@ -67,42 +68,42 @@
 
   "cards": [
     {
-      "id": "news-patchnotes_0.3.1",
-      "title": "Campaign Update 0.3.2",
-      "date": "March 27, 2026",
+      "id": "news-patchnotes_demo",
+      "title": "Loomings Campaign Public Demo",
+      "date": "March 30, 2026",
       "type": "patchnotes",
       "variant": "public",
 
-      "imageLabel": "Campaign 0.3.1",
+      "imageLabel": "Campaign DEMO",
       "imageText": "EVO",
-      "imageBg": "#0a282a",
-      "imageAccent": "#00e4ff",
-      "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"],
+      "imageBg": "#0a2a23",
+      "imageAccent": "#00ffd1",
+      "highlights":["Public Demo", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!"],
 
       "badge": "Campaign",
-      "badgeColor": "#00e4ff",
+      "badgeColor": "#00ffd1",
 
       "locales": {
         "en": {
           "title": "SC: Evo 1.18",
           "date": "March 20, 2026",
-          "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"]
+          "highlights":["Public Demo", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!"]
         },
         "es": {
           "title": "SC: Evo 1.18",
           "date": "20 de marzo, 2026",
-          "highlights":["La misión 5 ya está disponible en el modo de progresión", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
+          "highlights":["Demo publica", "Misiones 0, 1, 2, 4 disponibles", "Prueba las primeras misiones con acceso anticipado!"]
         }
       }
     },
     {
-      "id": "news-betapatchnotes_0.4",
-      "title": "Campaign Update 0.4",
+      "id": "news-betapatchnotes_0.3.1",
+      "title": "Campaign Update 0.3.1",
       "date": "March 27, 2026",
       "type": "patchnotes",
       "variant": "beta",
 
-      "imageLabel": "Campaign 0.4",
+      "imageLabel": "Campaign 0.3.1",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
@@ -110,36 +111,24 @@
 
       "badge": "Campaign",
       "badgeColor": "#ff0025",
+      "linkUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3",
 
       "locales": {
         "en": {
           "title": "Legacy Campaign Update 0.4",
           "date": "March 27, 2026",
+          "readMoreLabel": "Read more",
           "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"]
         },
         "es": {
           "title": "Campaña Legacy Actualización 0.4",
           "date": "27 de marzo, 2026",
+          "readMoreLabel": "Leer más",
           "highlights":["La misión 5 ya está disponible en el modo de progresión", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
         }
       }
     },
 
-    {
-      "id": "news-loomingsea-0.3.1",
-      "title": "Campaign Update 0.3.1",
-      "date": "March 25, 2026",
-      "type": "patchnotes",
-
-      "excerpt": "We're continuing the updates and additions to our internal systems to expand the selection of custom features as well as the upcoming gamemodes we have in store.",
-      "linkUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3",
-      "linkLabel": "Read more",
-      "badge": "Campaign",
-      "badgeColor": "#00e4ff",
-      "imageLabel": "Campaign 0.3.1",
-      "imageBg": "#0a282a",
-      "imageAccent": "#00e4ff"
-    },
     {
       "id": "news-1.18",
       "title": "SC: Evo 1.18",
@@ -149,11 +138,11 @@
       "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_18.png",
       "imageLabel": "1.18",
       "imageText": "EVO UPDATE",
-      "imageBg": "#280a2a",
-      "imageAccent": "#fa00ff",
+      "imageBg": "#0a242a",
+      "imageAccent": "#00c5ff",
 
       "badge": "New Update",
-      "badgeColor": "#fa00ff",
+      "badgeColor": "#00c5ff",
 
       "excerpt": "...",
       "linkUrl": "https://scevo.net/posts/evo-update-1_18",
@@ -169,6 +158,39 @@
           "title": "SC: Evo 1.18",
           "date": "20 de marzo, 2026",
           "excerpt": "¡Esta actualización, tan esperada, es la primera del año 2026! Estamos muy agradecidos de poder volver a publicar contenido y nos alegra mucho presentaros esta nueva ronda de ajustes de equilibrio."
+        }
+      }
+    },
+
+    {
+      "id": "patreon-february2026",
+      "title": "February Development Update",
+      "date": "March 15, 2026",
+      "type": "update",
+
+      "imageUrl": "https://c10.patreonusercontent.com/4/patreon-media/p/post/152914081/1f24d4c01f354a77adec2ae004455038/eyJiIjo4LCJ3IjoxMDgwfQ%3D%3D/1.png",
+      "imageLabel": "February Update",
+      "imageText": "PATREON",
+      "imageBg": "#0a242a",
+      "imageAccent": "#00c5ff",
+
+      "badge": "Patreon",
+      "badgeColor": "#00c5ff",
+
+      "excerpt": "...",
+      "linkUrl": "https://www.patreon.com/TeamKopruluSC2",
+      "readMoreLabel": "Read more",
+
+      "locales": {
+        "en": {
+          "title": "February Development Update",
+          "date": "March 15, 2026",
+          "excerpt": "Hey guys, its been a while since i've had time to sit down and write a full update on what's been going on but we've got quite the update in our hands now that we're able to upload to the Arcade once more!"
+        },
+        "es": {
+          "title": "Actualización de Desarrollo de Febrero",
+          "date": "15 de marzo, 2026",
+          "excerpt": "¡Hola chicos, ha pasado un tiempo desde que tuve tiempo de sentarme y escribir una actualización completa sobre lo que ha estado pasando, pero ahora tenemos una actualización bastante grande en nuestras manos que podemos subir al Arcade una vez más!"
         }
       }
     }
