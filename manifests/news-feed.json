@@ -11,7 +11,7 @@
       "readMore": "Read more",
       "latestNews": "Latest News"
     },
-    
+
     "es": {
       "play": "JUGAR",
       "install": "INSTALAR",
@@ -20,7 +20,61 @@
       "readMore": "Leer más",
       "latestNews": "Últimas Noticias",
       "verifyingFiles": "Verificando archivos...",
+      "checking": "REVISANDO...",
       "ready": "SC: Evo está listo. Haz clic en Jugar para iniciar."
+    },
+
+    "es": {
+      "play": "JUGAR",
+      "install": "INSTALAR",
+      "update": "ACTUALIZAR",
+      "updateNow": "ACTUALIZAR AHORA",
+      "checking": "REVISANDO...",
+      "downloading": "DESCARGANDO...",
+      "installing": "INSTALANDO...",
+      "locateSc2": "BUSCAR SC2",
+      "activateBeta": "ACTIVAR BETA",
+      "validating": "VALIDANDO...",
+      "dismiss": "DESCARTAR",
+      "browse": "Explorar...",
+      "reverifyFiles": "Verificar archivos nuevamente",
+      
+      "detectingGame": "Buscando carpeta de instalacion de StarCraft II...",
+      "notFound": "StarCraft II no encontrado. Ajuste la ruta manualmente.",
+      "verifyingFiles": "Verificando archivos del mod...",
+      "needsInstall": "SC: Evo no esta instalado. Presiona instalar para comenzar.",
+      "needsInstallBeta": "La Beta no esta instalada. Haz clic en Instalar para comenzar.",
+      "needsUpdate": "Actualizacion disponible: v{installed} \u2192 v{latest} \u2014 Aun puedes jugar.",
+      "criticalUpdateRequired": "Actualizacion critica requerida.",
+      "criticalUpdateDismissed": "Actualizacion critica descartada \u2014 v{installed} (obsoleto).",
+      "downloadingFile": "Descargando: {file}",
+      "installingFiles": "Instalando archivos del mod...",
+      "upToDate": "Los archivos fueron verificados. Listo para jugar.",
+      "ready": "SC: Evo está listo. Haz clic en Jugar para iniciar.",
+      "readyBeta": "La {betaName} está lista. Haz clic en Jugar para iniciar.",
+      
+      "settingsTitle": "Ajustes",
+      "sc2PathLabel": "Ruta de StarCraft II",
+      "coreVersionLabel": "Version del Mod Core",
+      "campaignVersionLabel": "Version de la Campaña",
+      "notInstalled": "No instalado",
+      "latestNews": "Últimas Noticias",
+      "readMore": "Leer más",
+      "language": "Idioma",
+      "criticalPending": "Actualización crítica pendiente \u2014 haz clic para revisar",
+      "newVersionAvailable": "Nueva versión disponible (v{version})",
+      
+      "criticalUpdateTitle": "ACTUALIZACION CRITICA REQUERIDA",
+      "betaAccess": "ACCESO ANTICIPADO",
+      "betaEnterCode": "Introduce tu código de acceso a la beta cerrada",
+      "betaActivatedLabel": "BETA ACTIVADA",
+      "betaUnavailable": "La información sobre el programa beta no está disponible en este momento.",
+      "betaUnavailableHint": "Intentalo mas tarde.",
+      "locateSc2Title": "LOCALIZAR STARCRAFT II",
+      "locateSc2Subtitle": "No se pudo encontrar tu instalación de StarCraft II automáticamente.",
+      "confirmPath": "CONFIRMAR RUTA",
+      "enterCode": "INTRODUCIR CÓDIGO",
+      "youCanDismiss": "Puedes descartar y jugar, pero algunas características pueden no funcionar.",
     }
   },
 
