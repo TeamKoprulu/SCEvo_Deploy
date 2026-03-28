@@ -105,7 +105,7 @@
       "campaignVersionLabel": "Версия кампании",
       "notInstalled": "Не установлено",
       "latestNews": "Последние новости",
-      "readMore": "Читать далее",
+      "readMore": "Подробнее",
       "language": "Язык",
       "criticalPending": "Ожидается критическое обновление \u2014 нажмите для просмотра",
       "newVersionAvailable": "Доступна новая версия (v{version})",
@@ -156,12 +156,14 @@
         "es": {
           "title": "SC: Evo 1.18",
           "date": "20 de marzo, 2026",
+          "badge": "Campaña",
           "highlights":["Demo publica", "Misiones 0, 1, 2, 4 disponibles", "Prueba las primeras misiones con acceso anticipado!"]
         },
         "ru": {
           "title": "SC: Evo 1.18",
           "date": "20 марта, 2026",
           "readMoreLabel": "Читать далее",
+          "badge": "Кампания",
           "highlights":["Демо", "Миссии 0, 1, 2, 4 доступны", "Попробуйте пройти первые несколько миссий кампании!"]
         }
       }
@@ -194,12 +196,14 @@
           "title": "Campaña Legacy Actualización 0.4",
           "date": "27 de marzo, 2026",
           "readMoreLabel": "Leer más",
+          "badge": "Campaña",
           "highlights":["La misión 5 ya está disponible en la progresión de mapas", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
         },
         "ru": {
           "title": "Legacy Campaign Update 0.4",
           "date": "27 марта, 2026",
           "readMoreLabel": "Читать далее",
+          "badge": "Кампания",
           "highlights":["Миссия 5 теперь доступна в режиме прогрессии", "Изменены некоторые условия достижений", "Исправлены несколько других ошибок"]
         }
       }
@@ -235,12 +239,14 @@
           "title": "SC: Evo 1.18",
           "date": "20 de marzo, 2026",
           "readMoreLabel": "Leer más",
+          "badge": "Actualización",
           "excerpt": "¡Esta muy esperada actualizacion es la primera del año 2026! Estamos muy agradecidos de poder volver a publicar contenido y nos alegra mucho presentaros esta nueva ronda de ajustes de balance."
         },
         "ru": {
           "title": "SC: Evo 1.18",
           "date": "20 марта, 2026",
           "readMoreLabel": "Читать далее",
+          "badge": "Новое  обновление",
           "excerpt": "Это сильно-запоздалый, но первый патч в 2026 году! Мы благодарим за то, что мы можем публиковать контент снова, и рады представить вам эту последнюю серию обновлений баланса."
         }
       }
