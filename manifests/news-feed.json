@@ -3,11 +3,39 @@
   "lastUpdated": "2026-03-24T00:00:00Z",
 
   "cards": [
-      {
+    {
+      "id": "news-patchnotes_0.3.1",
+      "title": "Campaign Update 0.3.2",
+      "date": "March 27, 2026",
+      "category": "patchnotes",
+
+      "imageLabel": "Campaign 0.3.1",
+      "imageText": "EVO",
+      "imageBg": "#0a282a",
+      "imageAccent": "#00e4ff",
+
+      "badge": "Campaign",
+      "badgeColor": "#00e4ff",
+
+      "locales": {
+        "en": {
+          "title": "SC: Evo 1.18",
+          "date": "March 20, 2026",
+          "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"]
+        },
+        "es": {
+          "title": "SC: Evo 1.18",
+          "date": "20 de marzo, 2026",
+          "highlights":["La misión 5 ya está disponible en el modo de progresión", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
+        }
+      }
+    },
+    {
       "id": "news-loomingsea-0.3.1",
       "title": "Campaign Update 0.3.1",
       "date": "March 25, 2026",
-      "category": "update",
+      "category": "patchnotes",
+
       "excerpt": "We're continuing the updates and additions to our internal systems to expand the selection of custom features as well as the upcoming gamemodes we have in store.",
       "linkUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3",
       "linkLabel": "Read more",
@@ -22,43 +50,38 @@
       "title": "SC: Evo 1.18",
       "date": "March 20, 2026",
       "category": "update",
-      "image": {
-        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_18.png",
-        "alt": "SC Evo 1.18 Update Banner"
-      },
-      "excerpt": "This much-belated patch is the first of the year 2026! We are grateful to be able to publish content once again, and are excited to bring you this latest round of balance updates.",
-      "linkUrl": "https://scevo.net/posts/evo-update-1_18",
-      "linkLabel": "Read more",
+
+      "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_18.png",
+      "imageLabel": "1.18",
+      "imageText": "EVO UPDATE",
+      "imageBg": "#280a2a",
+      "imageAccent": "#fa00ff",
+
       "badge": "New Update",
       "badgeColor": "#fa00ff",
-      "imageLabel": "1.18",
-      "imageBg": "#280a2a",
-      "imageAccent": "#fa00ff"
-    },
-    {
-      "id": "news-campaignea",
-      "title": "Campaign Closed Beta",
-      "date": "January 29, 2026",
-      "category": "update",
-      "image": {
-        "url": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-campaign-eaep0.png",
-        "alt": "SC Evo Early Access Banner"
-      },
-      "excerpt": "Over the last few months however, Campaign development has picked up significantly and we're finally ready to begin the Legacy Campaign Closed Beta for our Suporters or as we've dubbed it: Early Access.",
-      "linkUrl": "https://scevo.net/posts/evo-devblog-campaignea",
-      "linkLabel": "Read more",
-      "badge": null,
-      "badgeColor": "#00ff88",
-      "imageLabel": "News",
-      "imageBg": "#2a150a",
-      "imageAccent": "#ff5e00"
+
+      "excerpt": "...",
+      "linkUrl": "https://scevo.net/posts/evo-update-1_18",
+      "readMoreLabel": "Read more",
+
+      "locales": {
+        "en": {
+          "title": "SC: Evo 1.18",
+          "date": "March 20, 2026",
+          "excerpt": "This much-belated patch is the first of the year 2026! We are grateful to be able to publish content once again, and are excited to bring you this latest round of balance updates."
+        },
+        "es": {
+          "title": "SC: Evo 1.18",
+          "date": "20 de marzo, 2026",
+          "excerpt": "¡Esta actualización, tan esperada, es la primera del año 2026! Estamos muy agradecidos de poder volver a publicar contenido y nos alegra mucho presentaros esta nueva ronda de ajustes de equilibrio."
+        }
+      }
     }
   ],
 
   "announcement": {
     "enabled": true,
     "message": "Testing the announcement system during the Launcher testing",
-    "linkUrl": "https://scevoo.net",
-    "type": "info"
+    "type": "warning"
   }
 }
