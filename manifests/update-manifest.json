@@ -101,19 +101,6 @@
       ]
     },
     {
-      "id": "loomings5legacy",
-      "name": "Loomings5Legacy",
-      "description": "Loomings5Legacy",
-      "files": [
-        {
-          "name": "Loomings5Legacy.SC2Map",
-          "path": "Maps/SCEvo/LegacyLoomings/Loomings5Legacy.SC2Map",
-          "size": 2527289,
-          "hash": "a282ed4707b994e1be5c6facc56ebd6751471fc8a200712aa5e422b40794b8f0"
-        }
-      ]
-    },
-    {
       "id": "loomingsstory",
       "name": "LoomingsStory",
       "description": "LoomingsStory",
@@ -188,8 +175,8 @@
         {
           "name": "SCEvo_CampaignLegacy.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
-          "size": 2153205,
-          "hash": "617e91c1f541633b9092c6eafe3adb9d68a642afc6029dd4de2231b024225135"
+          "size": 2153502,
+          "hash": "06acebf8f4d01d4798208ba3a242c9b323c1b9314172a125362b69fd4fd2494e"
         }
       ]
     },
