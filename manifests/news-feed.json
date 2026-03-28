@@ -69,6 +69,64 @@
       "announceCritical": "CRITICO",
       "createShortcut": "Crear acceso directo en el escritorio",
       "closeOnLaunch": "Cerrar lanzador cuando inicie el juego"
+    },
+    "ru": {
+      "play": "ИГРАТЬ",
+      "install": "УСТАВИТЬ",
+      "update": "ОБНОВИТЬ",
+      "updateNow": "ОБНОВИТЬ СЕЙЧАС",
+      "checking": "ПРОВЕРКА...",
+      "downloading": "ЗАГРУЗКА...",
+      "installing": "УСТАНОВКА...",
+      "locateSc2": "РАСПОЛОЖЕНИЕ SC2",
+      "activateBeta": "ACTIVATE BETA",
+      "validating": "VALIDATING...",
+      "dismiss": "ОТКЛОНИТЬ",
+      "browse": "Найти...",
+      "reverifyFiles": "Повторная проверка файлов",
+      
+      "detectingGame": "Определение расположения установки StarCraft II...",
+      "notFound": "StarCraft II не найден. Пожалуйста, задайте путь вручную.",
+      "verifyingFiles": "Проверка файлов модов...",
+      "needsInstall": "SC: Evo не установлен. Нажмите УСТАВИТЬ для начала установки.",
+      "needsInstallBeta": "Бета-версия не установлена. Нажмите УСТАВИТЬ для начала установки.",
+      "needsUpdate": "Обновление доступно: v{installed} \u2192 v{latest} \u2014 Вы все еще можете играть.",
+      "criticalUpdateRequired": "Требуется критическое обновление.",
+      "criticalUpdateDismissed": "Критическое обновление отклонено. \u2014 v{installed} (outdated).",
+      "downloadingFile": "Загрузка: {file}",
+      "installingFiles": "Установка файлов мода...",
+      "upToDate": "Все файлы проверены. Можно играть.",
+      "ready": "SC: Evo готово. Нажмите ИГРАТЬ для запуска.",
+      "readyBeta": "{betaName} готово. Нажмите ИГРАТЬ для запуска.",
+      
+      "settingsTitle": "Настройки",
+      "sc2PathLabel": "Путь к StarCraft II",
+      "coreVersionLabel": "Версия ядра",
+      "campaignVersionLabel": "Версия кампании",
+      "notInstalled": "Не установлено",
+      "latestNews": "Последние новости",
+      "readMore": "Читать далее",
+      "language": "Язык",
+      "criticalPending": "Ожидается критическое обновление \u2014 нажмите для просмотра",
+      "newVersionAvailable": "Доступна новая версия (v{version})",
+      
+      "criticalUpdateTitle": "ТРЕБУЕТСЯ КРИТИЧЕСКОЕ ОБНОВЛЕНИЕ",
+      "criticalUpdateMessage": "",
+      "announceInfo": "Информация",
+      "announceWarning": "ВНИМАНИЕ",
+      "announceCritical": "ВАЖНО",
+      "betaAccess": "ДОСТУП К BETA-ВЕРСИИ",
+      "betaEnterCode": "Введите свой код доступа к закрытому бета-тестированию",
+      "betaActivatedLabel": "БЕТА-ВЕРСИЯ АКТИВИРОВАНА",
+      "betaUnavailable": "Информация о программе бета-тестирования в настоящее время недоступна.",
+      "betaUnavailableHint": "Пожалуйста, попробуйте снова чуть позже.",
+      "locateSc2Title": "РАСПОЛОЖЕНИЕ STARCRAFT II",
+      "locateSc2Subtitle": "Не удалось определить расположение вашего StarCraft II автоматически.",
+      "confirmPath": "ПОДТВЕРДИТЕ ПУТЬ",
+      "enterCode": "ВВЕДИТЕ КОД",
+      "youCanDismiss": "Вы можете отклонить и продолжить игру, но некоторые функции могут не работать.",
+      "createShortcut": "Создать ярлык на рабочем столе",
+      "closeOnLaunch": "Закрыть лаунчер когда запуститься игра",
     }
   },
 
@@ -99,6 +157,11 @@
           "title": "SC: Evo 1.18",
           "date": "20 de marzo, 2026",
           "highlights":["Demo publica", "Misiones 0, 1, 2, 4 disponibles", "Prueba las primeras misiones con acceso anticipado!"]
+        },
+        "ru": {
+          "title": "SC: Evo 1.18",
+          "date": "20 марта, 2026",
+          "highlights":["Демо", "Миссии 0, 1, 2, 4 доступны", "Попробуйте пройти первые несколько миссий кампании!"]
         }
       }
     },
@@ -131,6 +194,12 @@
           "date": "27 de marzo, 2026",
           "readMoreLabel": "Leer más",
           "highlights":["La misión 5 ya está disponible en el modo de progresión", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
+        },
+        "ru": {
+          "title": "Legacy Campaign Update 0.4",
+          "date": "27 марта, 2026",
+          "readMoreLabel": "Читать далее",
+          "highlights":["Миссия 5 теперь доступна в режиме прогрессии", "Изменены некоторые условия достижений", "Исправлены несколько других ошибок"]
         }
       }
     },
@@ -201,6 +270,12 @@
           "date": "15 de marzo, 2026",
           "readMoreLabel": "Leer más",
           "excerpt": "¡Hola chicos, ha pasado un tiempo desde que tuve tiempo de sentarme y escribir una actualización completa sobre lo que ha estado pasando, pero ahora tenemos una actualización bastante grande en nuestras manos que podemos subir al Arcade una vez más!"
+        },
+        "ru": {
+          "title": "SC: Evo 1.18",
+          "date": "20 марта, 2026",
+          "readMoreLabel": "Читать далее",
+          "excerpt": "Это сильно-запоздалый, но первый патч в 2026 году! Мы благодарим за то, что мы можем публиковать контент снова, и рады представить вам эту последнюю серию обновлений баланса."
         }
       }
     }
@@ -213,7 +288,8 @@
 
     "locales": {
       "en": { "message": "Test announcement message, testing visibility for beta users." },
-      "es": { "message": "Mensaje de anuncio de prueba, probando visibilidad para usuarios beta." }
+      "es": { "message": "Mensaje de anuncio de prueba, probando visibilidad para usuarios beta." },
+      "ru": { "message": "Тестовое сообщение, проверка видимости для пользователей BETA." }
     }
   }
 }
