@@ -66,7 +66,9 @@
 
       "announceInfo": "INFORMACION",
       "announceWarning": "ADVERTENCIA",
-      "announceCritical": "CRITICO"
+      "announceCritical": "CRITICO",
+      "createShortcut": "Crear acceso directo en el escritorio",
+      "closeOnLaunch": "Cerrar lanzador cuando inicie el juego"
     }
   },
 
