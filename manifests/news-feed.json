@@ -50,7 +50,7 @@
       "language": "Idioma",
       "criticalPending": "Actualización crítica pendiente \u2014 haz clic para revisar",
       "newVersionAvailable": "Nueva versión disponible (v{version})",
-      
+
       "criticalUpdateTitle": "ACTUALIZACION CRITICA REQUERIDA",
       "betaAccess": "ACCESO ANTICIPADO",
       "betaEnterCode": "Introduce tu código de acceso a la beta cerrada",
@@ -95,6 +95,36 @@
         }
       }
     },
+    {
+      "id": "news-betapatchnotes_0.4",
+      "title": "Campaign Update 0.4",
+      "date": "March 27, 2026",
+      "type": "patchnotes",
+      "variant": "beta",
+
+      "imageLabel": "Campaign 0.4",
+      "imageText": "EVO",
+      "imageBg": "#2a0a10",
+      "imageAccent": "#ff0025",
+      "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"],
+
+      "badge": "Campaign",
+      "badgeColor": "#ff0025",
+
+      "locales": {
+        "en": {
+          "title": "Legacy Campaign Update 0.4",
+          "date": "March 27, 2026",
+          "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"]
+        },
+        "es": {
+          "title": "Campaña Legacy Actualización 0.4",
+          "date": "27 de marzo, 2026",
+          "highlights":["La misión 5 ya está disponible en el modo de progresión", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
+        }
+      }
+    },
+
     {
       "id": "news-loomingsea-0.3.1",
       "title": "Campaign Update 0.3.1",
