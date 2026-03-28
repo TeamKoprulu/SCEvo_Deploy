@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2025-09-20T00:00:00Z",
+  "lastUpdated": "2026-03-27T00:00:00Z",
 
   "betaEnabled": true,
   "betaName": "Closed Beta 0.3.1 — Loomings",
@@ -18,18 +18,6 @@
     "badgeColor": "#ff6600"
   },
 
-  "patchNotes": {
-    "version": "0.3.1",
-    "date": "2026-03-20",
-    "title": "Loomings Beta - 0.3.1",
-    "highlights": [
-      "Mission 5 is now available during the progression",
-      "Adjusted several achievement conditions",
-      "Several other minor bugfixes"
-    ],
-    "fullNotesUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3"
-  },
-
   "criticalUpdate": {
     "enabled": false,
     "minVersion": "0.3.0",
@@ -38,62 +26,199 @@
 
   "modules": [
     {
-      "id": "beta-core",
-      "name": "Beta Core",
+      "id": "evocompletelauncher",
+      "name": "EvoCompleteLauncher",
+      "description": "EvoCompleteLauncher",
       "files": [
         {
-          "name": "SCEvo_Core.SC2Mod",
-          "path": "Mods/SCEvo/SCEvo_Core.SC2Mod",
-          "size": 201326592,
-          "hash": "REPLACE_WITH_SHA256_HASH"
+          "name": "EvoCompleteLauncher.SC2Map",
+          "path": "Maps/SCEvo/EvoCompleteLauncher.SC2Map",
+          "size": 722471,
+          "hash": "3d069a47b37e10473b7f017c53c5d5b4d68240565d5da4b358a9759c712e3051"
         }
       ]
     },
     {
-      "id": "beta-assets",
-      "name": "Beta Assets",
+      "id": "loomings0legacy",
+      "name": "Loomings0Legacy",
+      "description": "Loomings0Legacy",
+      "files": [
+        {
+          "name": "Loomings0Legacy.SC2Map",
+          "path": "Maps/SCEvo/LegacyLoomings/Loomings0Legacy.SC2Map",
+          "size": 438965,
+          "hash": "280baf2a2fc9327a8721c3a7c6d78242f6af08a61fde4eb61a60724f776c5717"
+        }
+      ]
+    },
+    {
+      "id": "loomings1legacy",
+      "name": "Loomings1Legacy",
+      "description": "Loomings1Legacy",
+      "files": [
+        {
+          "name": "Loomings1Legacy.SC2Map",
+          "path": "Maps/SCEvo/LegacyLoomings/Loomings1Legacy.SC2Map",
+          "size": 848588,
+          "hash": "1533b166c6d25c6c6a11dddb9dc3381b4a190e944c2b26ad5285cfedaaea000e"
+        }
+      ]
+    },
+    {
+      "id": "loomings2legacy",
+      "name": "Loomings2Legacy",
+      "description": "Loomings2Legacy",
+      "files": [
+        {
+          "name": "Loomings2Legacy.SC2Map",
+          "path": "Maps/SCEvo/LegacyLoomings/Loomings2Legacy.SC2Map",
+          "size": 1033197,
+          "hash": "00a00e419580e6e886d1a1d643dc7c2b4d798344451a104e800f993aaa8c7299"
+        }
+      ]
+    },
+    {
+      "id": "loomings4legacy",
+      "name": "Loomings4Legacy",
+      "description": "Loomings4Legacy",
+      "files": [
+        {
+          "name": "Loomings4Legacy.SC2Map",
+          "path": "Maps/SCEvo/LegacyLoomings/Loomings4Legacy.SC2Map",
+          "size": 691470,
+          "hash": "2c54dac0f986f2d651731781a4f23aee84dc9f52800ab2e847e713a49286dfab"
+        }
+      ]
+    },
+    {
+      "id": "loomings5legacy",
+      "name": "Loomings5Legacy",
+      "description": "Loomings5Legacy",
+      "files": [
+        {
+          "name": "Loomings5Legacy.SC2Map",
+          "path": "Maps/SCEvo/LegacyLoomings/Loomings5Legacy.SC2Map",
+          "size": 2527289,
+          "hash": "a282ed4707b994e1be5c6facc56ebd6751471fc8a200712aa5e422b40794b8f0"
+        }
+      ]
+    },
+    {
+      "id": "loomingsstory",
+      "name": "LoomingsStory",
+      "description": "LoomingsStory",
+      "files": [
+        {
+          "name": "LoomingsStory.SC2Map",
+          "path": "Maps/SCEvo/LegacyLoomings/LoomingsStory.SC2Map",
+          "size": 15478,
+          "hash": "caac7740c33f307ec06629eccee3ca04846986649d3bdf7fa3d39c8958dff9ac"
+        }
+      ]
+    },
+    {
+      "id": "scevo-assets",
+      "name": "SCEvo Assets",
+      "description": "SCEvo Assets",
       "files": [
         {
           "name": "SCEvo_Assets.SC2Mod",
-          "path": "Mods/SCEvo/SCEvo_Assets.SC2Mod",
-          "size": 440401920,
-          "hash": "REPLACE_WITH_SHA256_HASH"
+          "path": "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
+          "size": 451714305,
+          "hash": "7e5f2d140c6801f4e501b6c00bc08cbe00625802a405dbdf469f8f58a256a645",
+          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/1.18/SCEvo_Assets.SC2Mod"
         }
       ]
     },
     {
-      "id": "beta-data",
-      "name": "Beta Data",
+      "id": "scevo-achievements",
+      "name": "SCEvo Achievements",
+      "description": "SCEvo Achievements",
       "files": [
         {
-          "name": "SCEvo_Data.SC2Mod",
-          "path": "Mods/SCEvo/SCEvo_Data.SC2Mod",
-          "size": 285212672,
-          "hash": "REPLACE_WITH_SHA256_HASH"
+          "name": "SCEvo_Achievements.SC2Mod",
+          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_Achievements.SC2Mod",
+          "size": 666987,
+          "hash": "8028b708fc0d046f07c5daa4fbf156d1d6c1b6fa27358eafa9b79c25b2f64acc"
         }
       ]
     },
     {
-      "id": "beta-ui",
-      "name": "Beta UI",
+      "id": "scevo-campaignassets",
+      "name": "SCEvo CampaignAssets",
+      "description": "SCEvo CampaignAssets",
       "files": [
         {
-          "name": "SCEvo_UI.SC2Mod",
-          "path": "Mods/SCEvo/SCEvo_UI.SC2Mod",
-          "size": 62914560,
-          "hash": "REPLACE_WITH_SHA256_HASH"
+          "name": "SCEvo_CampaignAssets.SC2Mod",
+          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
+          "size": 962167522,
+          "hash": "ced00a5a9a3fc259dbe108afa2a032f217b8461c7dab8efde9a1832c80d3c1d8",
+          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.3.1.1/SCEvo_CampaignAssets.SC2Mod"
         }
       ]
     },
     {
-      "id": "beta-maps",
-      "name": "Beta Maps",
+      "id": "scevo-campaigncommons",
+      "name": "SCEvo CampaignCommons",
+      "description": "SCEvo CampaignCommons",
       "files": [
         {
-          "name": "SCEvo_Maps.SC2Map",
-          "path": "Maps/SCEvo/SCEvo_Maps.SC2Map",
-          "size": 146800640,
-          "hash": "REPLACE_WITH_SHA256_HASH"
+          "name": "SCEvo_CampaignCommons.SC2Mod",
+          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignCommons.SC2Mod",
+          "size": 423278,
+          "hash": "28beaee1e38a9369e4151fd023e485bf7a0723433fc6460f9a2059848c34edbe"
+        }
+      ]
+    },
+    {
+      "id": "scevo-campaignlegacy",
+      "name": "SCEvo CampaignLegacy",
+      "description": "SCEvo CampaignLegacy",
+      "files": [
+        {
+          "name": "SCEvo_CampaignLegacy.SC2Mod",
+          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
+          "size": 2153205,
+          "hash": "617e91c1f541633b9092c6eafe3adb9d68a642afc6029dd4de2231b024225135"
+        }
+      ]
+    },
+    {
+      "id": "scevo-improvedcampaignai",
+      "name": "SCEvo ImprovedCampaignAI",
+      "description": "SCEvo ImprovedCampaignAI",
+      "files": [
+        {
+          "name": "SCEvo_ImprovedCampaignAI.SC2Mod",
+          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_ImprovedCampaignAI.SC2Mod",
+          "size": 2663708,
+          "hash": "862482704f0dabefeec38cfd5128bcba4dce71aaa1cf0dcb9d41029f4dfcbcad"
+        }
+      ]
+    },
+    {
+      "id": "scevo-core",
+      "name": "SCEvo Core",
+      "description": "SCEvo Core",
+      "files": [
+        {
+          "name": "SCEvo_Core.SC2Mod",
+          "path": "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
+          "size": 5571739,
+          "hash": "0d6f3e02c02e74300fe9c43355f245359007dd6ac57e44f41d9ab1fe8bc23f38"
+        }
+      ]
+    },
+    {
+      "id": "scevo-legacy",
+      "name": "SCEvo Legacy",
+      "description": "SCEvo Legacy",
+      "files": [
+        {
+          "name": "SCEvo_Legacy.SC2Mod",
+          "path": "Mods/SC Evolution Complete/SCEvo_Legacy.SC2Mod",
+          "size": 187581,
+          "hash": "810fed0c70745854b9bcabd72a838de32f00a8a2ddd1042888a79a32cd2ee3f5"
         }
       ]
     }
