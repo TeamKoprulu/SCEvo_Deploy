@@ -17,18 +17,6 @@
       "install": "INSTALAR",
       "update": "ACTUALIZAR",
       "updateNow": "ACTUALIZAR AHORA",
-      "readMore": "Leer más",
-      "latestNews": "Últimas Noticias",
-      "verifyingFiles": "Verificando archivos...",
-      "checking": "REVISANDO...",
-      "ready": "SC: Evo está listo. Haz clic en Jugar para iniciar."
-    },
-
-    "es": {
-      "play": "JUGAR",
-      "install": "INSTALAR",
-      "update": "ACTUALIZAR",
-      "updateNow": "ACTUALIZAR AHORA",
       "checking": "REVISANDO...",
       "downloading": "DESCARGANDO...",
       "installing": "INSTALANDO...",
