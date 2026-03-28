@@ -104,6 +104,19 @@
                   ]
     },
     {
+        "id":  "scevo-campaignassets",
+        "name":  "SCEvo CampaignAssets",
+        "description":  "SCEvo CampaignAssets",
+        "files":  [
+                      {
+                          "name":  "SCEvo_CampaignAssets.SC2Mod",
+                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
+                          "size":  962167522,
+                          "hash":  "ced00a5a9a3fc259dbe108afa2a032f217b8461c7dab8efde9a1832c80d3c1d8"
+                      }
+                  ]
+    },
+    {
         "id":  "scevo-campaigncommons",
         "name":  "SCEvo CampaignCommons",
         "description":  "SCEvo CampaignCommons",
