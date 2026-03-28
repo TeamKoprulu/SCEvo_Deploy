@@ -62,7 +62,11 @@
       "locateSc2Subtitle": "No se pudo encontrar tu instalación de StarCraft II automáticamente.",
       "confirmPath": "CONFIRMAR RUTA",
       "enterCode": "INTRODUCIR CÓDIGO",
-      "youCanDismiss": "Puedes descartar y jugar, pero algunas características pueden no funcionar."
+      "youCanDismiss": "Puedes descartar y jugar, pero algunas características pueden no funcionar.",
+
+      "announceInfo": "INFORMACION",
+      "announceWarning": "ADVERTENCIA",
+      "announceCritical": "CRITICO"
     }
   },
 
@@ -152,11 +156,13 @@
         "en": {
           "title": "SC: Evo 1.18",
           "date": "March 20, 2026",
+          "readMoreLabel": "Read more",
           "excerpt": "This much-belated patch is the first of the year 2026! We are grateful to be able to publish content once again, and are excited to bring you this latest round of balance updates."
         },
         "es": {
           "title": "SC: Evo 1.18",
           "date": "20 de marzo, 2026",
+          "readMoreLabel": "Leer más",
           "excerpt": "¡Esta actualización, tan esperada, es la primera del año 2026! Estamos muy agradecidos de poder volver a publicar contenido y nos alegra mucho presentaros esta nueva ronda de ajustes de equilibrio."
         }
       }
@@ -168,14 +174,14 @@
       "date": "March 15, 2026",
       "type": "update",
 
-      "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/image_2026-03-15_142813036.png",
+      "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/patreon-february.png",
       "imageLabel": "February Update",
       "imageText": "PATREON",
-      "imageBg": "#0a242a",
-      "imageAccent": "#00c5ff",
+      "imageBg": "#2a1b0a",
+      "imageAccent": "#ff9500",
 
       "badge": "Patreon",
-      "badgeColor": "#00c5ff",
+      "badgeColor": "#ff9500",
 
       "excerpt": "...",
       "linkUrl": "https://www.patreon.com/TeamKopruluSC2",
@@ -185,11 +191,13 @@
         "en": {
           "title": "February Development Update",
           "date": "March 15, 2026",
+          "readMoreLabel": "Read more",
           "excerpt": "Hey guys, its been a while since i've had time to sit down and write a full update on what's been going on but we've got quite the update in our hands now that we're able to upload to the Arcade once more!"
         },
         "es": {
           "title": "Actualización de Desarrollo de Febrero",
           "date": "15 de marzo, 2026",
+          "readMoreLabel": "Leer más",
           "excerpt": "¡Hola chicos, ha pasado un tiempo desde que tuve tiempo de sentarme y escribir una actualización completa sobre lo que ha estado pasando, pero ahora tenemos una actualización bastante grande en nuestras manos que podemos subir al Arcade una vez más!"
         }
       }
@@ -199,6 +207,11 @@
   "announcement": {
     "enabled": true,
     "message": "Test announcement message, testing visibility for beta users.",
-    "type": "info"
+    "type": "info",
+
+    "locales": {
+      "en": { "message": "Test announcement message, testing visibility for beta users." },
+      "es": { "message": "Mensaje de anuncio de prueba, probando visibilidad para usuarios beta." }
+    }
   }
 }
