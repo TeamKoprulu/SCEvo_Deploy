@@ -128,6 +128,64 @@
       "createShortcut": "创建桌面快捷方式",
       "closeOnLaunch": "游戏开始时关闭启动器"
     },
+    "kr": {
+      "play": "플레이",
+      "install": "설치",
+      "update": "업데이트",
+      "updateNow": "지금 업데이트",
+      "checking": "확인 중...",
+      "downloading": "다운로드 중...",
+      "installing": "설치 중...",
+      "locateSc2": "스타2 경로 찾기",
+      "activateBeta": "베타 활성화",
+      "validating": "검증 중...",
+      "dismiss": "무시",
+      "browse": "찾아보기...",
+      "reverifyFiles": "파일 재확인",
+      
+      "detectingGame": "스타크래프트 II 설치 경로를 찾는 중...",
+      "notFound": "스타크래프트 II를 찾을 수 없습니다. 경로를 수동으로 지정해주세요.",
+      "verifyingFiles": "모드 파일 확인 중...",
+      "needsInstall": "SC: Evo가 설치되어 있지 않습니다. 설치를 클릭하여 시작하세요.",
+      "needsInstallBeta": "베타가 설치되어 있지 않습니다. 설치를 클릭하여 시작하세요.",
+      "needsUpdate": "업데이트 가능: v{installed} \u2192 v{latest} \u2014 지금도 플레이할 수 있습니다.",
+      "criticalUpdateRequired": "중요 업데이트가 필요합니다.",
+      "criticalUpdateDismissed": "중요 업데이트가 무시됨 \u2014 v{installed} (outdated).",
+      "downloadingFile": "다운로드 중: {file}",
+      "installingFiles": "모드 파일 설치 중...",
+      "upToDate": "모든 파일이 확인되었습니다. 플레이할 준비가 완료되었습니다.",
+      "ready": "SC: Evo 준비 완료. 플레이를 눌러 실행하세요.",
+      "readyBeta": "{betaName} 준비 완료. 플레이를 눌러 실행하세요.",
+      
+      "settingsTitle": "설정",
+      "sc2PathLabel": "스타크래프트 II 경로",
+      "coreVersionLabel": "코어 버전",
+      "campaignVersionLabel": "캠페인 버전",
+      "notInstalled": "설치되지 않음",
+      "latestNews": "최신 소식",
+      "readMore": "더 보기",
+      "language": "언어",
+      "criticalPending": "중요 업데이트 대기 중 \u2014 클릭하여 확인",
+      "newVersionAvailable": "새 버전 사용 가능 (v{version})",
+      
+      "criticalUpdateTitle": "중요 업데이트 필요",
+      "criticalUpdateMessage": "",
+      "announceInfo": "정보",
+      "announceWarning": "경고",
+      "announceCritical": "중요",
+      "betaAccess": "베타 접근",
+      "betaEnterCode": "클로즈 베타 접근 코드를 입력하세요.",
+      "betaActivatedLabel": "베타 활성화됨",
+      "betaUnavailable": "현재 베타 프로그램 정보를 불러올 수 없습니다.",
+      "betaUnavailableHint": "잠시 후 다시 시도해 주세요.",
+      "locateSc2Title": "스타크래프트 II 경로 지정",
+      "locateSc2Subtitle": "스타크래프트 II 설치 경로를 자동으로 찾을 수 없습니다.",
+      "confirmPath": "경로 확인",
+      "enterCode": "코드 입력",
+      "youCanDismiss": "무시하고 플레이할 수 있으나 일부 기능이 정상적으로 작동하지 않을 수 있습니다.",
+      "createShortcut": "바탕화면 바로가기 생성",
+      "closeOnLaunch": "게임 실행 시 런처 종료"
+    },
     "ru": {
       "play": "ИГРАТЬ",
       "install": "УСТАВИТЬ",
@@ -222,7 +280,12 @@
           "date": "2026年3月28日",
           "badge": "战役",
           "highlights":["公开试玩", "任务0、1、2、4可用", "提前体验战役前几关的任务！"]
-        },        
+        },
+        "kr": {
+          "title": "공개 데모",
+          "date": "2026년 3월 20일",
+          "highlights":["공개 데모", "미션 0, 1, 2, 4 가능", "캠페인의 첫 일부를 앞서 해보세요!"]
+        },    
         "ru": {
           "title": "Демо",
           "date": "28 марта, 2026",
@@ -269,6 +332,12 @@
           "readMoreLabel": "阅读更多",
           "badge": "战役",
           "highlights":["任务5已经开放游玩", "调整了数项成就条件", "部分错误修正"]
+        },
+        "kr": {
+          "title": "레거시 캠페인 업데이트 0.4",
+          "date": "2026년 3월 27일",
+          "readMoreLabel": "더 보기",
+          "highlights":["미션 5 진척도에 포함", "일부 업적 조건 수정", "소규모 버그 수정"]
         },
         "ru": {
           "title": "Legacy Campaign Update 0.3",
@@ -320,6 +389,12 @@
           "badge": "更新内容",
           "excerpt": "这次姗姗来迟的补丁是2026年的第一个补丁！我们很高兴能够再次发布内容，并为大家带来最新一轮的平衡性更新。"
         },
+        "kr": {
+          "title": "SC: Evo 1.18",
+          "date": "2026년 3월 20일",
+          "readMoreLabel": "더 보기",
+          "excerpt": "오랜 기다림 끝에 2026년의 첫 밸런스 패치가 당도하였습니다! 모드 게시 기능이 재활성화된 것에 감사하며, 여러분께 최신 밸런스 수정 사항을 기쁘게 선보여드립니다."
+        },
         "ru": {
           "title": "SC: Evo 1.18",
           "date": "20 марта, 2026",
@@ -367,6 +442,12 @@
           "date": "2026年3月15日",
           "readMoreLabel": "阅读更多",
           "excerpt": "嘿，各位，我已经有一段时间没有时间坐下来写一篇完整的更新文章，汇报一下最近发生的事情了，但是现在游戏大厅上传开放了，所以我们手头上有很多更新内容！"
+        },
+        "kr": {
+          "title": "2월 개발 소식February Development Update",
+          "date": "2026년 3월 15일",
+          "readMoreLabel": "더 보기",
+          "excerpt": "Hey guys, its been a while since i've had time to sit down and write a full update on what's been going on but we've got quite the update in our hands now that we're able to upload to the Arcade once more!"
         },
         "ru": {
           "title": "Февральское обновление о разработке",
