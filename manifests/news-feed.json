@@ -70,7 +70,7 @@
       "createShortcut": "Crear acceso directo en el escritorio",
       "closeOnLaunch": "Cerrar lanzador cuando inicie el juego"
     },
-    "cn": {
+    "zh": {
       "play": "游玩",
       "install": "安装",
       "update": "更新",
@@ -128,7 +128,7 @@
       "createShortcut": "创建桌面快捷方式",
       "closeOnLaunch": "游戏开始时关闭启动器"
     },
-    "kr": {
+    "ko": {
       "play": "플레이",
       "install": "설치",
       "update": "업데이트",
@@ -275,13 +275,13 @@
           "badge": "Campaña",
           "highlights":["Demo publica", "Misiones 0, 1, 2, 4 disponibles", "Prueba las primeras misiones con acceso anticipado!"]
         },
-        "cn": {
+        "zh": {
           "title": "战役试玩",
           "date": "2026年3月28日",
           "badge": "战役",
           "highlights":["公开试玩", "任务0、1、2、4可用", "提前体验战役前几关的任务！"]
         },
-        "kr": {
+        "ko": {
           "title": "공개 데모",
           "date": "2026년 3월 20일",
           "highlights":["공개 데모", "미션 0, 1, 2, 4 가능", "캠페인의 첫 일부를 앞서 해보세요!"]
@@ -326,14 +326,14 @@
           "badge": "Campaña",
           "highlights":["La misión 5 ya está disponible en la progresión de mapas", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
         },
-        "cn": {
+        "zh": {
           "title": "经典版战役更新 0.3",
           "date": "2026年3月20日",
           "readMoreLabel": "阅读更多",
           "badge": "战役",
           "highlights":["任务5已经开放游玩", "调整了数项成就条件", "部分错误修正"]
         },
-        "kr": {
+        "ko": {
           "title": "레거시 캠페인 업데이트 0.4",
           "date": "2026년 3월 27일",
           "readMoreLabel": "더 보기",
@@ -382,14 +382,14 @@
           "badge": "Actualización",
           "excerpt": "¡Esta muy esperada actualizacion es la primera del año 2026! Estamos muy agradecidos de poder volver a publicar contenido y nos alegra mucho presentaros esta nueva ronda de ajustes de balance."
         },
-        "cn": {
+        "zh": {
           "title": "SC: Evo 1.18",
           "date": "2026年3月20日",
           "readMoreLabel": "阅读更多",
           "badge": "更新内容",
           "excerpt": "这次姗姗来迟的补丁是2026年的第一个补丁！我们很高兴能够再次发布内容，并为大家带来最新一轮的平衡性更新。"
         },
-        "kr": {
+        "ko": {
           "title": "SC: Evo 1.18",
           "date": "2026년 3월 20일",
           "readMoreLabel": "더 보기",
@@ -437,13 +437,13 @@
           "readMoreLabel": "Leer más",
           "excerpt": "¡Hola chicos, ha pasado un tiempo desde que tuve tiempo de sentarme y escribir una actualización completa sobre lo que ha estado pasando, pero ahora tenemos una actualización bastante grande en nuestras manos que podemos subir al Arcade una vez más!"
         },
-        "cn": {
+        "zh": {
           "title": "2月进度更新",
           "date": "2026年3月15日",
           "readMoreLabel": "阅读更多",
           "excerpt": "嘿，各位，我已经有一段时间没有时间坐下来写一篇完整的更新文章，汇报一下最近发生的事情了，但是现在游戏大厅上传开放了，所以我们手头上有很多更新内容！"
         },
-        "kr": {
+        "ko": {
           "title": "2월 개발 소식February Development Update",
           "date": "2026년 3월 15일",
           "readMoreLabel": "더 보기",
@@ -467,7 +467,7 @@
     "locales": {
       "en": { "message": "Test announcement message, testing visibility for beta users." },
       "es": { "message": "Mensaje de anuncio de prueba, probando visibilidad para usuarios beta." },
-      "cn": { "message": "测试通知信息，测试是否对Beta用户可见。" },
+      "zh": { "message": "测试通知信息，测试是否对Beta用户可见。" },
       "ru": { "message": "Тестовое сообщение, проверка видимости для пользователей BETA." }
     }
   }
