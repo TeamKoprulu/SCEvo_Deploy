@@ -461,14 +461,12 @@
 
   "announcement": {
     "enabled": true,
-    "message": "Test announcement message, testing visibility for beta users.",
-    "type": "info",
+    "message": "Update version 0.4 is currently being deployed.",
+    "type": "warning",
 
     "locales": {
-      "en": { "message": "Test announcement message, testing visibility for beta users." },
-      "es": { "message": "Mensaje de anuncio de prueba, probando visibilidad para usuarios beta." },
-      "zh": { "message": "测试通知信息，测试是否对Beta用户可见。" },
-      "ru": { "message": "Тестовое сообщение, проверка видимости для пользователей BETA." }
+      "en": { "message": "Update version 0.4 is currently being deployed." },
+      "es": { "message": "La actualizacion 0.4 esta siendo lanzada" },
     }
   }
 }
