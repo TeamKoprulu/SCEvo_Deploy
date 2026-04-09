@@ -1,38 +1,15 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-03-25T00:00:00Z",
+  "lastUpdated": "2026-04-08T00:00:00Z",
   "versions": {
-    "multiplayer": "1.18.3",
+    "multiplayer": "1.18.1",
     "campaign": "0.3.1"
   },
   "criticalUpdate": {
-    "enabled": true,
-    "minVersion": "1.18.3",
+    "enabled": false,
+    "minVersion": "1.18.0",
     "message": "A critical core patch is available. Please update to continue.",
     "severity": "critical"
-  },
-  "patchNotes": {
-    "multiplayer": {
-      "version": "1.18.3",
-      "date": "2026-03-25",
-      "title": "SC: Evo 1.18.3 — Zerg and Protoss Reworks",
-      "highlights": [
-        "Terran buffs",
-        "Protoss and Zerg Reworks",
-        "New Protoss Building Models"
-      ],
-      "fullNotesUrl": "https://scevo.net/posts/evo-update-1_18"
-    },
-    "campaign": {
-      "version": "0.3.1",
-      "date": "2026-02-20",
-      "title": "Hotfix 0.3.1",
-      "highlights": [
-        "Mission 5 is now properly available",
-        "Updated achievement conditions"
-      ],
-      "fullNotesUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3"
-    }
   },
   "modules": [
     {
@@ -43,8 +20,8 @@
         {
           "name": "EvoCompleteLauncher.SC2Map",
           "path": "Maps/SCEvo/EvoCompleteLauncher.SC2Map",
-          "size": 722471,
-          "hash": "3d069a47b37e10473b7f017c53c5d5b4d68240565d5da4b358a9759c712e3051"
+          "size": 722388,
+          "hash": "4aec9322f24ba6ae51cb8afad242d88e7050d55c60bb5385838c413f9b81b233"
         }
       ]
     },
@@ -56,8 +33,8 @@
         {
           "name": "Loomings0Legacy.SC2Map",
           "path": "Maps/SCEvo/LegacyLoomings/Loomings0Legacy.SC2Map",
-          "size": 438965,
-          "hash": "280baf2a2fc9327a8721c3a7c6d78242f6af08a61fde4eb61a60724f776c5717"
+          "size": 441705,
+          "hash": "67878b8370d747740f5fdc2b72cd3bf5f976f2d43c3eba693769dc012ad23d98"
         }
       ]
     },
@@ -69,8 +46,8 @@
         {
           "name": "Loomings1Legacy.SC2Map",
           "path": "Maps/SCEvo/LegacyLoomings/Loomings1Legacy.SC2Map",
-          "size": 848588,
-          "hash": "1533b166c6d25c6c6a11dddb9dc3381b4a190e944c2b26ad5285cfedaaea000e"
+          "size": 851933,
+          "hash": "f1a061da730bda59ffe9615a73b1de0f52eb92b4d44583e6f5fb44c4592eeb17"
         }
       ]
     },
@@ -82,8 +59,8 @@
         {
           "name": "Loomings2Legacy.SC2Map",
           "path": "Maps/SCEvo/LegacyLoomings/Loomings2Legacy.SC2Map",
-          "size": 1033197,
-          "hash": "00a00e419580e6e886d1a1d643dc7c2b4d798344451a104e800f993aaa8c7299"
+          "size": 1037726,
+          "hash": "fd625a10ed54c351409fb631b759522d4571d4faad34e14307e1e3f7809bcbf6"
         }
       ]
     },
@@ -95,8 +72,8 @@
         {
           "name": "Loomings4Legacy.SC2Map",
           "path": "Maps/SCEvo/LegacyLoomings/Loomings4Legacy.SC2Map",
-          "size": 691470,
-          "hash": "2c54dac0f986f2d651731781a4f23aee84dc9f52800ab2e847e713a49286dfab"
+          "size": 703129,
+          "hash": "f5559ca5b46984d355f23dab33957abc807acff0cc96803c505805954f45aa5a"
         }
       ]
     },
@@ -108,8 +85,8 @@
         {
           "name": "LoomingsStory.SC2Map",
           "path": "Maps/SCEvo/LegacyLoomings/LoomingsStory.SC2Map",
-          "size": 15478,
-          "hash": "caac7740c33f307ec06629eccee3ca04846986649d3bdf7fa3d39c8958dff9ac"
+          "size": 16260,
+          "hash": "190ed099dee23de74240a03e07cefe1d95d6962c4671d651fa80a11160b3f80c"
         }
       ]
     },
@@ -121,9 +98,9 @@
         {
           "name": "SCEvo_Assets.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
-          "size": 451714305,
-          "hash": "7e5f2d140c6801f4e501b6c00bc08cbe00625802a405dbdf469f8f58a256a645",
-          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/1.18/SCEvo_Assets.SC2Mod"
+          "size": 454928218,
+          "hash": "2d806d3665126be6787829a08d4e95f0077e1f6a1a8048ad7fe186958486ba2a",
+          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.4/SCEvo_Assets.SC2Mod"
         }
       ]
     },
@@ -148,9 +125,9 @@
         {
           "name": "SCEvo_CampaignAssets.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
-          "size": 962167522,
-          "hash": "ced00a5a9a3fc259dbe108afa2a032f217b8461c7dab8efde9a1832c80d3c1d8",
-          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.3.1.1/SCEvo_CampaignAssets.SC2Mod"
+          "size": 517212405,
+          "hash": "9740ffcb35a2f6d50056f38feeec424fec945d23c9602aec0d7812b5390eeb81",
+          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.4/SCEvo_CampaignAssets.SC2Mod"
         }
       ]
     },
@@ -162,8 +139,8 @@
         {
           "name": "SCEvo_CampaignCommons.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignCommons.SC2Mod",
-          "size": 423278,
-          "hash": "28beaee1e38a9369e4151fd023e485bf7a0723433fc6460f9a2059848c34edbe"
+          "size": 436990,
+          "hash": "fb4e00af89fba9b2935dea8c9ecfbfd8daf4a3565461ac38a128a0d18311353f"
         }
       ]
     },
@@ -175,8 +152,8 @@
         {
           "name": "SCEvo_CampaignLegacy.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
-          "size": 2153502,
-          "hash": "06acebf8f4d01d4798208ba3a242c9b323c1b9314172a125362b69fd4fd2494e"
+          "size": 2231854,
+          "hash": "a681b7ee720dd52e77d630fdf806725079324e888585859b48d58a00a5c6c830"
         }
       ]
     },
@@ -188,8 +165,8 @@
         {
           "name": "SCEvo_ImprovedCampaignAI.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_ImprovedCampaignAI.SC2Mod",
-          "size": 2663708,
-          "hash": "862482704f0dabefeec38cfd5128bcba4dce71aaa1cf0dcb9d41029f4dfcbcad"
+          "size": 2664980,
+          "hash": "18aa32c8adefebdf81ef6c81fcd587b541dc789000a2a2f51eb0701ebeba4349"
         }
       ]
     },
@@ -201,8 +178,8 @@
         {
           "name": "SCEvo_Core.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
-          "size": 5571739,
-          "hash": "0d6f3e02c02e74300fe9c43355f245359007dd6ac57e44f41d9ab1fe8bc23f38"
+          "size": 4540200,
+          "hash": "db5da832fa0fe045de14bcb0db20e0b5ae6e9c867dac9dbe62e78489bdb4ede7"
         }
       ]
     },
@@ -214,8 +191,8 @@
         {
           "name": "SCEvo_Legacy.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Legacy.SC2Mod",
-          "size": 187581,
-          "hash": "810fed0c70745854b9bcabd72a838de32f00a8a2ddd1042888a79a32cd2ee3f5"
+          "size": 187919,
+          "hash": "63bce97d34c6953a27cd6ecdbbe72da971f084b0a27cf816032e63733156e4e6"
         }
       ]
     }
