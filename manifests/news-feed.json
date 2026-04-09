@@ -466,7 +466,7 @@
 
     "locales": {
       "en": { "message": "Update version 0.4 is currently being deployed." },
-      "es": { "message": "La actualizacion 0.4 esta siendo lanzada" },
+      "es": { "message": "La actualizacion 0.4 esta siendo lanzada" }
     }
   }
 }
