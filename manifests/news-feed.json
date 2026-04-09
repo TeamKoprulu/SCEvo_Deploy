@@ -383,12 +383,11 @@
 
   "announcement": {
     "enabled": true,
-    "message": "Update version 0.4 is currently being deployed.",
-    "type": "warning",
+    "message": "Update 0.4 deployed successfully, new mission avaialble for Patreon supporters.",
+    "type": "info",
 
     "locales": {
-      "en": { "message": "Update version 0.4 is currently being deployed." },
-      "es": { "message": "La actualizacion 0.4 esta siendo lanzada" }
+      "en": { "message": "Update 0.4 deployed successfully, new mission avaialble for Patreon supporters." },
     }
   }
 }
