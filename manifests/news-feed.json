@@ -250,7 +250,7 @@
     {
       "id": "news-patchnotes_demo",
       "title": "Loomings Campaign Public Demo",
-      "date": "March 28, 2026",
+      "date": "March 4, 2026",
       "type": "patchnotes",
       "variant": "public",
 
@@ -258,7 +258,7 @@
       "imageText": "EVO",
       "imageBg": "#0a2a23",
       "imageAccent": "#00ffd1",
-      "highlights":["Public Demo", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!"],
+      "highlights":["Public Demo 0.4", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!", "Bugfixes from 0.4 Applied"],
 
       "badge": "Campaign",
       "badgeColor": "#00ffd1",
@@ -266,97 +266,46 @@
       "locales": {
         "en": {
           "title": "Campaign Demo",
-          "date": "March 28, 2026",
-          "highlights":["Public Demo", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!"]
-        },
-        "es": {
-          "title": "DEMO Campaña",
-          "date": "28 de marzo, 2026",
-          "badge": "Campaña",
-          "highlights":["Demo publica", "Misiones 0, 1, 2, 4 disponibles", "Prueba las primeras misiones con acceso anticipado!"]
-        },
-        "zh": {
-          "title": "战役试玩",
-          "date": "2026年3月28日",
-          "badge": "战役",
-          "highlights":["公开试玩", "任务0、1、2、4可用", "提前体验战役前几关的任务！"]
-        },
-        "ko": {
-          "title": "공개 데모",
-          "date": "2026년 3월 20일",
-          "highlights":["공개 데모", "미션 0, 1, 2, 4 가능", "캠페인의 첫 일부를 앞서 해보세요!"]
-        },    
-        "ru": {
-          "title": "Демо",
-          "date": "28 марта, 2026",
-          "readMoreLabel": "Читать далее",
-          "badge": "Кампания",
-          "highlights":["Демо", "Миссии 0, 1, 2, 4 доступны", "Попробуйте пройти первые несколько миссий кампании!"]
+          "date": "March 4, 2026",
+          "highlights":["Public Demo 0.4", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!", "Bugfixes from 0.4 Applied"]
         }
       }
     },
     {
-      "id": "news-betapatchnotes_0.3.1",
-      "title": "Campaign Update 0.3.1",
-      "date": "March 20, 2026",
+      "id": "news-betapatchnotes_0.4",
+      "title": "Campaign Update 0.4",
+      "date": "April 4, 2026",
       "type": "patchnotes",
       "variant": "beta",
 
-      "imageLabel": "Campaign 0.3.1",
+      "imageLabel": "Campaign 0.4",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
-      "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"],
+      "highlights":["Mission 3 is now available", "Quality of life updates", "Fixed several UI bugs", "Minor balance adjustments"],
 
       "badge": "Campaign",
       "badgeColor": "#ff0025",
-      "linkUrl": "https://scevo.net/posts/evo-campaign-loomings-0_3",
+      "linkUrl": "https://scevo.net/posts/evo-campaign-loomings-0_4",
 
       "locales": {
         "en": {
-          "title": "Legacy Campaign Update 0.3",
-          "date": "March 20, 2026",
+          "title": "Legacy Campaign Update 0.4",
+          "date": "April 4, 2026",
           "readMoreLabel": "Read more",
-          "highlights":["Mission 5 is now available during the progression", "Adjusted several achievement conditions", "Several other minor bugfixes"]
-        },
-        "es": {
-          "title": "Campaña Legacy Actualización 0.3",
-          "date": "20 de marzo, 2026",
-          "readMoreLabel": "Leer más",
-          "badge": "Campaña",
-          "highlights":["La misión 5 ya está disponible en la progresión de mapas", "Se han ajustado varias condiciones de los logros", "Varias correcciones de errores menores"]
-        },
-        "zh": {
-          "title": "经典版战役更新 0.3",
-          "date": "2026年3月20日",
-          "readMoreLabel": "阅读更多",
-          "badge": "战役",
-          "highlights":["任务5已经开放游玩", "调整了数项成就条件", "部分错误修正"]
-        },
-        "ko": {
-          "title": "레거시 캠페인 업데이트 0.4",
-          "date": "2026년 3월 27일",
-          "readMoreLabel": "더 보기",
-          "highlights":["미션 5 진척도에 포함", "일부 업적 조건 수정", "소규모 버그 수정"]
-        },
-        "ru": {
-          "title": "Legacy Campaign Update 0.3",
-          "date": "20 марта, 2026",
-          "readMoreLabel": "Читать далее",
-          "badge": "Кампания",
-          "highlights":["Миссия 5 теперь доступна в режиме прогрессии", "Изменены некоторые условия достижений", "Исправлены несколько других ошибок"]
+          "highlights":["Mission 3 is now available", "Quality of life updates", "Fixed several UI bugs", "Minor balance adjustments"]
         }
       }
     },
 
     {
-      "id": "news-1.18",
-      "title": "SC: Evo 1.18",
-      "date": "March 20, 2026",
+      "id": "news-1.18.1",
+      "title": "SC: Evo 1.18.1",
+      "date": "March 31, 2026",
       "type": "update",
 
       "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_18.png",
-      "imageLabel": "1.18",
+      "imageLabel": "1.18.1",
       "imageText": "EVO UPDATE",
       "imageBg": "#0a242a",
       "imageAccent": "#00c5ff",
@@ -365,42 +314,15 @@
       "badgeColor": "#00c5ff",
 
       "excerpt": "...",
-      "linkUrl": "https://scevo.net/posts/evo-update-1_18",
+      "linkUrl": "https://scevo.net/posts/evo-update-1_18_1",
       "readMoreLabel": "Read more",
 
       "locales": {
         "en": {
-          "title": "SC: Evo 1.18",
-          "date": "March 20, 2026",
+          "title": "SC: Evo 1.18.1",
+          "date": "March 31, 2026",
           "readMoreLabel": "Read more",
-          "excerpt": "This much-belated patch is the first of the year 2026! We are grateful to be able to publish content once again, and are excited to bring you this latest round of balance updates."
-        },
-        "es": {
-          "title": "SC: Evo 1.18",
-          "date": "20 de marzo, 2026",
-          "readMoreLabel": "Leer más",
-          "badge": "Actualización",
-          "excerpt": "¡Esta muy esperada actualizacion es la primera del año 2026! Estamos muy agradecidos de poder volver a publicar contenido y nos alegra mucho presentaros esta nueva ronda de ajustes de balance."
-        },
-        "zh": {
-          "title": "SC: Evo 1.18",
-          "date": "2026年3月20日",
-          "readMoreLabel": "阅读更多",
-          "badge": "更新内容",
-          "excerpt": "这次姗姗来迟的补丁是2026年的第一个补丁！我们很高兴能够再次发布内容，并为大家带来最新一轮的平衡性更新。"
-        },
-        "ko": {
-          "title": "SC: Evo 1.18",
-          "date": "2026년 3월 20일",
-          "readMoreLabel": "더 보기",
-          "excerpt": "오랜 기다림 끝에 2026년의 첫 밸런스 패치가 당도하였습니다! 모드 게시 기능이 재활성화된 것에 감사하며, 여러분께 최신 밸런스 수정 사항을 기쁘게 선보여드립니다."
-        },
-        "ru": {
-          "title": "SC: Evo 1.18",
-          "date": "20 марта, 2026",
-          "readMoreLabel": "Читать далее",
-          "badge": "Новое  обновление",
-          "excerpt": "Это сильно-запоздалый, но первый патч в 2026 году! Мы благодарим за то, что мы можем публиковать контент снова, и рады представить вам эту последнюю серию обновлений баланса."
+          "excerpt": "Patch 1.18.1 brings numerous iterations to the ambitious changes in Patch 1.18, as well as significant reworks for the distribution of strength across the Terran and Zerg tech trees."
         }
       }
     },
