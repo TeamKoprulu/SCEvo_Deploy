@@ -272,17 +272,17 @@
       }
     },
     {
-      "id": "news-betapatchnotes_0.4",
-      "title": "Campaign Update 0.4",
-      "date": "April 4, 2026",
+      "id": "news-betapatchnotes_0.4.2",
+      "title": "Campaign Update 0.4.2",
+      "date": "April 13, 2026",
       "type": "patchnotes",
       "variant": "beta",
 
-      "imageLabel": "Campaign 0.4",
+      "imageLabel": "Campaign 0.4.2",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
-      "highlights":["Mission 3 is now available", "Quality of life updates", "Fixed several UI bugs", "Minor balance adjustments"],
+      "highlights":["All 6 missions now available!", "Bugfixes across Missions 1-3", "Mission 2 balance adjustments"],
 
       "badge": "Campaign",
       "badgeColor": "#ff0025",
@@ -290,10 +290,10 @@
 
       "locales": {
         "en": {
-          "title": "Legacy Campaign Update 0.4",
-          "date": "April 4, 2026",
+          "title": "Legacy Campaign Update 0.4.2",
+          "date": "April 13, 2026",
           "readMoreLabel": "Read more",
-          "highlights":["Mission 3 is now available", "Quality of life updates", "Fixed several UI bugs", "Minor balance adjustments"]
+          "highlights":["All 6 missions now available!", "Bugfixes across Missions 1-3", "Mission 2 balance adjustments"]
         }
       }
     },
