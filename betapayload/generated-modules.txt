@@ -33,8 +33,8 @@
                       {
                           "name":  "Loomings1Legacy.SC2Map",
                           "path":  "Maps/SCEvo/LegacyLoomings/Loomings1Legacy.SC2Map",
-                          "size":  851933,
-                          "hash":  "f1a061da730bda59ffe9615a73b1de0f52eb92b4d44583e6f5fb44c4592eeb17"
+                          "size":  851932,
+                          "hash":  "e28fe8871a1f3a7cefa9abc58a8821591efe24a471732cafdf849eace9462f84"
                       }
                   ]
     },
@@ -46,8 +46,8 @@
                       {
                           "name":  "Loomings2Legacy.SC2Map",
                           "path":  "Maps/SCEvo/LegacyLoomings/Loomings2Legacy.SC2Map",
-                          "size":  1037726,
-                          "hash":  "fd625a10ed54c351409fb631b759522d4571d4faad34e14307e1e3f7809bcbf6"
+                          "size":  1037712,
+                          "hash":  "45916f3ff8d54a353793e90cf59b9f152423720ef778ecec623086f792d56cbd"
                       }
                   ]
     },
@@ -59,8 +59,8 @@
                       {
                           "name":  "Loomings3Legacy.SC2Map",
                           "path":  "Maps/SCEvo/LegacyLoomings/Loomings3Legacy.SC2Map",
-                          "size":  472784,
-                          "hash":  "b2d4e5f86b16ae28202bf821c58e8b2e5ef114635c7c097fe5178ac8a3859855"
+                          "size":  473057,
+                          "hash":  "a1ae466dcdb2283d772affd311cb92d6873f2cebde2389726caa86b4165ecd08"
                       }
                   ]
     },
