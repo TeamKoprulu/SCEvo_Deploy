@@ -3,7 +3,7 @@
   "lastUpdated": "2026-04-08T00:00:00Z",
   "versions": {
     "multiplayer": "1.18.1",
-    "campaign": "0.3.2"
+    "campaign": "0.4.2"
   },
   "criticalUpdate": {
     "enabled": false,
