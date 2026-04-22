@@ -383,11 +383,7 @@
 
   "announcement": {
     "enabled": true,
-    "message": "Update 0.4 deployed successfully, new mission avaialble for Patreon supporters.",
-    "type": "info",
-
-    "locales": {
-      "en": { "message": "Update 0.4 deployed successfully, new mission avaialble for Patreon supporters." }
-    }
+    "message": "New Launcher Update Available! head to SCevo.net to download the latest version of the Launcher.",
+    "type": "Critical"
   }
 }
