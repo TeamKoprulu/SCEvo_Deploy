@@ -1,6 +1,6 @@
 ﻿{
     "schemaVersion": 1,
-    "lastUpdated": "2026-04-22T05:22:00Z",
+    "lastUpdated": "2026-04-22T05:31:16Z",
     "versions": {
         "multiplayer": "1.18.1",
         "campaign": "0.4.2"
@@ -178,7 +178,10 @@
                     "path": "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
                     "size": 454928218,
                     "hash": "2d806d3665126be6787829a08d4e95f0077e1f6a1a8048ad7fe186958486ba2a",
-                    "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.4/SCEvo_Assets.SC2Mod"
+                    "downloadUrls": [
+                        "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.4/SCEvo_Assets.SC2Mod",
+                        "https://scevo.net"
+                    ]
                 }
             ]
         },
