@@ -1,66 +1,66 @@
 ﻿{
-    "schemaVersion": 1,
-    "lastUpdated": "2026-04-22T05:23:59Z",
-    "betaEnabled": true,
-    "betaName": "Closed Beta 0.4.2",
-    "majorVersion": "0.4",
-    "fullVersion": "0.4.2",
-    "codeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "theme": {
-        "accentColor": "#ff6600",
-        "accentColorDim": "#ff660044",
-        "particleColor": "255, 102, 0",
-        "bgGlow": "#ff660015",
-        "badgeText": "BETA",
-        "badgeColor": "#ff6600"
-    },
-    "criticalUpdate": {
-        "enabled": false,
-        "minVersion": "",
-        "message": ""
-    },
-    "modules": [
-        {
-            "id": "loomings3legacy",
-            "name": "Loomings3Legacy",
-            "description": "Loomings3Legacy",
-            "files": [
-                {
-                    "name": "Loomings3Legacy.SC2Map",
-                    "path": "maps/SCEvo/LegacyLoomings/Loomings3Legacy.SC2Map",
-                    "size": 473057,
-                    "hash": "a1ae466dcdb2283d772affd311cb92d6873f2cebde2389726caa86b4165ecd08"
-                }
-            ]
-        },
-        {
-            "id": "loomings5legacy",
-            "name": "Loomings5Legacy",
-            "description": "Loomings5Legacy",
-            "files": [
-                {
-                    "name": "Loomings5Legacy.SC2Map",
-                    "path": "maps/SCEvo/LegacyLoomings/Loomings5Legacy.SC2Map",
-                    "size": 2535267,
-                    "hash": "6baf8b80ea78be93bf4d699562d950475d761a895e27d790c0578b0ab7c707a9"
-                }
-            ]
-        },
-        {
-            "id": "scevo-campaignlegacy",
-            "name": "SCEvo CampaignLegacy",
-            "description": "SCEvo CampaignLegacy",
-            "files": [
-                {
-                    "name": "SCEvo_CampaignLegacy.SC2Mod",
-                    "path": "mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
-                    "size": 2231036,
-                    "hash": "585586cc314fe4caef8e74bcef1f9cfa9ac83e756dd824d1abb22f94a6b8fbe7"
-                }
-            ]
-        }
-    ],
-    "versions": {
-        "multiplayer": "1.18.2"
-    }
+    "schemaVersion":  1,
+    "lastUpdated":  "2026-04-23T02:46:42Z",
+    "betaEnabled":  true,
+    "betaName":  "Closed Beta 0.4.2",
+    "majorVersion":  "0.4",
+    "fullVersion":  "0.4.2",
+    "codeHash":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "theme":  {
+                  "accentColor":  "#ff6600",
+                  "accentColorDim":  "#ff660044",
+                  "particleColor":  "255, 102, 0",
+                  "bgGlow":  "#ff660015",
+                  "badgeText":  "BETA",
+                  "badgeColor":  "#ff6600"
+              },
+    "criticalUpdate":  {
+                           "enabled":  true,
+                           "minVersion":  "0.4.2",
+                           "message":  "Critical Launcher Update, file updates required."
+                       },
+    "modules":  [
+                    {
+                        "id":  "loomings3legacy",
+                        "name":  "Loomings3Legacy",
+                        "description":  "Loomings3Legacy",
+                        "files":  [
+                                      {
+                                          "name":  "Loomings3Legacy.SC2Map",
+                                          "path":  "maps/SCEvo/LegacyLoomings/Loomings3Legacy.SC2Map",
+                                          "size":  473057,
+                                          "hash":  "a1ae466dcdb2283d772affd311cb92d6873f2cebde2389726caa86b4165ecd08"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "loomings5legacy",
+                        "name":  "Loomings5Legacy",
+                        "description":  "Loomings5Legacy",
+                        "files":  [
+                                      {
+                                          "name":  "Loomings5Legacy.SC2Map",
+                                          "path":  "maps/SCEvo/LegacyLoomings/Loomings5Legacy.SC2Map",
+                                          "size":  2535267,
+                                          "hash":  "6baf8b80ea78be93bf4d699562d950475d761a895e27d790c0578b0ab7c707a9"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-campaignlegacy",
+                        "name":  "SCEvo CampaignLegacy",
+                        "description":  "SCEvo CampaignLegacy",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_CampaignLegacy.SC2Mod",
+                                          "path":  "mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
+                                          "size":  2231036,
+                                          "hash":  "585586cc314fe4caef8e74bcef1f9cfa9ac83e756dd824d1abb22f94a6b8fbe7"
+                                      }
+                                  ]
+                    }
+                ],
+    "versions":  {
+                     "multiplayer":  "1.18.2"
+                 }
 }
