@@ -1,14 +1,14 @@
-﻿{
+{
     "schemaVersion":  1,
-    "lastUpdated":  "2026-04-23T02:47:13Z",
+    "lastUpdated":  "2026-04-30T05:54:55Z",
     "versions":  {
                      "multiplayer":  "1.18.1",
                      "campaign":  "0.4.2"
                  },
     "criticalUpdate":  {
-                           "enabled":  true,
-                           "minVersion":  "0.4.2",
-                           "message":  "Critical Launcher Update, file updates required.",
+                           "enabled":  false,
+                           "minVersion":  "",
+                           "message":  "",
                            "severity":  "critical"
                        },
     "modules":  [
