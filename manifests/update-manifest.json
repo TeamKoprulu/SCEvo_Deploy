@@ -1,200 +1,234 @@
 {
-  "schemaVersion": 1,
-  "lastUpdated": "2026-04-13T00:00:00Z",
-  "versions": {
-    "multiplayer": "1.18.1",
-    "campaign": "0.4.2"
-  },
-  "criticalUpdate": {
-    "enabled": false,
-    "minVersion": "1.18.0",
-    "message": "A critical core patch is available. Please update to continue.",
-    "severity": "critical"
-  },
-  "modules": [
-    {
-      "id": "evocompletelauncher",
-      "name": "EvoCompleteLauncher",
-      "description": "EvoCompleteLauncher",
-      "files": [
-        {
-          "name": "EvoCompleteLauncher.SC2Map",
-          "path": "Maps/SCEvo/EvoCompleteLauncher.SC2Map",
-          "size": 722388,
-          "hash": "4aec9322f24ba6ae51cb8afad242d88e7050d55c60bb5385838c413f9b81b233"
-        }
-      ]
-    },
-    {
-      "id": "loomings0legacy",
-      "name": "Loomings0Legacy",
-      "description": "Loomings0Legacy",
-      "files": [
-        {
-          "name": "Loomings0Legacy.SC2Map",
-          "path": "Maps/SCEvo/LegacyLoomings/Loomings0Legacy.SC2Map",
-          "size": 441705,
-          "hash": "67878b8370d747740f5fdc2b72cd3bf5f976f2d43c3eba693769dc012ad23d98"
-        }
-      ]
-    },
-    {
-      "id": "loomings1legacy",
-      "name": "Loomings1Legacy",
-      "description": "Loomings1Legacy",
-      "files": [
-        {
-          "name": "Loomings1Legacy.SC2Map",
-          "path": "Maps/SCEvo/LegacyLoomings/Loomings1Legacy.SC2Map",
-          "size": 851932,
-          "hash": "e28fe8871a1f3a7cefa9abc58a8821591efe24a471732cafdf849eace9462f84"
-        }
-      ]
-    },
-    {
-      "id": "loomings2legacy",
-      "name": "Loomings2Legacy",
-      "description": "Loomings2Legacy",
-      "files": [
-        {
-          "name": "Loomings2Legacy.SC2Map",
-          "path": "Maps/SCEvo/LegacyLoomings/Loomings2Legacy.SC2Map",
-          "size": 1037712,
-          "hash": "45916f3ff8d54a353793e90cf59b9f152423720ef778ecec623086f792d56cbd"
-        }
-      ]
-    },
-    {
-      "id": "loomings4legacy",
-      "name": "Loomings4Legacy",
-      "description": "Loomings4Legacy",
-      "files": [
-        {
-          "name": "Loomings4Legacy.SC2Map",
-          "path": "Maps/SCEvo/LegacyLoomings/Loomings4Legacy.SC2Map",
-          "size": 703129,
-          "hash": "f5559ca5b46984d355f23dab33957abc807acff0cc96803c505805954f45aa5a"
-        }
-      ]
-    },
-    {
-      "id": "loomingsstory",
-      "name": "LoomingsStory",
-      "description": "LoomingsStory",
-      "files": [
-        {
-          "name": "LoomingsStory.SC2Map",
-          "path": "Maps/SCEvo/LegacyLoomings/LoomingsStory.SC2Map",
-          "size": 16260,
-          "hash": "190ed099dee23de74240a03e07cefe1d95d6962c4671d651fa80a11160b3f80c"
-        }
-      ]
-    },
-    {
-      "id": "scevo-assets",
-      "name": "SCEvo Assets",
-      "description": "SCEvo Assets",
-      "files": [
-        {
-          "name": "SCEvo_Assets.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
-          "size": 454928218,
-          "hash": "2d806d3665126be6787829a08d4e95f0077e1f6a1a8048ad7fe186958486ba2a",
-          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.4/SCEvo_Assets.SC2Mod"
-        }
-      ]
-    },
-    {
-      "id": "scevo-achievements",
-      "name": "SCEvo Achievements",
-      "description": "SCEvo Achievements",
-      "files": [
-        {
-          "name": "SCEvo_Achievements.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_Achievements.SC2Mod",
-          "size": 666987,
-          "hash": "8028b708fc0d046f07c5daa4fbf156d1d6c1b6fa27358eafa9b79c25b2f64acc"
-        }
-      ]
-    },
-    {
-      "id": "scevo-campaignassets",
-      "name": "SCEvo CampaignAssets",
-      "description": "SCEvo CampaignAssets",
-      "files": [
-        {
-          "name": "SCEvo_CampaignAssets.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
-          "size": 517212405,
-          "hash": "9740ffcb35a2f6d50056f38feeec424fec945d23c9602aec0d7812b5390eeb81",
-          "downloadUrl": "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.4/SCEvo_CampaignAssets.SC2Mod"
-        }
-      ]
-    },
-    {
-      "id": "scevo-campaigncommons",
-      "name": "SCEvo CampaignCommons",
-      "description": "SCEvo CampaignCommons",
-      "files": [
-        {
-          "name": "SCEvo_CampaignCommons.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignCommons.SC2Mod",
-          "size": 436990,
-          "hash": "fb4e00af89fba9b2935dea8c9ecfbfd8daf4a3565461ac38a128a0d18311353f"
-        }
-      ]
-    },
-    {
-      "id": "scevo-campaignlegacy",
-      "name": "SCEvo CampaignLegacy",
-      "description": "SCEvo CampaignLegacy",
-      "files": [
-        {
-          "name": "SCEvo_CampaignLegacy.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
-          "size": 2231854,
-          "hash": "a681b7ee720dd52e77d630fdf806725079324e888585859b48d58a00a5c6c830"
-        }
-      ]
-    },
-    {
-      "id": "scevo-improvedcampaignai",
-      "name": "SCEvo ImprovedCampaignAI",
-      "description": "SCEvo ImprovedCampaignAI",
-      "files": [
-        {
-          "name": "SCEvo_ImprovedCampaignAI.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_ImprovedCampaignAI.SC2Mod",
-          "size": 2664980,
-          "hash": "18aa32c8adefebdf81ef6c81fcd587b541dc789000a2a2f51eb0701ebeba4349"
-        }
-      ]
-    },
-    {
-      "id": "scevo-core",
-      "name": "SCEvo Core",
-      "description": "SCEvo Core",
-      "files": [
-        {
-          "name": "SCEvo_Core.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
-          "size": 4540200,
-          "hash": "db5da832fa0fe045de14bcb0db20e0b5ae6e9c867dac9dbe62e78489bdb4ede7"
-        }
-      ]
-    },
-    {
-      "id": "scevo-legacy",
-      "name": "SCEvo Legacy",
-      "description": "SCEvo Legacy",
-      "files": [
-        {
-          "name": "SCEvo_Legacy.SC2Mod",
-          "path": "Mods/SC Evolution Complete/SCEvo_Legacy.SC2Mod",
-          "size": 187919,
-          "hash": "63bce97d34c6953a27cd6ecdbbe72da971f084b0a27cf816032e63733156e4e6"
-        }
-      ]
-    }
-  ]
+    "schemaVersion":  1,
+    "lastUpdated":  "2026-05-09T23:32:20Z",
+    "versions":  {
+                     "multiplayer":  "1.19",
+                     "campaign":  "0.5"
+                 },
+    "criticalUpdate":  {
+                           "enabled":  true,
+                           "minVersion":  "0.5",
+                           "message":  "New Major Update available",
+                           "severity":  "critical"
+                       },
+    "modules":  [
+                    {
+                        "id":  "evocompletelauncher",
+                        "name":  "EvoCompleteLauncher",
+                        "description":  "EvoCompleteLauncher",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "EvoCompleteLauncher.SC2Map",
+                                          "path":  "Maps/SCEvo/EvoCompleteLauncher.SC2Map",
+                                          "size":  726445,
+                                          "hash":  "afe7f59778e3cdb1eada22aa0a943790422f74f5aafcd2fe838e338d18498eac"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "loomings0legacy",
+                        "name":  "Loomings0Legacy",
+                        "description":  "Loomings0Legacy",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "Loomings0Legacy.SC2Map",
+                                          "path":  "Maps/SCEvo/LegacyLoomings/Loomings0Legacy.SC2Map",
+                                          "size":  444359,
+                                          "hash":  "db3fa0ac25add9b1124a97725dd1cd86568a70d45a0ea761a2f474dbcbb80b5f"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "loomings1legacy",
+                        "name":  "Loomings1Legacy",
+                        "description":  "Loomings1Legacy",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "Loomings1Legacy.SC2Map",
+                                          "path":  "Maps/SCEvo/LegacyLoomings/Loomings1Legacy.SC2Map",
+                                          "size":  854710,
+                                          "hash":  "224a7abc3066f3f61c2c710b1c6f79aecf20df598559b02e48df7037a80b7644"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "loomings2legacy",
+                        "name":  "Loomings2Legacy",
+                        "description":  "Loomings2Legacy",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "Loomings2Legacy.SC2Map",
+                                          "path":  "Maps/SCEvo/LegacyLoomings/Loomings2Legacy.SC2Map",
+                                          "size":  1040534,
+                                          "hash":  "b9ac9f836897474bdc6d1af96337e7aff3eeb18f5d6ead20d1975ddf79c88463"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "loomings3legacy",
+                        "name":  "Loomings3Legacy",
+                        "description":  "Loomings3Legacy",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "Loomings3Legacy.SC2Map",
+                                          "path":  "Maps/SCEvo/LegacyLoomings/Loomings3Legacy.SC2Map",
+                                          "size":  478483,
+                                          "hash":  "e04c62390ddd9e36ea5d69242898e3c76a8085def344670efb5a62a21c40b6e8"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "loomings4legacy",
+                        "name":  "Loomings4Legacy",
+                        "description":  "Loomings4Legacy",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "Loomings4Legacy.SC2Map",
+                                          "path":  "Maps/SCEvo/LegacyLoomings/Loomings4Legacy.SC2Map",
+                                          "size":  706630,
+                                          "hash":  "f38c8d7668f66c3b642d4216614beae9a926d880eb054b7118be37be76ad38c0"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "loomingsstory",
+                        "name":  "LoomingsStory",
+                        "description":  "LoomingsStory",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "LoomingsStory.SC2Map",
+                                          "path":  "Maps/SCEvo/LegacyLoomings/LoomingsStory.SC2Map",
+                                          "size":  17890,
+                                          "hash":  "6c22daf415b413fa7c6ee08b340745b797cf59a31f8bc78046a7233877137aa1"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-assets",
+                        "name":  "SCEvo_Assets",
+                        "description":  "SCEvo_Assets",
+                        "type":  "core",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_Assets.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
+                                          "size":  470292107,
+                                          "hash":  "6ded5d5480a4d8e669fe5d7c09d086e04744ae7bfbfd2a73fee21cba3f86c4fb",
+                                          "downloadUrls":  [
+                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_Assets.SC2Mod",
+                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_Assets.SC2Mod"
+                                                           ]
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-core",
+                        "name":  "SCEvo_Core",
+                        "description":  "SCEvo_Core",
+                        "type":  "core",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_Core.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
+                                          "size":  4915282,
+                                          "hash":  "d67aa21f51ed17e966e9425f6f62f89d2ddabd6fdd564bedc6d2e6fa210d193c"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-legacy",
+                        "name":  "SCEvo_Legacy",
+                        "description":  "SCEvo_Legacy",
+                        "type":  "core",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_Legacy.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_Legacy.SC2Mod",
+                                          "size":  187917,
+                                          "hash":  "94a450ba72d0617a3bc6a3209d30a092d423aba0455fc5f3b965491fd4df9b69"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-achievements",
+                        "name":  "SCEvo_Achievements",
+                        "description":  "SCEvo_Achievements",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_Achievements.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_Achievements.SC2Mod",
+                                          "size":  681706,
+                                          "hash":  "9a8740f034bb17707379fe5a80833bb066fe8f7265025d7505571d27b4a8e2c1"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-campaigncommons",
+                        "name":  "SCEvo_CampaignCommons",
+                        "description":  "SCEvo_CampaignCommons",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_CampaignCommons.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignCommons.SC2Mod",
+                                          "size":  533316,
+                                          "hash":  "bb0db1a0e0e7797bb97b485175f5f3f41b060a8fc030799de4801ea41cff69cf"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-campaignlegacy",
+                        "name":  "SCEvo_CampaignLegacy",
+                        "description":  "SCEvo_CampaignLegacy",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_CampaignLegacy.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
+                                          "size":  2304105,
+                                          "hash":  "4f60431294953c75988a8a5b9b0601b14f397efb46cd6d9e1a3c2a20b303375a"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-improvedcampaignai",
+                        "name":  "SCEvo_ImprovedCampaignAI",
+                        "description":  "SCEvo_ImprovedCampaignAI",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_ImprovedCampaignAI.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_ImprovedCampaignAI.SC2Mod",
+                                          "size":  2664978,
+                                          "hash":  "21fc34d9657431d7fb102b294fe7f0e4d78fa61a115803aca98c1c8c2a3385e1"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-campaignassets",
+                        "name":  "SCEvo_CampaignAssets",
+                        "description":  "SCEvo_CampaignAssets",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_CampaignAssets.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
+                                          "size":  507472335,
+                                          "hash":  "72cac3d7fcbddfdc87d7a6375b71dedb01716f18ee085945c1559a17087d7c64",
+                                          "downloadUrls":  [
+                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_CampaignAssets.SC2Mod",
+                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_CampaignAssets.SC2Mod"
+                                                           ]
+                                      }
+                                  ]
+                    }
+                ]
 }
