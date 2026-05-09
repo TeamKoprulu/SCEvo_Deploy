@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-03-24T00:00:00Z",
+  "lastUpdated": "2026-05-09T00:00:00Z",
 
     "strings": {
     "en": {
@@ -248,64 +248,30 @@
 
   "cards": [
     {
-      "id": "news-patchnotes_demo",
-      "title": "Loomings Campaign Public Demo",
-      "date": "March 4, 2026",
+      "id": "news-betapatchnotes_0.5",
+      "title": "Campaign Update 0.5.0",
+      "date": "May 9, 2026",
       "type": "patchnotes",
-      "variant": "public",
 
-      "imageLabel": "Campaign DEMO",
-      "imageText": "EVO",
-      "imageBg": "#0a2a23",
-      "imageAccent": "#00ffd1",
-      "highlights":["Public Demo 0.4", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!", "Bugfixes from 0.4 Applied"],
-
-      "badge": "Campaign",
-      "badgeColor": "#00ffd1",
-
-      "locales": {
-        "en": {
-          "title": "Campaign Demo",
-          "date": "March 4, 2026",
-          "highlights":["Public Demo 0.4", "Missions 0, 1, 2, 4 Available", "Try out the first few missions of the campaign early!", "Bugfixes from 0.4 Applied"]
-        }
-      }
-    },
-    {
-      "id": "news-betapatchnotes_0.4.2",
-      "title": "Campaign Update 0.4.2",
-      "date": "April 13, 2026",
-      "type": "patchnotes",
-      "variant": "beta",
-
-      "imageLabel": "Campaign 0.4.2",
+      "imageLabel": "Campaign 0.5",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
-      "highlights":["All 6 missions now available!", "Bugfixes across Missions 1-3", "Mission 2 balance adjustments"],
+      "highlights":["Mission Archives Now Available", "Adjustments across all Missions", "Mission 3 rework"],
 
       "badge": "Campaign",
       "badgeColor": "#ff0025",
-      "linkUrl": "https://scevo.net/posts/evo-campaign-loomings-0_4",
-
-      "locales": {
-        "en": {
-          "title": "Legacy Campaign Update 0.4.2",
-          "date": "April 13, 2026",
-          "readMoreLabel": "Read more",
-          "highlights":["All 6 missions now available!", "Bugfixes across Missions 1-3", "Mission 2 balance adjustments"]
-        }
-      }
+      "linkUrl": "https://scevo.org/posts/evo-campaign-loomings-0_5"
     },
 
     {
-      "id": "news-1.18.1",
-      "title": "SC: Evo 1.18.1",
-      "date": "March 31, 2026",
+      "id": "news-1.19",
+      "title": "SC: Evo 1.19",
+      "date": "May 9, 2026",
       "type": "update",
 
-      "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_18.png",
-      "imageLabel": "1.18.1",
+      "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_19.webp",
+      "imageLabel": "1.19",
       "imageText": "EVO UPDATE",
       "imageBg": "#0a242a",
       "imageAccent": "#00c5ff",
@@ -314,15 +280,15 @@
       "badgeColor": "#00c5ff",
 
       "excerpt": "...",
-      "linkUrl": "https://scevo.net/posts/evo-update-1_18_1",
+      "linkUrl": "https://scevo.net/posts/evo-update-1_19",
       "readMoreLabel": "Read more",
 
       "locales": {
         "en": {
-          "title": "SC: Evo 1.18.1",
-          "date": "March 31, 2026",
+          "title": "SC: Evo 1.19",
+          "date": "May 6, 2026",
           "readMoreLabel": "Read more",
-          "excerpt": "Patch 1.18.1 brings numerous iterations to the ambitious changes in Patch 1.18, as well as significant reworks for the distribution of strength across the Terran and Zerg tech trees."
+          "excerpt": "Patch 1.19 contains several incremental balance changes, new features and several new models."
         }
       }
     },
@@ -383,11 +349,7 @@
 
   "announcement": {
     "enabled": true,
-    "message": "Update 0.4 deployed successfully, new mission avaialble for Patreon supporters.",
-    "type": "info",
-
-    "locales": {
-      "en": { "message": "Update 0.4 deployed successfully, new mission avaialble for Patreon supporters." }
-    }
+    "message": "New Launcher Update Available! head to SCevo.net to download the latest version of the Launcher.",
+    "type": "Critical"
   }
 }
