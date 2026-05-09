@@ -280,7 +280,7 @@
       "badgeColor": "#00c5ff",
 
       "excerpt": "...",
-      "linkUrl": "https://scevo.net/posts/evo-update-1_19",
+      "linkUrl": "https://scevo.org/posts/evo-update-1_19",
       "readMoreLabel": "Read more",
 
       "locales": {
@@ -349,7 +349,7 @@
 
   "announcement": {
     "enabled": true,
-    "message": "New Launcher Update Available! head to SCevo.net to download the latest version of the Launcher.",
-    "type": "Critical"
+    "message": "New Launcher Update Available! head to scevo.org to download the latest version of the Launcher.",
+    "type": "Warning"
   }
 }
