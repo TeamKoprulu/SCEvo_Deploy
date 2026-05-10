@@ -1,14 +1,14 @@
 {
     "schemaVersion":  1,
-    "lastUpdated":  "2026-05-09T23:32:20Z",
+    "lastUpdated":  "2026-05-10T21:43:23Z",
     "versions":  {
                      "multiplayer":  "1.19",
-                     "campaign":  "0.5"
+                     "campaign":  "0.5.1"
                  },
     "criticalUpdate":  {
-                           "enabled":  true,
-                           "minVersion":  "0.5",
-                           "message":  "New Major Update available",
+                           "enabled":  false,
+                           "minVersion":  "",
+                           "message":  "",
                            "severity":  "critical"
                        },
     "modules":  [
@@ -77,8 +77,8 @@
                                       {
                                           "name":  "Loomings3Legacy.SC2Map",
                                           "path":  "Maps/SCEvo/LegacyLoomings/Loomings3Legacy.SC2Map",
-                                          "size":  478483,
-                                          "hash":  "e04c62390ddd9e36ea5d69242898e3c76a8085def344670efb5a62a21c40b6e8"
+                                          "size":  483792,
+                                          "hash":  "a8847a9c3058bd2761ded7797d6d5971fcba20a4600b6319f63053cb05c76814"
                                       }
                                   ]
                     },
@@ -171,6 +171,24 @@
                                   ]
                     },
                     {
+                        "id":  "scevo-campaignassets",
+                        "name":  "SCEvo_CampaignAssets",
+                        "description":  "SCEvo_CampaignAssets",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_CampaignAssets.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
+                                          "size":  507568650,
+                                          "hash":  "e9b507f4855cc8d9bac08716495e05a9283d48eaebb15668c342305a0f7c5a09",
+                                          "downloadUrls":  [
+                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5.1/SCEvo_CampaignAssets.SC2Mod",
+                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5.1/SCEvo_CampaignAssets.SC2Mod"
+                                                           ]
+                                      }
+                                  ]
+                    },
+                    {
                         "id":  "scevo-campaigncommons",
                         "name":  "SCEvo_CampaignCommons",
                         "description":  "SCEvo_CampaignCommons",
@@ -179,8 +197,8 @@
                                       {
                                           "name":  "SCEvo_CampaignCommons.SC2Mod",
                                           "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignCommons.SC2Mod",
-                                          "size":  533316,
-                                          "hash":  "bb0db1a0e0e7797bb97b485175f5f3f41b060a8fc030799de4801ea41cff69cf"
+                                          "size":  533493,
+                                          "hash":  "589ec3f5bc6e03dfd7974013e5b875e52e57c7647445aaae11b5cb84606d2354"
                                       }
                                   ]
                     },
@@ -193,8 +211,8 @@
                                       {
                                           "name":  "SCEvo_CampaignLegacy.SC2Mod",
                                           "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
-                                          "size":  2304105,
-                                          "hash":  "4f60431294953c75988a8a5b9b0601b14f397efb46cd6d9e1a3c2a20b303375a"
+                                          "size":  2303744,
+                                          "hash":  "e5fb5ba978e5a39bba667f3097ec5c167a1911305229ce1c2311ca833514a68f"
                                       }
                                   ]
                     },
@@ -209,24 +227,6 @@
                                           "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_ImprovedCampaignAI.SC2Mod",
                                           "size":  2664978,
                                           "hash":  "21fc34d9657431d7fb102b294fe7f0e4d78fa61a115803aca98c1c8c2a3385e1"
-                                      }
-                                  ]
-                    },
-                    {
-                        "id":  "scevo-campaignassets",
-                        "name":  "SCEvo_CampaignAssets",
-                        "description":  "SCEvo_CampaignAssets",
-                        "type":  "campaign",
-                        "files":  [
-                                      {
-                                          "name":  "SCEvo_CampaignAssets.SC2Mod",
-                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
-                                          "size":  507472335,
-                                          "hash":  "72cac3d7fcbddfdc87d7a6375b71dedb01716f18ee085945c1559a17087d7c64",
-                                          "downloadUrls":  [
-                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_CampaignAssets.SC2Mod",
-                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_CampaignAssets.SC2Mod"
-                                                           ]
                                       }
                                   ]
                     }

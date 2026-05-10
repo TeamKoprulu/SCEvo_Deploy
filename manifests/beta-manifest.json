@@ -1,10 +1,10 @@
 {
     "schemaVersion":  1,
-    "lastUpdated":  "2026-05-09T23:07:10Z",
+    "lastUpdated":  "2026-05-10T21:44:24Z",
     "betaEnabled":  true,
     "betaName":  "Loomings Beta",
     "majorVersion":  "0.5",
-    "fullVersion":  "0.5",
+    "fullVersion":  "0.5.1",
     "codeHash":  "82b5226b7f4d350691282428727757c67f79bc71c0a8d25fa511264bab8d4b01",
     "theme":  {
                   "accentColor":  "#ff6600",
@@ -15,9 +15,9 @@
                   "badgeColor":  "#ff6600"
               },
     "criticalUpdate":  {
-                           "enabled":  true,
-                           "minVersion":  "0.5",
-                           "message":  "New Major Update available"
+                           "enabled":  false,
+                           "minVersion":  "",
+                           "message":  ""
                        },
     "modules":  [
                     {
@@ -43,8 +43,8 @@
                                       {
                                           "name":  "SCEvo_CampaignLegacy.SC2Mod",
                                           "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignLegacy.SC2Mod",
-                                          "size":  2303539,
-                                          "hash":  "6c6645b7ee1b95df750e7ab3d5c4ad7fe44062dc4408599a096381727bc755d3"
+                                          "size":  2302984,
+                                          "hash":  "4f70771dbabcec6b90f227eeb33d7378d299d00356529e2f9e072d398fef7034"
                                       }
                                   ]
                     }
