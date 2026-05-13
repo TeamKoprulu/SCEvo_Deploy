@@ -350,6 +350,6 @@
   "announcement": {
     "enabled": true,
     "message": "New Launcher Update Available! head to scevo.org to download the latest version of the Launcher.",
-    "type": "Warning"
+    "type": "critical"
   }
 }
