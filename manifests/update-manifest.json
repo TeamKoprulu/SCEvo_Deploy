@@ -1,9 +1,9 @@
 {
     "schemaVersion":  1,
-    "lastUpdated":  "2026-05-10T21:43:23Z",
+    "lastUpdated":  "2026-05-13T22:38:27Z",
     "versions":  {
                      "multiplayer":  "1.19",
-                     "campaign":  "0.5.1"
+                     "campaign":  "0.5.1.1"
                  },
     "criticalUpdate":  {
                            "enabled":  false,
@@ -77,8 +77,8 @@
                                       {
                                           "name":  "Loomings3Legacy.SC2Map",
                                           "path":  "Maps/SCEvo/LegacyLoomings/Loomings3Legacy.SC2Map",
-                                          "size":  483792,
-                                          "hash":  "a8847a9c3058bd2761ded7797d6d5971fcba20a4600b6319f63053cb05c76814"
+                                          "size":  483908,
+                                          "hash":  "c73131e33f23009bdad8e1bd2077e8d1ee82ab599783a62e01104186c63a9214"
                                       }
                                   ]
                     },
@@ -107,24 +107,6 @@
                                           "path":  "Maps/SCEvo/LegacyLoomings/LoomingsStory.SC2Map",
                                           "size":  17890,
                                           "hash":  "6c22daf415b413fa7c6ee08b340745b797cf59a31f8bc78046a7233877137aa1"
-                                      }
-                                  ]
-                    },
-                    {
-                        "id":  "scevo-assets",
-                        "name":  "SCEvo_Assets",
-                        "description":  "SCEvo_Assets",
-                        "type":  "core",
-                        "files":  [
-                                      {
-                                          "name":  "SCEvo_Assets.SC2Mod",
-                                          "path":  "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
-                                          "size":  470292107,
-                                          "hash":  "6ded5d5480a4d8e669fe5d7c09d086e04744ae7bfbfd2a73fee21cba3f86c4fb",
-                                          "downloadUrls":  [
-                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_Assets.SC2Mod",
-                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_Assets.SC2Mod"
-                                                           ]
                                       }
                                   ]
                     },
@@ -171,24 +153,6 @@
                                   ]
                     },
                     {
-                        "id":  "scevo-campaignassets",
-                        "name":  "SCEvo_CampaignAssets",
-                        "description":  "SCEvo_CampaignAssets",
-                        "type":  "campaign",
-                        "files":  [
-                                      {
-                                          "name":  "SCEvo_CampaignAssets.SC2Mod",
-                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
-                                          "size":  507568650,
-                                          "hash":  "e9b507f4855cc8d9bac08716495e05a9283d48eaebb15668c342305a0f7c5a09",
-                                          "downloadUrls":  [
-                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5.1/SCEvo_CampaignAssets.SC2Mod",
-                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5.1/SCEvo_CampaignAssets.SC2Mod"
-                                                           ]
-                                      }
-                                  ]
-                    },
-                    {
                         "id":  "scevo-campaigncommons",
                         "name":  "SCEvo_CampaignCommons",
                         "description":  "SCEvo_CampaignCommons",
@@ -227,6 +191,42 @@
                                           "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_ImprovedCampaignAI.SC2Mod",
                                           "size":  2664978,
                                           "hash":  "21fc34d9657431d7fb102b294fe7f0e4d78fa61a115803aca98c1c8c2a3385e1"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-assets",
+                        "name":  "SCEvo_Assets",
+                        "description":  "SCEvo_Assets",
+                        "type":  "core",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_Assets.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
+                                          "size":  470292107,
+                                          "hash":  "6ded5d5480a4d8e669fe5d7c09d086e04744ae7bfbfd2a73fee21cba3f86c4fb",
+                                          "downloadUrls":  [
+                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_Assets.SC2Mod",
+                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5/SCEvo_Assets.SC2Mod"
+                                                           ]
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "scevo-campaignassets",
+                        "name":  "SCEvo_CampaignAssets",
+                        "description":  "SCEvo_CampaignAssets",
+                        "type":  "campaign",
+                        "files":  [
+                                      {
+                                          "name":  "SCEvo_CampaignAssets.SC2Mod",
+                                          "path":  "Mods/SC Evolution Complete/SCEvo_CampaignMods/SCEvo_CampaignAssets.SC2Mod",
+                                          "size":  507568650,
+                                          "hash":  "e9b507f4855cc8d9bac08716495e05a9283d48eaebb15668c342305a0f7c5a09",
+                                          "downloadUrls":  [
+                                                               "https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5.1/SCEvo_CampaignAssets.SC2Mod",
+                                                               "https://gh.llkk.cc/https://github.com/TeamKoprulu/SCEvo_Deploy/releases/download/0.5.1/SCEvo_CampaignAssets.SC2Mod"
+                                                           ]
                                       }
                                   ]
                     }

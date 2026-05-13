@@ -248,16 +248,16 @@
 
   "cards": [
     {
-      "id": "news-betapatchnotes_0.5",
-      "title": "Campaign Update 0.5.0",
-      "date": "May 9, 2026",
+      "id": "news-betapatchnotes_0.5.1.1",
+      "title": "Campaign Update 0.5.1.1",
+      "date": "May 13, 2026",
       "type": "patchnotes",
 
-      "imageLabel": "Campaign 0.5",
+      "imageLabel": "Campaign 0.5.1.1",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
-      "highlights":["Mission Archives Now Available", "Adjustments across all Missions", "Mission 3 rework"],
+      "highlights":["Fixed difficulty settings from BW Tech being applied while toggled off in Loomings 3", "Added correct Music Tracks for Loomings 3"],
 
       "badge": "Campaign",
       "badgeColor": "#ff0025",
