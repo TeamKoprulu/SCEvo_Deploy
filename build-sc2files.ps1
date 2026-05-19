@@ -8,7 +8,7 @@
 # ==============================================================================
 
 $SEP             = "=" * 60
-$MPQ_FILE_LIMIT  = 65536
+$MPQ_FILE_LIMIT_MIN = 512
 $SCRIPT_ROOT     = $PSScriptRoot
 $TEMP_DIR        = "$SCRIPT_ROOT\build-temp"
 $MPQ_SCRIPT_PATH = "$SCRIPT_ROOT\Build-SC2Files.mpq2k"
@@ -336,30 +336,36 @@ New-Item -ItemType Directory -Path $TEMP_DIR | Out-Null
 # consistent regardless of where the SC2 install lives.
 # We also Push-Location to $SCRIPT_ROOT so that the relative paths in the
 # .mpq2k file resolve correctly even when launched via double-click.
-$junctions  = [System.Collections.ArrayList]@()
 $mpq2kLines = [System.Collections.ArrayList]@()
 
 foreach ($src in $toBuild) {
     $filename = [System.IO.Path]::GetFileName($src.relPath)
-    $idx      = $junctions.Count
-    $jLink    = "$TEMP_DIR\_src$idx"
+    $srcCopy  = "$TEMP_DIR\_src_$filename"
 
-    # Use cmd mklink /J -- works on all Windows/PS versions without elevation.
-    # New-Item -ItemType Junction -Target is PS7+ only; -Value is PS5.1 but
-    # mklink /J is unambiguous and handles spaces in the target path.
-    $null = cmd /c "mklink /J `"$jLink`" `"$($src.sourceDir)`""
-    if (-not (Test-Path $jLink -PathType Container)) {
-        Write-Warn "Could not create junction for $($src.relPath) -- skipping."
+    Write-Info "Copying source: $filename..."
+    try {
+        Copy-Item -Path $src.sourceDir -Destination $srcCopy -Recurse -Force
+    } catch {
+        Write-Warn "Copy failed for $($src.relPath): $($_.Exception.Message) -- skipping."
         continue
     }
-    [void]$junctions.Add($jLink)
+    if (-not (Test-Path $srcCopy -PathType Container)) {
+        Write-Warn "Copy produced no output for $($src.relPath) -- skipping."
+        continue
+    }
 
-    # Relative paths from $SCRIPT_ROOT — MPQEditor resolves from its working dir
+    # Compute hash table size: next power of 2 above file count, minimum 512.
+    # Oversized tables add ~16 bytes of uncompressed overhead per empty slot.
+    $fileCount  = @(Get-ChildItem $srcCopy -Recurse -File).Count
+    $hashSize   = $MPQ_FILE_LIMIT_MIN
+    while ($hashSize -lt $fileCount) { $hashSize *= 2 }
+    Write-Info "$filename : $fileCount file(s) -> hash table $hashSize"
+
     $outRel = "build-temp\$filename"
-    $srcRel = "build-temp\_src$idx"
+    $srcRel = "build-temp\_src_$filename"
 
-    [void]$mpq2kLines.Add("new $outRel $MPQ_FILE_LIMIT")
-    [void]$mpq2kLines.Add("add $outRel $srcRel /r /c")
+    [void]$mpq2kLines.Add("new $outRel $hashSize")
+    [void]$mpq2kLines.Add("add $outRel $srcRel\* /r /c")
     [void]$mpq2kLines.Add("flush $outRel")
     [void]$mpq2kLines.Add("")
 }
@@ -376,19 +382,11 @@ Write-Host ""
 Write-Step "Running MPQEditor (this may take a while)..."
 Write-Host ""
 $mpqStart = Get-Date
-Push-Location $SCRIPT_ROOT
-& $MPQ_EDITOR console "Build-SC2Files.mpq2k"
-$mpqExit = $LASTEXITCODE
-Pop-Location
+$proc     = Start-Process -FilePath $MPQ_EDITOR -ArgumentList "console", "Build-SC2Files.mpq2k" `
+                -WorkingDirectory $SCRIPT_ROOT -Wait -PassThru -NoNewWindow
+$mpqExit  = $proc.ExitCode
 $mpqElapsed = [math]::Round(((Get-Date) - $mpqStart).TotalSeconds, 1)
 Write-Info "MPQEditor finished in ${mpqElapsed}s (exit code: $(if ($null -eq $mpqExit) { 'n/a' } else { $mpqExit }))"
-
-# Remove junctions (link only -- does not touch SC2 source files)
-foreach ($j in $junctions) {
-    if (Test-Path $j -PathType Container) {
-        try { [System.IO.Directory]::Delete($j) } catch { Write-Warn "Could not remove junction: $j" }
-    }
-}
 
 # Keep the .mpq2k on disk if MPQEditor produced nothing (aids debugging)
 $anyBuilt = @($toBuild | Where-Object {
