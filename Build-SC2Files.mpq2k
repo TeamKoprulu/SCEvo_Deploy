@@ -1,0 +1,32 @@
+new build-temp\Loomings0Legacy.SC2Map 65536
+add build-temp\Loomings0Legacy.SC2Map build-temp\_src0 /r /c
+flush build-temp\Loomings0Legacy.SC2Map
+
+new build-temp\Loomings1Legacy.SC2Map 65536
+add build-temp\Loomings1Legacy.SC2Map build-temp\_src1 /r /c
+flush build-temp\Loomings1Legacy.SC2Map
+
+new build-temp\Loomings2Legacy.SC2Map 65536
+add build-temp\Loomings2Legacy.SC2Map build-temp\_src2 /r /c
+flush build-temp\Loomings2Legacy.SC2Map
+
+new build-temp\Loomings3Legacy.SC2Map 65536
+add build-temp\Loomings3Legacy.SC2Map build-temp\_src3 /r /c
+flush build-temp\Loomings3Legacy.SC2Map
+
+new build-temp\Loomings4Legacy.SC2Map 65536
+add build-temp\Loomings4Legacy.SC2Map build-temp\_src4 /r /c
+flush build-temp\Loomings4Legacy.SC2Map
+
+new build-temp\Loomings5Legacy.SC2Map 65536
+add build-temp\Loomings5Legacy.SC2Map build-temp\_src5 /r /c
+flush build-temp\Loomings5Legacy.SC2Map
+
+new build-temp\LoomingsStory.SC2Map 65536
+add build-temp\LoomingsStory.SC2Map build-temp\_src6 /r /c
+flush build-temp\LoomingsStory.SC2Map
+
+new build-temp\SCEvo_Assets.SC2Mod 65536
+add build-temp\SCEvo_Assets.SC2Mod build-temp\_src7 /r /c
+flush build-temp\SCEvo_Assets.SC2Mod
+
