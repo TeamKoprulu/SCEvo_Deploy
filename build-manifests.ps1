@@ -486,14 +486,25 @@ if ($buildBeta) {
     $defBetaCoreVer = if ($betaExisting -and $betaExisting.versions) { $betaExisting.versions.multiplayer } else { "" }
     $betaCoreVer = Prompt-Text "   Core version (shown in Settings, blank skip)" $defBetaCoreVer
 
-    # Access code / hash -- always enter plaintext, script auto-hashes
+    # Access code / hash -- enter plaintext to change, blank to keep existing
+    $existingHash = if ($betaExisting) { $betaExisting.codeHash } else { $null }
     Write-Host ""
-    do {
-        $plainCode = Read-Host "   Access code (plaintext)"
-        if ($plainCode.Trim() -eq "") { Write-Warn "Access code cannot be empty." }
-    } while ($plainCode.Trim() -eq "")
-    $codeHash  = Get-StringSHA256 $plainCode.Trim().ToUpper()
-    Write-Info "codeHash: $codeHash"
+    if ($existingHash) {
+        Write-Info "Current codeHash: $existingHash"
+        $plainCode = (Read-Host "   Access code (plaintext, blank = keep existing)").Trim()
+    } else {
+        do {
+            $plainCode = (Read-Host "   Access code (plaintext)").Trim()
+            if ($plainCode -eq "") { Write-Warn "Access code cannot be empty." }
+        } while ($plainCode -eq "")
+    }
+    if ($plainCode -ne "") {
+        $codeHash = Get-StringSHA256 $plainCode.ToUpper()
+        Write-Info "codeHash: $codeHash"
+    } else {
+        $codeHash = $existingHash
+        Write-Info "codeHash: (unchanged) $codeHash"
+    }
 
     # Critical update
     Write-Host ""

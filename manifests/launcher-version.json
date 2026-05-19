@@ -1,0 +1,9 @@
+{
+  "version": "1.2.1",
+  "portable": {
+    "url": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/launcher/SC%20Evo%20Launcher.exe"
+  },
+  "installer": {
+    "url": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/installer/SC%20Evo%20Launcher%20Setup.exe"
+  }
+}
