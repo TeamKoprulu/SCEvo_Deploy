@@ -8,7 +8,7 @@
 # ==============================================================================
 
 $SEP             = "=" * 60
-$MPQ_FILE_LIMIT_MIN = 512
+$MPQ_HASH_MIN       = 4
 $SCRIPT_ROOT     = $PSScriptRoot
 $TEMP_DIR        = "$SCRIPT_ROOT\build-temp"
 $MPQ_SCRIPT_PATH = "$SCRIPT_ROOT\Build-SC2Files.mpq2k"
@@ -82,14 +82,15 @@ function Load-Ignored {
 }
 
 function Save-Ignored([string[]]$list) {
-    if ($list.Count -eq 0) {
+    $safeList = @($list | Where-Object { $_ -and $_.Length -lt 150 })
+    if ($safeList.Count -eq 0) {
         [System.IO.File]::WriteAllText($IGNORED_PATH, "[]`n",
             (New-Object System.Text.UTF8Encoding $false))
         return
     }
-    $items = $list | ForEach-Object { "  `"$($_.Replace('\','\\'))`"" }
-    $json  = "[`n$($items -join ",`n")`n]"
-    [System.IO.File]::WriteAllText($IGNORED_PATH, $json,
+    $items = $safeList | ForEach-Object { $_ | ConvertTo-Json }
+    $json  = "[$($items -join ', ')]"
+    [System.IO.File]::WriteAllText($IGNORED_PATH, $json + "`n",
         (New-Object System.Text.UTF8Encoding $false))
 }
 
@@ -354,11 +355,11 @@ foreach ($src in $toBuild) {
         continue
     }
 
-    # Compute hash table size: next power of 2 above file count, minimum 512.
-    # Oversized tables add ~16 bytes of uncompressed overhead per empty slot.
+    # Compute hash table size: next power of 2 >= fileCount*2, minimum 16.
+    # Keeps ~50% load factor so MPQ hash collisions don't drop files.
     $fileCount  = @(Get-ChildItem $srcCopy -Recurse -File).Count
-    $hashSize   = $MPQ_FILE_LIMIT_MIN
-    while ($hashSize -lt $fileCount) { $hashSize *= 2 }
+    $hashSize   = $MPQ_HASH_MIN
+    while ($hashSize -lt ($fileCount * 2)) { $hashSize *= 2 }
     Write-Info "$filename : $fileCount file(s) -> hash table $hashSize"
 
     $outRel = "build-temp\$filename"
