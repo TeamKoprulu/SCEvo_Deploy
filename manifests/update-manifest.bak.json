@@ -1,6 +1,6 @@
 {
     "schemaVersion":  1,
-    "lastUpdated":  "2026-07-05T03:17:23Z",
+    "lastUpdated":  "2026-07-05T00:33:07Z",
     "versions":  {
                      "multiplayer":  "1.20",
                      "campaign":  "0.6"
@@ -105,8 +105,8 @@
                                       {
                                           "name":  "Loomings5Legacy.SC2Map",
                                           "path":  "Maps/SCEvo/LegacyLoomings/Loomings5Legacy.SC2Map",
-                                          "size":  3626021,
-                                          "hash":  "b3ce8140bbc8d0ece109036e02268970b3aefcec5a1c61ece235a9a40d763c27"
+                                          "size":  3625361,
+                                          "hash":  "5c78464a23bd6491c65d17797d809ea51a26272eabe0135f3f69e748635f24b9"
                                       }
                                   ]
                     },

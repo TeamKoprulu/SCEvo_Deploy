@@ -248,20 +248,20 @@
 
   "cards": [
     {
-      "id": "news-betapatchnotes_0.5.1.1",
-      "title": "Campaign Update 0.5.1.1",
-      "date": "May 13, 2026",
+      "id": "news-betapatchnotes_0.6",
+      "title": "Campaign Update 0.6",
+      "date": "June 30, 2026",
       "type": "patchnotes",
 
-      "imageLabel": "Campaign 0.5.1.1",
+      "imageLabel": "Campaign 0.6",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
-      "highlights":["Fixed difficulty settings from BW Tech being applied while toggled off in Loomings 3", "Added correct Music Tracks for Loomings 3"],
+      "highlights":["Mission 5 Availalbe for everyone!","Parity with 1.20.1","Adjusted Mission 5 difficulty."],
 
       "badge": "Campaign",
       "badgeColor": "#ff0025",
-      "linkUrl": "https://scevo.org/posts/evo-campaign-loomings-0_5"
+      "linkUrl": "https://scevo.org/posts/evo-campaign-loomings-0_6"
     },
 
     {
@@ -270,8 +270,8 @@
       "date": "May 9, 2026",
       "type": "update",
 
-      "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/blog-update-1_19.webp",
-      "imageLabel": "1.19",
+      "imageUrl": "https://scevo.org/assets/img/blog/blog-update-1_20.webp",
+      "imageLabel": "1.20.1",
       "imageText": "EVO UPDATE",
       "imageBg": "#0a242a",
       "imageAccent": "#00c5ff",
@@ -280,27 +280,26 @@
       "badgeColor": "#00c5ff",
 
       "excerpt": "...",
-      "linkUrl": "https://scevo.org/posts/evo-update-1_19",
+      "linkUrl": "https://scevo.org/posts/evo-update-1_20_1",
       "readMoreLabel": "Read more",
 
       "locales": {
         "en": {
-          "title": "SC: Evo 1.19",
-          "date": "May 6, 2026",
+          "title": "SC: Evo 1.20.1",
+          "date": "June 30, 2026",
           "readMoreLabel": "Read more",
-          "excerpt": "Patch 1.19 contains several incremental balance changes, new features and several new models."
+          "excerpt": "1.20.1: follow-up balance adjustments including reduced Concussive/Explosive damage against Shields, a Hydralisk attack speed compensation, and Protoss late-game nerfs to Dark Templar, Mind Control, and Recall."
         }
       }
     },
 
     {
-      "id": "patreon-february2026",
-      "title": "February Development Update",
-      "date": "March 15, 2026",
+      "id": "patreon-may2026",
+      "title": "May Development Update",
+      "date": "June 7, 2026",
       "type": "update",
 
-      "imageUrl": "https://raw.githubusercontent.com/TeamKoprulu/SCEvo_Deploy/main/assets/news/patreon-february.png",
-      "imageLabel": "February Update",
+      "imageLabel": "May Update",
       "imageText": "PATREON",
       "imageBg": "#2a1b0a",
       "imageAccent": "#ff9500",
@@ -309,46 +308,22 @@
       "badgeColor": "#ff9500",
 
       "excerpt": "...",
-      "linkUrl": "https://www.patreon.com/posts/february-update-152914081?utm_medium=clipboard_copy&utm_source=copyLink&utm_campaign=postshare_creator&utm_content=join_link",
+      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/may-developer-160446092?utm_medium=clipboard_copy&utm_source=copyLink&utm_campaign=postshare_creator&utm_content=join_link",
       "readMoreLabel": "Read more",
 
       "locales": {
         "en": {
-          "title": "February Development Update",
-          "date": "March 15, 2026",
+          "title": "May Development Update",
+          "date": "June 7, 2026",
           "readMoreLabel": "Read more",
-          "excerpt": "Hey guys, its been a while since i've had time to sit down and write a full update on what's been going on but we've got quite the update in our hands now that we're able to upload to the Arcade once more!"
-        },
-        "es": {
-          "title": "Actualización de Desarrollo de Febrero",
-          "date": "15 de marzo, 2026",
-          "readMoreLabel": "Leer más",
-          "excerpt": "¡Hola chicos, ha pasado un tiempo desde que tuve tiempo de sentarme y escribir una actualización completa sobre lo que ha estado pasando, pero ahora tenemos una actualización bastante grande en nuestras manos que podemos subir al Arcade una vez más!"
-        },
-        "zh": {
-          "title": "2月进度更新",
-          "date": "2026年3月15日",
-          "readMoreLabel": "阅读更多",
-          "excerpt": "嘿，各位，我已经有一段时间没有时间坐下来写一篇完整的更新文章，汇报一下最近发生的事情了，但是现在游戏大厅上传开放了，所以我们手头上有很多更新内容！"
-        },
-        "ko": {
-          "title": "2월 개발 소식February Development Update",
-          "date": "2026년 3월 15일",
-          "readMoreLabel": "더 보기",
-          "excerpt": "Hey guys, its been a while since i've had time to sit down and write a full update on what's been going on but we've got quite the update in our hands now that we're able to upload to the Arcade once more!"
-        },
-        "ru": {
-          "title": "Февральское обновление о разработке",
-          "date": "15 марта, 2026",
-          "readMoreLabel": "Читать далее",
-          "excerpt": "Эй, ребята, прошло много времени с тех пор, как у меня было время сесть и написать полный список о том, что происходит в разработке, но теперь, когда мы снова можем публиковать эти обновления в Игротеку, у нас в руках целый набор этих обновлений!"
+          "excerpt": "Just a small side-update, work has been a little slow for me due to some hardware issues, i am in the process of replacing a couple PC parts which rendered me unable to work on many parts of the project. I will sort it out soon, but i am able to work on model animation again."
         }
       }
     }
   ],
 
   "announcement": {
-    "enabled": true,
+    "enabled": false,
     "message": "New Launcher Update Available! head to scevo.org to download the latest version of the Launcher.",
     "type": "critical"
   }
