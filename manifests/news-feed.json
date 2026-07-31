@@ -248,16 +248,16 @@
 
   "cards": [
     {
-      "id": "news-betapatchnotes_0.6",
-      "title": "Campaign Update 0.6",
-      "date": "June 30, 2026",
+      "id": "news-betapatchnotes_061",
+      "title": "Campaign Update 0.6.1",
+      "date": "July 12, 2026",
       "type": "patchnotes",
 
-      "imageLabel": "Campaign 0.6",
+      "imageLabel": "Campaign 0.6.1",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
-      "highlights":["Mission 5 Availalbe for everyone!","Parity with 1.20.1","Adjusted Mission 5 difficulty."],
+      "highlights":["Lurkers now usable by the AI","Mission 5 Balance adjustments","Minor Bugfixes."],
 
       "badge": "Campaign",
       "badgeColor": "#ff0025",
@@ -325,6 +325,6 @@
   "announcement": {
     "enabled": false,
     "message": "New Launcher Update Available! head to scevo.org to download the latest version of the Launcher.",
-    "type": "critical"
+    "type": "warning"
   }
 }
