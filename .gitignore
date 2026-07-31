@@ -1,2 +1,11 @@
 SCEvo_CampaignAssets.SC2Mod
 SCEvo_Assets.SC2Mod
+
+# Deploy tool
+tools/.cache/
+build-temp/
+Build-SC2Files.mpq2k
+*.tmp-*
+
+# Machine-specific paths - see deploy-config.example.json
+deploy-config.json

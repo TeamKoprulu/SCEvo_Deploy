@@ -1,8 +1,7 @@
 {
   "schemaVersion": 1,
   "lastUpdated": "2026-05-09T00:00:00Z",
-
-    "strings": {
+  "strings": {
     "en": {
       "play": "PLAY",
       "install": "INSTALL",
@@ -25,21 +24,19 @@
       "dismiss": "DESCARTAR",
       "browse": "Explorar...",
       "reverifyFiles": "Verificar archivos nuevamente",
-
       "detectingGame": "Buscando carpeta de instalacion de StarCraft II...",
       "notFound": "StarCraft II no encontrado. Ajuste la ruta manualmente.",
       "verifyingFiles": "Verificando archivos del mod...",
       "needsInstall": "SC: Evo no esta instalado. Presiona instalar para comenzar.",
       "needsInstallBeta": "La Beta no esta instalada. Haz clic en Instalar para comenzar.",
-      "needsUpdate": "Actualizacion disponible: v{installed} \u2192 v{latest} \u2014 Aun puedes jugar.",
+      "needsUpdate": "Actualizacion disponible: v{installed} → v{latest} — Aun puedes jugar.",
       "criticalUpdateRequired": "Actualizacion critica requerida.",
-      "criticalUpdateDismissed": "Actualizacion critica descartada \u2014 v{installed} (obsoleto).",
+      "criticalUpdateDismissed": "Actualizacion critica descartada — v{installed} (obsoleto).",
       "downloadingFile": "Descargando: {file}",
       "installingFiles": "Instalando archivos del mod...",
       "upToDate": "Los archivos fueron verificados. Listo para jugar.",
       "ready": "SC: Evo está listo. Haz clic en Jugar para iniciar.",
       "readyBeta": "La {betaName} está lista. Haz clic en Jugar para iniciar.",
-
       "settingsTitle": "Ajustes",
       "sc2PathLabel": "Ruta de StarCraft II",
       "coreVersionLabel": "Version del Mod Core",
@@ -48,9 +45,8 @@
       "latestNews": "Últimas Noticias",
       "readMore": "Leer más",
       "language": "Idioma",
-      "criticalPending": "Actualización crítica pendiente \u2014 haz clic para revisar",
+      "criticalPending": "Actualización crítica pendiente — haz clic para revisar",
       "newVersionAvailable": "Nueva versión disponible (v{version})",
-
       "criticalUpdateTitle": "ACTUALIZACION CRITICA REQUERIDA",
       "criticalUpdateMessage": "Una actualización crítica para SC: Evo está disponible.",
       "betaAccess": "ACCESO ANTICIPADO",
@@ -63,12 +59,24 @@
       "confirmPath": "CONFIRMAR RUTA",
       "enterCode": "INTRODUCIR CÓDIGO",
       "youCanDismiss": "Puedes descartar y jugar, pero algunas características pueden no funcionar.",
-
       "announceInfo": "INFORMACION",
       "announceWarning": "ADVERTENCIA",
       "announceCritical": "CRITICO",
       "createShortcut": "Crear acceso directo en el escritorio",
-      "closeOnLaunch": "Cerrar lanzador cuando inicie el juego"
+      "closeOnLaunch": "Cerrar lanzador cuando inicie el juego",
+      "retrying": "Reintentando {file}...",
+      "errDownloadTitle": "Error de descarga",
+      "errDownloadBody": "No se pudieron descargar uno o más archivos. Comprueba tu conexión a internet e inténtalo de nuevo.",
+      "errVerifyTitle": "Error de verificación",
+      "errVerifyBody": "Un archivo descargado no superó la comprobación de integridad y puede estar dañado. Inténtalo de nuevo.",
+      "errDiskFullTitle": "Espacio insuficiente",
+      "errDiskFullBody": "Tu disco no tiene suficiente espacio libre para instalar los archivos del mod. Libera espacio e inténtalo de nuevo.",
+      "errWriteTitle": "Error de permisos de escritura",
+      "errWriteBody": "El launcher no pudo escribir archivos en la carpeta de StarCraft II. Prueba a ejecutarlo como administrador.",
+      "errLaunchTitle": "Error al iniciar",
+      "errLaunchBody": "No se pudo iniciar StarCraft II. Asegúrate de que el juego está instalado correctamente e inténtalo de nuevo.",
+      "showDetails": "Mostrar detalles",
+      "hideDetails": "Ocultar detalles"
     },
     "zh": {
       "play": "游玩",
@@ -84,21 +92,19 @@
       "dismiss": "忽略",
       "browse": "浏览……",
       "reverifyFiles": "重新验证文件",
-      
       "detectingGame": "正在定位星际争霸2文件位置……",
       "notFound": "未找到星际争霸2文件。请手动设置文件路径。",
       "verifyingFiles": "正在验证模组文件……",
       "needsInstall": "SC: Evo安装未安装。点击“安装”以开始。",
       "needsInstallBeta": "Beta文件未安装。点击“安装”以开始。",
-      "needsUpdate": "更新可用：v{installed} \u2192 v{latest} \u2014 您仍可游玩。",
+      "needsUpdate": "更新可用：v{installed} → v{latest} — 您仍可游玩。",
       "criticalUpdateRequired": "需进行重要更新。",
-      "criticalUpdateDismissed": "已忽略重要更新 \u2014 v{installed} (outdated).",
+      "criticalUpdateDismissed": "已忽略重要更新 — v{installed} (outdated).",
       "downloadingFile": "正在下载：{file}",
       "installingFiles": "正在安装MOD文件……",
       "upToDate": "文件验证完毕，可以游玩。",
       "ready": "SC: Evo已经就绪。点击“游玩”以开始游戏。",
       "readyBeta": "{betaName}已经就绪。点击“游玩”以开始游戏。",
-      
       "settingsTitle": "设置",
       "sc2PathLabel": "星际争霸2路径",
       "coreVersionLabel": "Core版本",
@@ -107,9 +113,8 @@
       "latestNews": "最新消息",
       "readMore": "阅读更多",
       "language": "语言",
-      "criticalPending": "等待进行重要更新 \u2014 点击以查看",
+      "criticalPending": "等待进行重要更新 — 点击以查看",
       "newVersionAvailable": "新版本可用（v{version}）",
-      
       "criticalUpdateTitle": "需进行重要更新",
       "criticalUpdateMessage": "",
       "announceInfo": "信息",
@@ -126,7 +131,20 @@
       "enterCode": "输入权限码",
       "youCanDismiss": "您可以忽略该提示并继续游玩，但部分特色功能将不可用。",
       "createShortcut": "创建桌面快捷方式",
-      "closeOnLaunch": "游戏开始时关闭启动器"
+      "closeOnLaunch": "游戏开始时关闭启动器",
+      "retrying": "正在重试 {file}……",
+      "errDownloadTitle": "下载失败",
+      "errDownloadBody": "一个或多个文件下载失败。请检查您的网络连接后重试。",
+      "errVerifyTitle": "文件校验失败",
+      "errVerifyBody": "已下载的文件未通过完整性校验，可能已损坏。请重新下载。",
+      "errDiskFullTitle": "磁盘空间不足",
+      "errDiskFullBody": "磁盘剩余空间不足，无法安装模组文件。请清理空间后重试。",
+      "errWriteTitle": "写入权限错误",
+      "errWriteBody": "启动器无法向星际争霸2文件夹写入文件。请尝试以管理员身份运行启动器。",
+      "errLaunchTitle": "启动失败",
+      "errLaunchBody": "无法启动星际争霸2。请确认游戏已正确安装后重试。",
+      "showDetails": "显示详情",
+      "hideDetails": "隐藏详情"
     },
     "ko": {
       "play": "플레이",
@@ -142,21 +160,19 @@
       "dismiss": "무시",
       "browse": "찾아보기...",
       "reverifyFiles": "파일 재확인",
-      
       "detectingGame": "스타크래프트 II 설치 경로를 찾는 중...",
       "notFound": "스타크래프트 II를 찾을 수 없습니다. 경로를 수동으로 지정해주세요.",
       "verifyingFiles": "모드 파일 확인 중...",
       "needsInstall": "SC: Evo가 설치되어 있지 않습니다. 설치를 클릭하여 시작하세요.",
       "needsInstallBeta": "베타가 설치되어 있지 않습니다. 설치를 클릭하여 시작하세요.",
-      "needsUpdate": "업데이트 가능: v{installed} \u2192 v{latest} \u2014 지금도 플레이할 수 있습니다.",
+      "needsUpdate": "업데이트 가능: v{installed} → v{latest} — 지금도 플레이할 수 있습니다.",
       "criticalUpdateRequired": "중요 업데이트가 필요합니다.",
-      "criticalUpdateDismissed": "중요 업데이트가 무시됨 \u2014 v{installed} (outdated).",
+      "criticalUpdateDismissed": "중요 업데이트가 무시됨 — v{installed} (outdated).",
       "downloadingFile": "다운로드 중: {file}",
       "installingFiles": "모드 파일 설치 중...",
       "upToDate": "모든 파일이 확인되었습니다. 플레이할 준비가 완료되었습니다.",
       "ready": "SC: Evo 준비 완료. 플레이를 눌러 실행하세요.",
       "readyBeta": "{betaName} 준비 완료. 플레이를 눌러 실행하세요.",
-      
       "settingsTitle": "설정",
       "sc2PathLabel": "스타크래프트 II 경로",
       "coreVersionLabel": "코어 버전",
@@ -165,9 +181,8 @@
       "latestNews": "최신 소식",
       "readMore": "더 보기",
       "language": "언어",
-      "criticalPending": "중요 업데이트 대기 중 \u2014 클릭하여 확인",
+      "criticalPending": "중요 업데이트 대기 중 — 클릭하여 확인",
       "newVersionAvailable": "새 버전 사용 가능 (v{version})",
-      
       "criticalUpdateTitle": "중요 업데이트 필요",
       "criticalUpdateMessage": "",
       "announceInfo": "정보",
@@ -184,7 +199,20 @@
       "enterCode": "코드 입력",
       "youCanDismiss": "무시하고 플레이할 수 있으나 일부 기능이 정상적으로 작동하지 않을 수 있습니다.",
       "createShortcut": "바탕화면 바로가기 생성",
-      "closeOnLaunch": "게임 실행 시 런처 종료"
+      "closeOnLaunch": "게임 실행 시 런처 종료",
+      "retrying": "{file} 재시도 중...",
+      "errDownloadTitle": "다운로드 실패",
+      "errDownloadBody": "하나 이상의 파일을 다운로드하지 못했습니다. 인터넷 연결을 확인한 후 다시 시도해주세요.",
+      "errVerifyTitle": "파일 검증 실패",
+      "errVerifyBody": "다운로드한 파일이 무결성 검사를 통과하지 못했습니다. 손상되었을 수 있으니 다시 다운로드해주세요.",
+      "errDiskFullTitle": "디스크 공간 부족",
+      "errDiskFullBody": "모드 파일을 설치할 디스크 공간이 부족합니다. 공간을 확보한 후 다시 시도해주세요.",
+      "errWriteTitle": "쓰기 권한 오류",
+      "errWriteBody": "런처가 스타크래프트 II 폴더에 파일을 쓸 수 없습니다. 관리자 권한으로 실행해보세요.",
+      "errLaunchTitle": "실행 실패",
+      "errLaunchBody": "스타크래프트 II를 시작할 수 없습니다. 게임이 올바르게 설치되어 있는지 확인한 후 다시 시도해주세요.",
+      "showDetails": "자세히 보기",
+      "hideDetails": "접기"
     },
     "ru": {
       "play": "ИГРАТЬ",
@@ -196,25 +224,23 @@
       "installing": "УСТАНОВКА...",
       "locateSc2": "РАСПОЛОЖЕНИЕ SC2",
       "activateBeta": "ACTIVATE BETA",
-      "validating": "VALIDATING...",
+      "validating": "ПРОВЕРКА...",
       "dismiss": "ОТКЛОНИТЬ",
       "browse": "Найти...",
       "reverifyFiles": "Повторная проверка файлов",
-      
       "detectingGame": "Определение расположения установки StarCraft II...",
       "notFound": "StarCraft II не найден. Пожалуйста, задайте путь вручную.",
       "verifyingFiles": "Проверка файлов модов...",
       "needsInstall": "SC: Evo не установлен. Нажмите УСТАВИТЬ для начала установки.",
       "needsInstallBeta": "Бета-версия не установлена. Нажмите УСТАВИТЬ для начала установки.",
-      "needsUpdate": "Обновление доступно: v{installed} \u2192 v{latest} \u2014 Вы все еще можете играть.",
+      "needsUpdate": "Обновление доступно: v{installed} → v{latest} — Вы все еще можете играть.",
       "criticalUpdateRequired": "Требуется критическое обновление.",
-      "criticalUpdateDismissed": "Критическое обновление отклонено. \u2014 v{installed} (outdated).",
+      "criticalUpdateDismissed": "Критическое обновление отклонено. — v{installed} (outdated).",
       "downloadingFile": "Загрузка: {file}",
       "installingFiles": "Установка файлов мода...",
       "upToDate": "Все файлы проверены. Можно играть.",
       "ready": "SC: Evo готово. Нажмите ИГРАТЬ для запуска.",
       "readyBeta": "{betaName} готово. Нажмите ИГРАТЬ для запуска.",
-      
       "settingsTitle": "Настройки",
       "sc2PathLabel": "Путь к StarCraft II",
       "coreVersionLabel": "Версия ядра",
@@ -223,9 +249,8 @@
       "latestNews": "Последние новости",
       "readMore": "Подробнее",
       "language": "Язык",
-      "criticalPending": "Ожидается критическое обновление \u2014 нажмите для просмотра",
+      "criticalPending": "Ожидается критическое обновление — нажмите для просмотра",
       "newVersionAvailable": "Доступна новая версия (v{version})",
-      
       "criticalUpdateTitle": "ТРЕБУЕТСЯ КРИТИЧЕСКОЕ ОБНОВЛЕНИЕ",
       "criticalUpdateMessage": "",
       "announceInfo": "Информация",
@@ -242,47 +267,56 @@
       "enterCode": "ВВЕДИТЕ КОД",
       "youCanDismiss": "Вы можете отклонить и продолжить игру, но некоторые функции могут не работать.",
       "createShortcut": "Создать ярлык на рабочем столе",
-      "closeOnLaunch": "Закрыть лаунчер когда запуститься игра"
+      "closeOnLaunch": "Закрыть лаунчер когда запуститься игра",
+      "retrying": "Повторная попытка: {file}...",
+      "errDownloadTitle": "Ошибка загрузки",
+      "errDownloadBody": "Не удалось загрузить один или несколько файлов. Проверьте подключение к интернету и попробуйте снова.",
+      "errVerifyTitle": "Ошибка проверки файлов",
+      "errVerifyBody": "Загруженный файл не прошёл проверку целостности и может быть повреждён. Попробуйте загрузить его снова.",
+      "errDiskFullTitle": "Недостаточно места на диске",
+      "errDiskFullBody": "На диске недостаточно свободного места для установки файлов мода. Освободите место и попробуйте снова.",
+      "errWriteTitle": "Ошибка прав на запись",
+      "errWriteBody": "Лаунчеру не удалось записать файлы в папку StarCraft II. Попробуйте запустить его от имени администратора.",
+      "errLaunchTitle": "Ошибка запуска",
+      "errLaunchBody": "Не удалось запустить StarCraft II. Убедитесь, что игра установлена правильно, и попробуйте снова.",
+      "showDetails": "Показать подробности",
+      "hideDetails": "Скрыть подробности"
     }
   },
-
   "cards": [
     {
       "id": "news-betapatchnotes_061",
       "title": "Campaign Update 0.6.1",
       "date": "July 12, 2026",
       "type": "patchnotes",
-
       "imageLabel": "Campaign 0.6.1",
       "imageText": "EVO",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025",
-      "highlights":["Lurkers now usable by the AI","Mission 5 Balance adjustments","Minor Bugfixes."],
-
+      "highlights": [
+        "Lurkers now usable by the AI",
+        "Mission 5 Balance adjustments",
+        "Minor Bugfixes."
+      ],
       "badge": "Campaign",
       "badgeColor": "#ff0025",
       "linkUrl": "https://scevo.org/posts/evo-campaign-loomings-0_6"
     },
-
     {
       "id": "news-1.19",
       "title": "SC: Evo 1.19",
       "date": "May 9, 2026",
       "type": "update",
-
       "imageUrl": "https://scevo.org/assets/img/blog/blog-update-1_20.webp",
       "imageLabel": "1.20.1",
       "imageText": "EVO UPDATE",
       "imageBg": "#0a242a",
       "imageAccent": "#00c5ff",
-
       "badge": "New Update",
       "badgeColor": "#00c5ff",
-
       "excerpt": "...",
       "linkUrl": "https://scevo.org/posts/evo-update-1_20_1",
       "readMoreLabel": "Read more",
-
       "locales": {
         "en": {
           "title": "SC: Evo 1.20.1",
@@ -292,25 +326,20 @@
         }
       }
     },
-
     {
       "id": "patreon-may2026",
       "title": "May Development Update",
       "date": "June 7, 2026",
       "type": "update",
-
       "imageLabel": "May Update",
       "imageText": "PATREON",
       "imageBg": "#2a1b0a",
       "imageAccent": "#ff9500",
-
       "badge": "Patreon",
       "badgeColor": "#ff9500",
-
       "excerpt": "...",
       "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/may-developer-160446092?utm_medium=clipboard_copy&utm_source=copyLink&utm_campaign=postshare_creator&utm_content=join_link",
       "readMoreLabel": "Read more",
-
       "locales": {
         "en": {
           "title": "May Development Update",
@@ -321,7 +350,6 @@
       }
     }
   ],
-
   "announcement": {
     "enabled": false,
     "message": "New Launcher Update Available! head to scevo.org to download the latest version of the Launcher.",
