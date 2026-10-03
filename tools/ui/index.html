@@ -11,194 +11,320 @@
     <div class="brand">SC<span>Evo</span> Deploy</div>
     <nav class="tabs">
       <button class="tab active" data-tab="package">Package</button>
-      <button class="tab" data-tab="manifest">Manifest</button>
+      <button class="tab" data-tab="manifest">Manifest<span class="dirty" id="mfDirtyDot" hidden></span></button>
       <button class="tab" data-tab="verify">Verify</button>
       <button class="tab" data-tab="deploy">Deploy</button>
-      <button class="tab" data-tab="news">News</button>
+      <button class="tab" data-tab="news">News<span class="dirty" id="nwDirtyDot" hidden></span></button>
       <button class="tab" data-tab="settings">Settings</button>
     </nav>
-    <div class="status" id="globalStatus"><span class="dot" id="statusDot"></span><span id="statusText">connecting…</span></div>
+    <div class="job"><span class="dot" id="jobDot"></span><span id="jobText">connecting…</span></div>
   </header>
+
+  <!-- Readiness: the answer to "can I deploy right now", visible from every tab. -->
+  <div class="ready" id="ready"></div>
 
   <main>
     <!-- ── PACKAGE ─────────────────────────────────────────────── -->
     <section class="panel active" id="tab-package">
-      <div class="panel-head">
-        <div>
-          <h2>Package</h2>
-          <p class="sub">Build <code>.SC2Map</code> / <code>.SC2Mod</code> archives from the SC2 install into <code>payload/</code>.</p>
-        </div>
-        <div class="actions">
-          <button class="btn ghost" id="pkgRefresh">Rescan</button>
-          <button class="btn ghost" id="pkgSelectChanged">Select all in payload</button>
-          <button class="btn ghost" id="pkgSelectNew">Select all new</button>
-          <button class="btn primary" id="pkgBuild">Package selected</button>
-        </div>
-      </div>
       <div id="pkgWarn"></div>
-      <div class="table-wrap">
-        <table id="pkgTable">
-          <thead><tr><th>Source</th><th class="num">Files</th><th>payload</th><th>betapayload</th><th>Action</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
+
+      <div class="section">
+        <div class="sec-head">
+          <div>
+            <h2>Package</h2>
+            <p class="sub">Builds <code>.SC2Map</code> / <code>.SC2Mod</code> archives from the SC2 install into <code>payload/</code>.</p>
+          </div>
+          <div class="actions">
+            <button class="btn ghost" id="pkgRefresh">Rescan</button>
+            <button class="btn ghost" id="pkgSelectChanged">Select everything already in payload</button>
+            <button class="btn ghost" id="pkgSelectNew">Select new only</button>
+            <button class="btn ghost" id="pkgClear">Clear</button>
+          </div>
+        </div>
+        <div class="sec-body flush" id="pkgList"></div>
+        <div class="actionbar">
+          <span class="summary" id="pkgSummary">Nothing selected.</span>
+          <div class="actions" style="margin-left:auto">
+            <button class="btn primary" id="pkgBuild">Package selected</button>
+          </div>
+        </div>
       </div>
-      <div class="empty" id="pkgEmpty" hidden>No source folders found. Check the SC2 install path in Settings.</div>
+
+      <details class="section" id="pkgVetoSection" hidden>
+        <summary class="sec-head"><h3>Vetoed sources <span class="badge" id="pkgVetoCount">0</span></h3>
+          <p class="sub">Skipped by every build until un-vetoed. Stored in <code>sc2packager-ignored.json</code>.</p>
+        </summary>
+        <div class="sec-body flush" id="pkgVetoList"></div>
+      </details>
     </section>
 
     <!-- ── MANIFEST ────────────────────────────────────────────── -->
     <section class="panel" id="tab-manifest">
-      <div class="panel-head">
-        <div>
-          <h2>Manifest</h2>
-          <p class="sub">Existing module order is preserved; new files append at the end.</p>
-        </div>
-        <div class="actions">
-          <div class="seg">
-            <button class="seg-btn active" data-branch="public">Public</button>
-            <button class="seg-btn" data-branch="beta">Beta</button>
+      <div class="section plain">
+        <div class="sec-head">
+          <div>
+            <h2>Manifest</h2>
+            <p class="sub">Module order is preserved; new files append at the end. Nothing is written until you save.</p>
           </div>
-          <button class="btn ghost" id="mfReload">Reload</button>
-          <button class="btn primary" id="mfSave">Save manifest</button>
-        </div>
-      </div>
-
-      <div class="grid2">
-        <div class="card" id="mfVersionsCard">
-          <h3>Versions</h3>
-          <div class="field-row" id="mfPublicVersions">
-            <label>Core (multiplayer)<input id="mfVerCore" type="text" placeholder="1.20.3"></label>
-            <label>Campaign<input id="mfVerCampaign" type="text" placeholder="0.6.1"></label>
-          </div>
-          <div id="mfBetaMeta" hidden>
-            <label class="check"><input type="checkbox" id="mfBetaEnabled"> Beta enabled</label>
-            <p class="hint">When off, the manifest is written in the stripped shape production serves (no modules, no criticalUpdate).</p>
-            <div class="field-row">
-              <label>Beta name<input id="mfBetaName" type="text"></label>
-              <label>Accent colour<input id="mfBetaAccent" type="text" placeholder="#ff6600"></label>
+          <div class="actions">
+            <div class="seg" id="mfBranch">
+              <button class="seg-btn active" data-branch="public">Public</button>
+              <button class="seg-btn" data-branch="beta">Beta</button>
             </div>
-            <div class="field-row">
-              <label>Major version<input id="mfBetaMajor" type="text"></label>
-              <label>Full version<input id="mfBetaFull" type="text"></label>
-              <label>Core version<input id="mfBetaCore" type="text"></label>
+            <button class="btn ghost" id="mfReload">Reload</button>
+            <button class="btn primary" id="mfSave">Save manifest</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="mfDirtyBanner" hidden><div class="banner warn"><b>Unsaved changes</b>Switching branch or reloading will discard them.</div></div>
+
+      <div class="row2">
+        <div class="section">
+          <div class="sec-head"><h3 id="mfMetaTitle">Versions</h3></div>
+          <div class="sec-body">
+            <div id="mfPublicVersions">
+              <div class="field-row">
+                <label>Core (multiplayer)<input id="mfVerCore" type="text" placeholder="1.20.3"></label>
+                <label>Campaign<input id="mfVerCampaign" type="text" placeholder="0.6.1"></label>
+              </div>
             </div>
-            <label>Access code <span class="hint-inline">plaintext, hashed locally — leave blank to keep the current one</span>
-              <input id="mfBetaCode" type="text" placeholder="leave blank to keep existing">
-            </label>
-            <div class="mono small" id="mfBetaHash"></div>
+            <div id="mfBetaMeta" hidden>
+              <label class="check"><input type="checkbox" id="mfBetaEnabled"> Beta enabled</label>
+              <p class="hint">When off, the manifest is written in the stripped shape production serves — no modules, no criticalUpdate. The fields below are kept but ignored.</p>
+              <div id="mfBetaFields">
+                <div class="field-row">
+                  <label>Beta name<input id="mfBetaName" type="text"></label>
+                  <label>Accent colour<input id="mfBetaAccent" type="text" placeholder="#ff6600"></label>
+                </div>
+                <div class="field-row">
+                  <label>Major version<input id="mfBetaMajor" type="text"></label>
+                  <label>Full version<input id="mfBetaFull" type="text"></label>
+                  <label>Core version<input id="mfBetaCore" type="text"></label>
+                </div>
+                <label>Access code <span class="hint-inline">plaintext, hashed locally — blank keeps the current one</span>
+                  <input id="mfBetaCode" type="text" placeholder="leave blank to keep existing">
+                </label>
+                <div class="mono small faint" id="mfBetaHash"></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="card">
-          <h3>Critical update</h3>
-          <p class="hint">Loaded from the existing manifest. Saving never silently disables it.</p>
-          <label class="check"><input type="checkbox" id="mfCritEnabled"> Enabled</label>
-          <div class="field-row">
-            <label>Minimum version<input id="mfCritMin" type="text"></label>
-            <label id="mfCritSevWrap">Severity
-              <select id="mfCritSev"><option value="critical">critical</option><option value="warning">warning</option><option value="info">info</option></select>
-            </label>
+        <div class="section">
+          <div class="sec-head"><h3>Critical update</h3><span class="pill" id="mfCritPill">off</span></div>
+          <div class="sec-body">
+            <p class="hint">Carried forward from the existing manifest — saving can never silently disable it.</p>
+            <label class="check"><input type="checkbox" id="mfCritEnabled"> Enabled</label>
+            <div class="field-row">
+              <label>Minimum version<input id="mfCritMin" type="text"></label>
+              <label id="mfCritSevWrap">Severity
+                <select id="mfCritSev"><option value="critical">critical</option><option value="warning">warning</option><option value="info">info</option></select>
+              </label>
+            </div>
+            <label>Message shown to users<textarea id="mfCritMsg" rows="2"></textarea></label>
           </div>
-          <label>Message shown to users<textarea id="mfCritMsg" rows="2"></textarea></label>
         </div>
       </div>
 
-      <div class="panel-head sub-head">
-        <h3>Modules <span class="badge" id="mfCount">0</span></h3>
-        <label class="check"><input type="checkbox" id="mfDropMissing"> Drop modules whose file is missing on disk</label>
+      <div class="section">
+        <div class="sec-head">
+          <h3>Modules <span class="badge" id="mfCount">0</span></h3>
+          <div class="actions"><label class="check" style="margin:0"><input type="checkbox" id="mfDropMissing"> Drop modules whose file is missing on disk</label></div>
+        </div>
+        <div class="split">
+          <div class="list" id="mfList"></div>
+          <div class="detail" id="mfDetail"></div>
+        </div>
       </div>
-      <div id="mfModules" class="modules"></div>
     </section>
 
     <!-- ── VERIFY ──────────────────────────────────────────────── -->
     <section class="panel" id="tab-verify">
-      <div class="panel-head">
-        <div>
-          <h2>Verify</h2>
-          <p class="sub">Checks the manifest against disk, against the live CDN, and against the launcher repo's copy.</p>
-        </div>
-        <div class="actions">
-          <div class="seg" id="vfBranch">
-            <button class="seg-btn active" data-branch="public">Public</button>
-            <button class="seg-btn" data-branch="beta">Beta</button>
+      <div class="section plain">
+        <div class="sec-head">
+          <div>
+            <h2>Verify</h2>
+            <p class="sub">Checks the manifest against disk, against the live CDN, and against the launcher repo's copy. Reads only — nothing is uploaded.</p>
           </div>
-          <button class="btn ghost" id="vfOrphans">Check remote orphans</button>
-          <button class="btn primary" id="vfRun">Run checks</button>
+          <div class="actions">
+            <div class="seg" id="vfBranch">
+              <button class="seg-btn active" data-branch="public">Public</button>
+              <button class="seg-btn" data-branch="beta">Beta</button>
+            </div>
+            <button class="btn ghost" id="vfOrphans">Check remote orphans</button>
+            <button class="btn primary" id="vfRun">Run checks</button>
+          </div>
         </div>
       </div>
       <div id="vfSummary"></div>
-      <div id="vfFindings" class="findings"></div>
+      <div id="vfGroups"></div>
       <div id="vfOrphanBox"></div>
     </section>
 
     <!-- ── DEPLOY ──────────────────────────────────────────────── -->
     <section class="panel" id="tab-deploy">
-      <div class="panel-head">
-        <div>
-          <h2>Deploy</h2>
-          <p class="sub">Payload uploads first, then the CDN is verified, and only then are the manifests published.</p>
+      <div class="section">
+        <div class="sec-head">
+          <div>
+            <h2>Deploy</h2>
+            <p class="sub">Payload uploads first, the CDN is verified, and only then are the manifests published.</p>
+          </div>
         </div>
-        <div class="actions">
-          <label class="check"><input type="checkbox" id="dpDry" checked> Dry run</label>
-          <label class="check"><input type="checkbox" id="dpForce"> Ignore check failures</label>
-          <button class="btn primary" id="dpRun">Start deploy</button>
+        <div class="sec-body">
+          <div class="row2">
+            <div>
+              <h4>Validate against</h4>
+              <div class="seg" id="dpBranch" style="margin-top:var(--s2)">
+                <button class="seg-btn active" data-branch="public">Public</button>
+                <button class="seg-btn" data-branch="beta">Beta</button>
+              </div>
+              <p class="hint" id="dpBranchNote"></p>
+            </div>
+            <div>
+              <h4>Mode</h4>
+              <div class="seg" id="dpMode" style="margin-top:var(--s2)">
+                <button class="seg-btn active" data-mode="dry">Dry run</button>
+                <button class="seg-btn" data-mode="live">Live upload</button>
+              </div>
+              <p class="hint" id="dpModeNote"></p>
+            </div>
+          </div>
+          <div class="actions" style="margin-top:var(--s3)">
+            <button class="btn primary" id="dpRun">Start dry run</button>
+            <label class="check" style="margin:0"><input type="checkbox" id="dpForce"> Ignore check failures</label>
+          </div>
+          <div id="dpForceWarn" hidden style="margin-top:var(--s3)">
+            <div class="banner warn"><b>Checks will not stop this deploy</b>Preflight and CDN errors will be logged and ignored. Only use this when you already know why a check fails.</div>
+          </div>
         </div>
       </div>
-      <ol class="steps" id="dpSteps">
-        <li data-step="preflight">Preflight checks</li>
-        <li data-step="stage">Stage launcher artifacts</li>
-        <li data-step="payload">Upload payload &amp; binaries</li>
-        <li data-step="postflight">Verify files on the CDN</li>
-        <li data-step="manifests">Publish manifests</li>
-        <li data-step="confirm">Confirm published manifests</li>
-      </ol>
-      <div class="progress-wrap" id="dpProgressWrap" hidden>
-        <div class="progress"><div class="progress-bar" id="dpBar"></div></div>
-        <div class="progress-meta"><span id="dpFolder"></span><span id="dpRate"></span></div>
-        <div id="dpFiles" class="xfer"></div>
-      </div>
+
       <div id="dpResult"></div>
-      <h3 class="log-title">Log</h3>
-      <pre class="log" id="dpLog"></pre>
+
+      <div class="deploy-grid">
+        <div class="section">
+          <div class="sec-head"><h3>Steps</h3></div>
+          <div class="sec-body flush" style="padding:var(--s2) 0">
+            <ol class="rail" id="dpRail">
+              <li data-step="preflight"><span class="marker">1</span><div><div class="label">Preflight checks</div><div class="note"></div></div></li>
+              <li data-step="stage"><span class="marker">2</span><div><div class="label">Stage launcher artifacts</div><div class="note"></div></div></li>
+              <li data-step="payload"><span class="marker">3</span><div><div class="label">Upload payload &amp; binaries</div><div class="note"></div></div></li>
+              <li data-step="postflight"><span class="marker">4</span><div><div class="label">Verify files on the CDN</div><div class="note"></div></div></li>
+              <li data-step="manifests"><span class="marker">5</span><div><div class="label">Publish manifests</div><div class="note"></div></div></li>
+              <li data-step="confirm"><span class="marker">6</span><div><div class="label">Confirm published manifests</div><div class="note"></div></div></li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="sec-head"><h3>Transfer</h3><span class="badge" id="dpTotals">idle</span></div>
+          <div class="sec-body flush"><div class="xfer" id="dpXfer"></div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <h3>Log</h3>
+          <div class="actions">
+            <button class="btn ghost sm" id="dpCopyLog">Copy</button>
+            <button class="btn ghost sm" id="dpClearLog">Clear</button>
+          </div>
+        </div>
+        <pre class="log" id="dpLog"></pre>
+      </div>
     </section>
 
     <!-- ── NEWS ────────────────────────────────────────────────── -->
     <section class="panel" id="tab-news">
-      <div class="panel-head">
-        <div>
-          <h2>News feed</h2>
-          <p class="sub">Cards, the announcement banner, and the locale strings the launcher overrides.</p>
-        </div>
-        <div class="actions">
-          <button class="btn ghost" id="nwReload">Reload</button>
-          <button class="btn ghost" id="nwAddCard">Add card</button>
-          <button class="btn primary" id="nwSave">Save news-feed.json</button>
+      <div class="section plain">
+        <div class="sec-head">
+          <div>
+            <h2>News feed</h2>
+            <p class="sub">Cards and the announcement banner the launcher shows on its home screen.</p>
+          </div>
+          <div class="actions">
+            <button class="btn ghost" id="nwReload">Reload</button>
+            <button class="btn ghost" id="nwAddCard">Add card</button>
+            <button class="btn primary" id="nwSave">Save news-feed.json</button>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <h3>Announcement banner</h3>
-        <label class="check"><input type="checkbox" id="nwAnnEnabled"> Enabled</label>
-        <div class="field-row">
-          <label>Type<select id="nwAnnType"><option>info</option><option>warning</option><option>critical</option></select></label>
+
+      <div id="nwDirtyBanner" hidden><div class="banner warn"><b>Unsaved changes</b>Reloading will discard them.</div></div>
+
+      <div class="section">
+        <div class="sec-head"><h3>Announcement banner</h3><span class="pill" id="nwAnnPill">off</span></div>
+        <div class="sec-body">
+          <label class="check"><input type="checkbox" id="nwAnnEnabled"> Enabled</label>
+          <div class="field-row">
+            <label style="max-width:220px">Type<select id="nwAnnType"><option>info</option><option>warning</option><option>critical</option></select></label>
+          </div>
+          <label>Message<textarea id="nwAnnMsg" rows="2"></textarea></label>
         </div>
-        <label>Message<textarea id="nwAnnMsg" rows="2"></textarea></label>
       </div>
-      <h3 class="log-title">Cards</h3>
-      <div id="nwCards" class="modules"></div>
+
+      <div class="section">
+        <div class="sec-head"><h3>Cards <span class="badge" id="nwCount">0</span></h3></div>
+        <div class="split">
+          <div class="list" id="nwList"></div>
+          <div class="detail" id="nwDetail"></div>
+        </div>
+      </div>
+
+      <details class="section">
+        <summary class="sec-head"><h3>Locale strings</h3>
+          <p class="sub">Read-only here — round-tripped untouched on save. Verify reports gaps.</p>
+        </summary>
+        <div class="sec-body"><div class="env" id="nwLocales"></div></div>
+      </details>
     </section>
 
     <!-- ── SETTINGS ────────────────────────────────────────────── -->
     <section class="panel" id="tab-settings">
-      <div class="panel-head"><div><h2>Settings</h2><p class="sub">Stored in <code>deploy-config.json</code>. Unknown keys are preserved.</p></div></div>
-      <div class="card">
-        <label>StarCraft II install folder<input id="stSc2" type="text" placeholder="D:\StarCraft II"></label>
-        <label>Launcher repo path<input id="stLauncher" type="text" placeholder="D:\test\sc-evo-launcher"></label>
-        <label class="check"><input type="checkbox" id="stDebug"> Emit <code>showVersionDebug</code> in launcher-version.json</label>
-        <div class="actions left"><button class="btn primary" id="stSave">Save settings</button></div>
+      <div class="section plain">
+        <div class="sec-head">
+          <div>
+            <h2>Settings</h2>
+            <p class="sub">Stored in <code>deploy-config.json</code> at the repo root. Unknown keys are preserved.</p>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <h3>Environment</h3>
-        <div id="stEnv" class="env"></div>
-        <div class="actions left"><button class="btn ghost" id="stPrune">Prune hash cache</button></div>
+
+      <div class="section">
+        <div class="sec-head"><h3>Paths</h3></div>
+        <div class="sec-body">
+          <label>StarCraft II install folder
+            <input id="stSc2" type="text" placeholder="D:\StarCraft II">
+          </label>
+          <p class="hint">The folder containing <code>Maps\</code> and <code>Mods\</code>. Source discovery reads from here.</p>
+
+          <label>Launcher repo path <span class="hint-inline">optional</span>
+            <input id="stLauncher" type="text" placeholder="(leave blank unless shipping a new launcher build)">
+          </label>
+          <div class="banner info">
+            <b>Leave this blank unless you are shipping a new launcher build.</b>
+            When set, every deploy copies <code>dist-electron\SC Evo Launcher.exe</code> and its installer
+            into this repo and rewrites <code>launcher-version.json</code> from that repo's
+            <code>package.json</code> version. If the repo is older than what is live, that
+            publishes a downgrade to every user. Blank means the exes and version file
+            already in this repo are uploaded unchanged.
+          </div>
+
+          <label class="check"><input type="checkbox" id="stDebug"> Emit <code>showVersionDebug</code> in launcher-version.json</label>
+          <div class="actions"><button class="btn primary" id="stSave">Save settings</button></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <h3>Environment</h3>
+          <div class="actions">
+            <button class="btn ghost sm" id="stRecheck">Re-check Cloudflare</button>
+            <button class="btn ghost sm" id="stPrune">Prune hash cache</button>
+          </div>
+        </div>
+        <div class="sec-body"><div class="env" id="stEnv"></div></div>
       </div>
     </section>
   </main>

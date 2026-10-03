@@ -22,6 +22,11 @@ const r2 = require('./lib/r2');
 const UI_DIR = path.join(__dirname, 'ui');
 const TOKEN = crypto.randomBytes(16).toString('hex');
 
+// Named per-port because cookies ignore the port component — two instances on
+// different ports would otherwise clobber each other's token. Assigned once the
+// server is listening; no request can arrive before that.
+let COOKIE_NAME = 'scevo';
+
 /* ── SSE bus ─────────────────────────────────────────────────────────────── */
 
 const clients = new Set();
@@ -40,8 +45,11 @@ async function runJob(name, fn) {
   broadcast({ type: 'job-start', job: name });
   const log = (message) => broadcast({ type: 'log', job: name, message });
   const progress = (data) => broadcast({ type: 'progress', job: name, ...data });
+  // Explicit stage boundaries. The UI used to infer these by regex-matching log
+  // text, which silently broke the moment a message was reworded.
+  const step = (id, state, detail) => broadcast({ type: 'step', job: name, step: id, state, detail: detail ?? null });
   try {
-    const result = await fn({ log, progress });
+    const result = await fn({ log, progress, step });
     broadcast({ type: 'job-done', job: name });
     return result;
   } catch (err) {
@@ -56,13 +64,12 @@ async function runJob(name, fn) {
 /* ── route handlers ──────────────────────────────────────────────────────── */
 
 const routes = {
+  // Deliberately cheap — no network. The R2 probe costs up to 15s and lives on
+  // /api/probe so the shell can paint immediately and fill the R2 chip in later.
   'GET /api/state': async () => {
     const c = cfg.readConfig();
     const rc = await r2.rcloneAvailable();
     const remotes = rc.ok ? await r2.rcloneRemotes() : [];
-    // Only probe when there is something to probe — avoids a pointless 15s wait
-    // on a machine with no rclone or no cf: remote.
-    const probe = (rc.ok && remotes.includes('cf:')) ? await r2.rcloneProbe() : null;
     return {
       config: {
         sc2InstallPath: c.sc2InstallPath ?? '',
@@ -77,10 +84,22 @@ const routes = {
         betaExists: fs.existsSync(cfg.BETA_DIR),
         mpqEditor: fs.existsSync(cfg.MPQ_EDITOR),
       },
-      rclone: { ...rc, remotes, hasCf: remotes.includes('cf:'), probe },
+      rclone: { ...rc, remotes, hasCf: remotes.includes('cf:') },
       cache: hashcache.stats(),
       busy: currentJob,
     };
+  },
+
+  // Actually talks to Cloudflare. Separate from /api/state so a slow or dead
+  // network never delays the UI, and so the strip can re-check on demand.
+  'GET /api/probe': async () => {
+    const rc = await r2.rcloneAvailable();
+    if (!rc.ok) return { probe: { ok: false, status: 'no-rclone', error: rc.error } };
+    const remotes = await r2.rcloneRemotes();
+    if (!remotes.includes('cf:')) {
+      return { probe: { ok: false, status: 'no-bucket', error: 'No "cf:" remote in rclone.conf. Create it with `rclone config`.' } };
+    }
+    return { probe: await r2.rcloneProbe() };
   },
 
   'POST /api/config': async (body) => {
@@ -181,12 +200,15 @@ const routes = {
     return { moved, direction };
   }),
 
-  'POST /api/verify': async (body) => runJob('verify', async ({ progress }) => {
+  'POST /api/verify': async (body) => runJob('verify', async ({ progress, step }) => {
     const branch = body.branch === 'beta' ? 'beta' : 'public';
-    return verify.preflight(branch, progress);
+    step('checks', 'active', `${branch} manifest`);
+    const r = await verify.preflight(branch, progress);
+    step('checks', r.canDeploy ? 'done' : 'failed', `${r.errors} error(s), ${r.warnings} warning(s)`);
+    return r;
   }),
 
-  'POST /api/deploy': async (body) => runJob('deploy', async ({ log, progress }) => {
+  'POST /api/deploy': async (body) => runJob('deploy', async ({ log, progress, step }) => {
     const dryRun = !!body.dryRun;
     const branch = body.branch === 'beta' ? 'beta' : 'public';
 
@@ -202,54 +224,86 @@ const routes = {
     log(`R2 reachable — ${probe.prefixes.length} top-level object(s)/prefix(es) in ${probe.bucket}`);
 
     // 1. Preflight — never upload against a manifest that disagrees with disk.
+    step('preflight', 'active');
     log('Running preflight checks…');
     const pre = await verify.preflight(branch, progress);
     if (!pre.canDeploy && !body.force) {
+      step('preflight', 'failed', `${pre.errors} error(s)`);
       return { stage: 'preflight', aborted: true, preflight: pre };
     }
     if (!pre.canDeploy) log(`Proceeding despite ${pre.errors} error(s) — force was requested`);
+    step('preflight', 'done', pre.canDeploy
+      ? `${pre.findings.length} checks, ${pre.warnings} warning(s)`
+      : `forced past ${pre.errors} error(s)`);
 
     // 2. Stage launcher artifacts and regenerate launcher-version.json.
+    step('stage', 'active');
     const staged = await r2.stageLauncherArtifacts();
     staged.staged.forEach((f) => log(`Staged ${f}`));
     staged.skipped.forEach((f) => log(`${f} unchanged, not re-copied`));
     staged.warnings.forEach((w) => log(`WARNING: ${w}`));
     const lv = r2.writeLauncherVersion();
     log(lv.ok ? `launcher-version.json -> v${lv.version}` : `WARNING: ${lv.error}`);
+    step('stage', 'done', lv.ok
+      ? `launcher v${lv.version}, ${staged.staged.length} copied, ${staged.skipped.length} unchanged`
+      : 'launcher repo not configured — existing artifacts left as they are');
 
     // 3. Payload and binaries FIRST. Manifests must never be live ahead of
     //    the bytes they describe.
+    step('payload', 'active');
     const uploads = [];
     for (const folder of cfg.UPLOAD_FOLDERS) {
       log(`Uploading ${folder.name}…`);
       const r = await r2.uploadFolder(folder.local, { dryRun, onProgress: progress, onLog: log });
       uploads.push(r);
-      if (!r.ok) throw new Error(`${folder.name} upload failed: ${r.error}`);
+      if (!r.ok) {
+        step('payload', 'failed', `${folder.name}: ${r.error}`);
+        throw new Error(`${folder.name} upload failed: ${r.error}`);
+      }
     }
+    const sent = uploads.reduce((n, u) => n + (u.transfers ?? 0), 0);
+    const bytes = uploads.reduce((n, u) => n + (u.bytes ?? 0), 0);
+    step('payload', 'done', `${sent} file(s), ${(bytes / 1048576).toFixed(1)} MB`);
 
     // 4. Confirm the CDN actually has everything at the right size.
     let post = null;
-    if (!dryRun) {
+    if (dryRun) {
+      step('postflight', 'skipped', 'dry run — nothing to verify');
+    } else {
+      step('postflight', 'active');
       log('Verifying uploaded files on the CDN…');
       const manifestDoc = mf.readManifest(branch === 'beta' ? cfg.BETA_MANIFEST : cfg.PUBLIC_MANIFEST);
       post = await verify.postflight(manifestDoc, branch, progress);
       const bad = post.filter((f) => f.level === 'error');
       if (bad.length && !body.force) {
+        step('postflight', 'failed', `${bad.length} file(s) wrong or missing on the CDN`);
         return { stage: 'postflight', aborted: true, preflight: pre, uploads, postflight: post };
       }
+      step('postflight', 'done', bad.length ? `forced past ${bad.length} error(s)` : 'all files present at the right size');
     }
 
     // 5. Only now publish the manifests.
+    step('manifests', 'active');
     log('Uploading manifests (last)…');
     const manifestUpload = await r2.uploadFolder(cfg.MANIFEST_FOLDER.local, { dryRun, onProgress: progress, onLog: log });
     uploads.push(manifestUpload);
-    if (!manifestUpload.ok) throw new Error(`Manifest upload failed: ${manifestUpload.error}`);
+    if (!manifestUpload.ok) {
+      step('manifests', 'failed', manifestUpload.error);
+      throw new Error(`Manifest upload failed: ${manifestUpload.error}`);
+    }
+    step('manifests', 'done', `${manifestUpload.transfers ?? 0} file(s)`);
 
     // 6. Read back what we just published.
     let published = null;
-    if (!dryRun) {
+    if (dryRun) {
+      step('confirm', 'skipped', 'dry run — nothing was published');
+    } else {
+      step('confirm', 'active');
       log('Confirming published manifests…');
       published = await verify.verifyPublishedManifests();
+      const bad = published.filter((f) => f.level === 'error');
+      step('confirm', bad.length ? 'failed' : 'done',
+        bad.length ? `${bad.length} manifest(s) did not read back` : 'published manifests match');
     }
     log(dryRun ? 'Dry run complete.' : 'Deploy complete.');
     return { stage: 'complete', dryRun, preflight: pre, uploads, postflight: post, published, launcherVersion: lv };
@@ -301,6 +355,17 @@ function send(res, status, body, headers = {}) {
   res.end(data);
 }
 
+function readCookie(req, name) {
+  const raw = req.headers.cookie;
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    if (part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+  }
+  return null;
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let raw = '';
@@ -318,7 +383,14 @@ function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
-  const token = url.searchParams.get('t') || req.headers['x-token'];
+  // Query param first, so the token in the address bar always beats a stale
+  // cookie left by an earlier run on this port. The cookie exists because a
+  // relative <link href="app.css"> resolves WITHOUT the query string and carries
+  // no x-token header — without it every subresource 403s and the page renders
+  // as bare unstyled HTML.
+  const token = url.searchParams.get('t')
+             || req.headers['x-token']
+             || readCookie(req, COOKIE_NAME);
 
   // Static UI
   if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
@@ -326,7 +398,13 @@ const server = http.createServer(async (req, res) => {
     const name = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
     const file = path.join(UI_DIR, name);
     if (!file.startsWith(UI_DIR) || !fs.existsSync(file)) return send(res, 404, { error: 'Not found' });
-    return send(res, 200, fs.readFileSync(file), { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream' });
+    const headers = { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream' };
+    // Hand the browser the token on the way in, so app.css/app.js authenticate
+    // themselves. Session cookie, no Secure (plain http on loopback).
+    if (name === 'index.html') {
+      headers['Set-Cookie'] = `${COOKIE_NAME}=${TOKEN}; Path=/; SameSite=Strict; HttpOnly`;
+    }
+    return send(res, 200, fs.readFileSync(file), headers);
   }
 
   if (token !== TOKEN) return send(res, 403, { error: 'Invalid or missing token' });
@@ -356,6 +434,7 @@ const server = http.createServer(async (req, res) => {
 const PORT = Number(process.env.SCEVO_PORT) || 0;
 server.listen(PORT, '127.0.0.1', () => {
   const { port } = server.address();
+  COOKIE_NAME = `scevo_${port}`;
   const url = `http://127.0.0.1:${port}/?t=${TOKEN}`;
   console.log('');
   console.log('  SCEvo Deploy Tool');
