@@ -9,7 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  REPO_ROOT, PAYLOAD_DIR, BETA_DIR, MANIFEST_DIR, ASSETS_DIR, R2_BASE,
+  REPO_ROOT, PAYLOAD_DIR, BETA_DIR, MANIFEST_DIR, ASSETS_DIR, R2_BASE, publicBase, publicBases,
   PUBLIC_MANIFEST, BETA_MANIFEST, readConfig, stripJunk,
 } = require('./config');
 const { hashOf } = require('./hashcache');
@@ -195,7 +195,8 @@ function checkNewsFeed(news, knownTags = null) {
     if (s.kind === 'banner' && !s.imageUrl) out.push(finding(ERROR, 'news-banner-image', `${where}: a banner needs an image URL`));
     if (s.kind === 'patreon' && !s.title) out.push(finding(WARN, 'news-patreon-unbaked', `${where}: this Patreon card has no post filled in yet. Save it from the News tab.`));
     // Images the tool re-hosts (Patreon previews) live in assets/ and only reach R2 with a campaign deploy.
-    const assetRel = typeof s.imageUrl === 'string' && s.imageUrl.startsWith(`${R2_BASE}/assets/`) ? s.imageUrl.slice(R2_BASE.length + '/assets/'.length) : null;
+    const assetBase = typeof s.imageUrl === 'string' && publicBases().find((b) => s.imageUrl.startsWith(`${b}/assets/`));
+    const assetRel = assetBase ? s.imageUrl.slice(assetBase.length + '/assets/'.length) : null;
     if (assetRel && !fs.existsSync(path.join(ASSETS_DIR, ...decodeURI(assetRel).split('/')))) {
       out.push(finding(ERROR, 'news-image-missing', `${where}: its image assets/${assetRel} is not in the assets folder, so the card would show a broken image`));
     }
@@ -286,9 +287,9 @@ async function checkDrift(branch) {
   const name = path.basename(localFile);
   const local = readManifest(localFile);
 
-  const live = await fetchJson(`${R2_BASE}/manifests/${name}`);
+  const live = await fetchJson(`${publicBase()}/manifests/${name}`);
   if (!live.ok) {
-    out.push(finding(WARN, 'live-unreachable', `Could not read live ${name} from R2: ${live.error}`));
+    out.push(finding(WARN, 'live-unreachable', `Could not read live ${name} from ${publicBase()}: ${live.error}`));
   } else if (local) {
     if (branch === 'public') {
       for (const key of ['multiplayer', 'campaign']) {
@@ -349,6 +350,53 @@ async function headFile(url, timeoutMs = 20000) {
   }
 }
 
+// Cloudflare's free plan doesn't edge-cache files above 512 MB. They're still
+// served straight from R2, just without the CDN's speed-up.
+const EDGE_CACHE_LIMIT = 512 * 1024 * 1024;
+
+// The launcher resumes interrupted downloads with a Range request. A host that
+// ignores Range forces a restart from zero after every dropped connection.
+async function probeRange(url, size, timeoutMs = 20000) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: { Range: 'bytes=0-0' }, signal: ac.signal, cache: 'no-store' });
+    const range = res.headers.get('content-range') || '';
+    try { await res.body?.cancel(); } catch {}
+    if (res.status !== 206) return { ok: false, detail: `HTTP ${res.status} instead of 206` };
+    const total = Number(/\/(\d+)$/.exec(range)?.[1]);
+    if (size && total !== size) return { ok: false, detail: `Content-Range "${range}" doesn't match size ${size}` };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, detail: err.name === 'AbortError' ? 'timeout' : err.message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Checks one file on every public address. relUrl: "payload/Mods/…" (already encoded).
+async function checkCdnFile(relUrl, size, label) {
+  const out = [];
+  for (const base of publicBases()) {
+    const url = `${base}/${relUrl}`;
+    const r = await headFile(url);
+    if (!r.ok) {
+      out.push(finding(ERROR, 'cdn-missing', `${label} is not reachable on ${base} (${r.error ?? 'HTTP ' + r.status})`, url));
+      continue;
+    }
+    if (r.length !== size) {
+      out.push(finding(ERROR, 'cdn-size', `${label}: ${base} serves ${r.length.toLocaleString()} bytes, manifest says ${size.toLocaleString()}`, url));
+      continue;
+    }
+    const rg = await probeRange(url, size);
+    if (!rg.ok) out.push(finding(WARN, 'cdn-no-range', `${label}: ${base} doesn't support resuming (${rg.detail}) — interrupted downloads will restart from zero`, url));
+    if (size > EDGE_CACHE_LIMIT && base !== R2_BASE) {
+      out.push(finding(OK, 'cdn-no-edge-cache', `${label} is over 512 MB, so Cloudflare serves it from R2 without edge caching (expected on the free plan)`, url));
+    }
+  }
+  return out;
+}
+
 // Confirms every file the manifest describes is actually on the CDN at the right
 // size BEFORE the manifest itself is published (plan B1).
 async function postflight(manifest, branch, onProgress) {
@@ -360,18 +408,12 @@ async function postflight(manifest, branch, onProgress) {
   for (const f of files) {
     // encodeURI leaves "/" alone and turns the spaces in "SC Evolution Complete"
     // into %20, matching what the launcher's URL parsing produces.
-    const url = `${R2_BASE}/${prefix}/${encodeURI(f.path)}`;
     onProgress && onProgress({ phase: 'head', file: f.name ?? f.path, done, total: files.length });
     done++;
-    const r = await headFile(url);
-    if (!r.ok) {
-      out.push(finding(ERROR, 'cdn-missing', `${f.path} is not reachable on the CDN (${r.error ?? 'HTTP ' + r.status})`, url));
-    } else if (r.length !== f.size) {
-      out.push(finding(ERROR, 'cdn-size', `${f.path}: CDN serves ${r.length.toLocaleString()} bytes, manifest says ${f.size.toLocaleString()}`, url));
-    }
+    out.push(...await checkCdnFile(`${prefix}/${encodeURI(f.path)}`, f.size, f.path));
   }
   onProgress && onProgress({ phase: 'done', done, total: files.length });
-  if (!out.length) out.push(finding(OK, 'cdn-ok', `All ${files.length} file(s) verified on the CDN at the correct size`));
+  if (!out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `All ${files.length} file(s) verified on ${publicBases().join(' and ')} at the correct size`));
   return out;
 }
 
@@ -381,13 +423,15 @@ async function verifyPublishedManifests(files) {
   for (const file of (files || [PUBLIC_MANIFEST, BETA_MANIFEST])) {
     if (!fs.existsSync(file)) continue;
     const name = path.basename(file);
-    const live = await fetchJson(`${R2_BASE}/manifests/${name}`);
-    if (!live.ok) { out.push(finding(ERROR, 'published-unreachable', `${name}: ${live.error}`)); continue; }
     const local = readManifest(file);
-    if (JSON.stringify(live.data) !== JSON.stringify(local)) {
-      out.push(finding(ERROR, 'published-mismatch', `${name} on the CDN does not match the local file (R2 may still be propagating)`));
-    } else {
-      out.push(finding(OK, 'published-ok', `${name} published and verified`));
+    for (const base of publicBases()) {
+      const live = await fetchJson(`${base}/manifests/${name}?t=${Date.now()}`);
+      if (!live.ok) { out.push(finding(ERROR, 'published-unreachable', `${name} on ${base}: ${live.error}`)); continue; }
+      if (JSON.stringify(live.data) !== JSON.stringify(local)) {
+        out.push(finding(ERROR, 'published-mismatch', `${name} on ${base} does not match the local file (a cache may still be serving the old one)`));
+      } else {
+        out.push(finding(OK, 'published-ok', `${name} published and verified on ${base}`));
+      }
     }
   }
   return out;
@@ -476,14 +520,11 @@ async function postflightMelee(manifest, onProgress) {
   const files = meleeFiles(manifest);
   let done = 0;
   for (const f of files) {
-    const url = `${R2_BASE}/meleepayload/${encodeURI(f.path)}`;
     onProgress && onProgress({ phase: 'head', file: f.label, done, total: files.length });
     done++;
-    const r = await headFile(url);
-    if (!r.ok) out.push(finding(ERROR, 'cdn-missing', `${f.label} is not reachable on the CDN (${r.error ?? 'HTTP ' + r.status})`, url));
-    else if (r.length !== f.size) out.push(finding(ERROR, 'cdn-size', `${f.label}: CDN serves ${r.length} bytes, manifest says ${f.size}`, url));
+    out.push(...await checkCdnFile(`meleepayload/${encodeURI(f.path)}`, f.size, f.label));
   }
-  if (!out.length) out.push(finding(OK, 'cdn-ok', `All ${files.length} melee file(s) verified on the CDN`));
+  if (!out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `All ${files.length} melee file(s) verified on the CDN`));
   return out;
 }
 

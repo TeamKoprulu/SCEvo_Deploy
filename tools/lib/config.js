@@ -31,8 +31,22 @@ const MELEE_MANIFEST  = path.join(MANIFEST_DIR, 'melee-manifest.json');
 const NEWS_FEED       = path.join(MANIFEST_DIR, 'news-feed.json');
 const LAUNCHER_VER    = path.join(MANIFEST_DIR, 'launcher-version.json');
 
-// Must stay in sync with SERVERS[0] in sc-evo-launcher/electron/main.js.
+// The bucket's r2.dev address. Every launcher can reach it, so it stays the
+// fallback even once a custom domain is live. Must stay in sync with R2_DEV_BASE
+// in sc-evo-launcher/electron/main.js.
 const R2_BASE = 'https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev';
+
+// The address written into manifests, launcher-version.json and news cards:
+// "cdnBase" in deploy-config.json (e.g. https://cdn.scevo.org) once the custom
+// domain is connected in the R2 dashboard, otherwise r2.dev.
+function publicBase() {
+  const c = readConfig().cdnBase;
+  return typeof c === 'string' && /^https:\/\/[^/]+/.test(c.trim()) ? c.trim().replace(/\/+$/, '') : R2_BASE;
+}
+// Every address players download from, primary first. Postflight checks all of them.
+function publicBases() {
+  return [...new Set([publicBase(), R2_BASE])];
+}
 const BUCKET  = 'cf:evo-campaign';
 
 const SCHEMA_VERSION = 1;
@@ -118,6 +132,6 @@ module.exports = {
   REPO_ROOT, TOOLS_DIR, CACHE_DIR, CONFIG_PATH, CATALOG_PATH, MPQ_EDITOR,
   MANIFEST_DIR, HISTORY_DIR, PAYLOAD_DIR, BETA_DIR, MELEE_DIR, ASSETS_DIR, OUTPUT_DIRS, DEFAULT_PATREON_VANITY,
   PUBLIC_MANIFEST, BETA_MANIFEST, MELEE_MANIFEST, NEWS_FEED, LAUNCHER_VER,
-  R2_BASE, BUCKET, SCHEMA_VERSION, DEFAULT_ROOTS, UPLOAD_FOLDERS, MANIFEST_FOLDER,
+  R2_BASE, publicBase, publicBases, BUCKET, SCHEMA_VERSION, DEFAULT_ROOTS, UPLOAD_FOLDERS, MANIFEST_FOLDER,
   readConfig, updateConfig, stripJunk, writeJsonAtomic, writeTextAtomic, ensureCacheDir,
 };

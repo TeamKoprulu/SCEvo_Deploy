@@ -66,7 +66,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
     const staged = await r2.stageLauncherArtifacts();
     staged.staged.forEach((f) => log(`Staged ${f}`));
     staged.warnings.forEach((w) => log(`WARNING: ${w}`));
-    launcherVersion = r2.writeLauncherVersion();
+    launcherVersion = await r2.writeLauncherVersion();
     const lv = launcherVersion;
     const versionText = lv.ok ? (lv.previous && lv.previous !== lv.version ? `launcher ${lv.previous} → ${lv.version}` : `launcher ${lv.version} (unchanged)`) : null;
     log(lv.ok ? `launcher-version.json: ${versionText}` : `WARNING: ${lv.error}`);
@@ -80,7 +80,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
   const uploads = [];
   for (const folder of cfg.UPLOAD_FOLDERS.filter((f) => packages.includes(f.package))) {
     log(`Uploading ${folder.name}…`);
-    const r = await r2.uploadFolder(folder.local, { dryRun, onProgress: progress, onLog: log });
+    const r = await r2.uploadFolder(folder.local, { dryRun, onProgress: progress, onLog: log, cacheControl: r2.CACHE_CONTROL.default });
     uploads.push(r);
     if (!r.ok) { step('payload', 'failed', `${folder.name}: ${r.error}`); throw new Error(`${folder.name} upload failed: ${r.error}`); }
   }
@@ -105,7 +105,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
   // 6. Manifests last; only this package's files, never .history or *.bak.json.
   step('manifests', 'active');
   const include = packages.flatMap((p) => MANIFESTS[p]);
-  const mu = await r2.uploadFolder(cfg.MANIFEST_FOLDER.local, { dryRun, onProgress: progress, onLog: log, include, exclude: ['.history/**', '*.bak.json'] });
+  const mu = await r2.uploadFolder(cfg.MANIFEST_FOLDER.local, { dryRun, onProgress: progress, onLog: log, include, exclude: ['.history/**', '*.bak.json'], cacheControl: r2.CACHE_CONTROL.manifests });
   uploads.push(mu);
   if (!mu.ok) { step('manifests', 'failed', mu.error); throw new Error(`Manifest upload failed: ${mu.error}`); }
   step('manifests', 'done', `${mu.transfers ?? 0} file(s)`);

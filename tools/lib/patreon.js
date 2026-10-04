@@ -15,8 +15,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { ASSETS_DIR, R2_BASE } = require('./config');
-const { formatDate } = require('./news');
+const { ASSETS_DIR, publicBase } = require('./config');
+const { formatDate, PATREON_AUTHOR } = require('./news');
 
 const API = 'https://www.patreon.com/api';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
@@ -25,7 +25,7 @@ const NEWS_ASSETS = path.join(ASSETS_DIR, 'news');
 
 // Every card field a slot's top level can carry; all of it is derived on a patreon slot.
 const CARD_KEYS = ['title', 'excerpt', 'highlights', 'imageUrl', 'badge', 'badgeColor', 'linkUrl', 'date', 'type',
-  'imageText', 'imageLabel', 'imageBg', 'imageAccent', 'readMoreLabel', 'patreonId'];
+  'imageText', 'imageLabel', 'imageBg', 'imageAccent', 'readMoreLabel', 'patreonId', 'author'];
 
 async function getJson(url, timeoutMs = 8000) {
   const ctl = new AbortController();
@@ -104,7 +104,7 @@ async function rehostImage(post) {
     fs.mkdirSync(NEWS_ASSETS, { recursive: true });
     fs.writeFileSync(abs, Buffer.from(await res.arrayBuffer()));
   }
-  return `${R2_BASE}/assets/news/${file}`;
+  return `${publicBase()}/assets/news/${file}`;
 }
 
 /**
@@ -140,6 +140,7 @@ async function bakePatreonSlots(feed, posts, { rehost = false, download = rehost
       excerpt: '',
       linkUrl: post.url,
       badge: 'Patreon',
+      author: PATREON_AUTHOR, // an "author" override names someone else
       ...(imageUrl ? { imageUrl } : {}),
     });
     for (const [k, v] of Object.entries(slot.overrides ?? {})) {

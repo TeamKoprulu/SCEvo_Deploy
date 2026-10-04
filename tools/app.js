@@ -364,6 +364,20 @@ const routes = {
     return { written: path.relative(cfg.REPO_ROOT, cfg.NEWS_FEED), warnings };
   },
 
+  // Offline .zip of the public campaign package (local file only).
+  'POST /api/offline-zip': async () => runJob('offline-zip', async ({ log, progress }) => {
+    const r = await require('./lib/offline').buildOfflineZip({ log, onProgress: progress });
+    return { file: r.file, rel: path.relative(cfg.REPO_ROOT, r.file), bytes: r.bytes, entries: r.entries };
+  }),
+
+  // Shows a file the tool wrote in Explorer. Only paths inside this repo.
+  'POST /api/open-folder': async (body) => {
+    const target = path.resolve(cfg.REPO_ROOT, String(body.path || ''));
+    if (!target.startsWith(cfg.REPO_ROOT + path.sep) || !fs.existsSync(target)) throw Object.assign(new Error('Not a file in this repo'), { status: 400 });
+    spawn('explorer.exe', [`/select,${target}`], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+    return {};
+  },
+
   'POST /api/cache-prune': async () => ({ removed: hashcache.prune(), cache: hashcache.stats() }),
 };
 

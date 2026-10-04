@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
 const {
-  REPO_ROOT, BUCKET, R2_BASE, LAUNCHER_VER,
+  REPO_ROOT, BUCKET, publicBase, LAUNCHER_VER,
   readConfig, writeTextAtomic,
 } = require('./config');
 const { hashFileStream } = require('./hashcache');
@@ -101,7 +101,8 @@ function rcloneProbe(timeoutMs = 15000) {
 // `copy` not `sync` — a blind sync on a 1.1 GB bucket is one typo away from
 // deleting production. Orphan cleanup is an explicit, reviewed action instead.
 // include: only these file names (rclone --include). exclude: patterns to skip.
-function uploadFolder(localName, { dryRun = false, onProgress, onLog, include = null, exclude = [] } = {}) {
+// cacheControl: Cache-Control header stored on uploaded objects (see CACHE_CONTROL).
+function uploadFolder(localName, { dryRun = false, onProgress, onLog, include = null, exclude = [], cacheControl = null } = {}) {
   const localPath = path.join(REPO_ROOT, localName);
   return new Promise((resolve) => {
     if (!fs.existsSync(localPath)) {
@@ -116,6 +117,7 @@ function uploadFolder(localName, { dryRun = false, onProgress, onLog, include = 
       '-v',
     ];
     if (dryRun) args.push('--dry-run');
+    if (cacheControl) args.push('--header-upload', `Cache-Control: ${cacheControl}`);
     // Ordered rules: excludes first, then the allow-list, then drop everything else.
     for (const pattern of exclude) args.push('--filter', `- ${pattern}`);
     if (include) {
@@ -249,7 +251,7 @@ function publishedLauncherVersion() {
 // Writes launcher-version.json from the launcher repo's package.json version.
 // Built with JSON.stringify — the old script concatenated it by hand, and this
 // is the one file a broken launcher cannot fix by self-updating.
-function writeLauncherVersion() {
+async function writeLauncherVersion() {
   const cfg = readConfig();
   const pkgPath = cfg.launcherRepoPath ? path.join(cfg.launcherRepoPath, 'package.json') : null;
   if (!pkgPath || !fs.existsSync(pkgPath)) {
@@ -259,13 +261,29 @@ function writeLauncherVersion() {
   const previous = publishedLauncherVersion();
   const doc = { version };
   if (cfg.showVersionDebug === true) doc.showVersionDebug = true;
-  doc.portable  = { url: `${R2_BASE}/launcher/${encodeURI(PORTABLE_EXE)}` };
-  doc.installer = { url: `${R2_BASE}/installer/${encodeURI(SETUP_EXE)}` };
+  // The launcher refuses Windows 7/8 since 1.3 (Electron 28); recorded for the site and tools.
+  doc.minWindows = '10';
+  // sha256 + size let the launcher's self-updater resume and verify the download.
+  const artifact = async (folder, exe) => {
+    const out = { url: `${publicBase()}/${folder}/${encodeURI(exe)}` };
+    const local = path.join(REPO_ROOT, folder, exe);
+    if (fs.existsSync(local)) {
+      out.size = fs.statSync(local).size;
+      out.sha256 = await hashFileStream(local);
+    }
+    return out;
+  };
+  doc.portable  = await artifact('launcher', PORTABLE_EXE);
+  doc.installer = await artifact('installer', SETUP_EXE);
   writeTextAtomic(LAUNCHER_VER, JSON.stringify(doc, null, 2) + '\n');
   return { ok: true, version, previous, path: LAUNCHER_VER };
 }
 
+// Manifests must never be served stale from an edge cache; everything else may
+// be cached briefly (payload paths are reused across versions, so not forever).
+const CACHE_CONTROL = { manifests: 'no-cache', default: 'public, max-age=3600' };
+
 module.exports = {
-  rcloneAvailable, rcloneRemotes, rcloneProbe, uploadFolder, listRemote, deleteRemote,
+  CACHE_CONTROL, rcloneAvailable, rcloneRemotes, rcloneProbe, uploadFolder, listRemote, deleteRemote,
   stageLauncherArtifacts, writeLauncherVersion, PORTABLE_EXE, SETUP_EXE,
 };

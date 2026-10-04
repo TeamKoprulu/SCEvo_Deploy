@@ -2,10 +2,15 @@
 // News feed resolution: turns news-feed.json `feed` slots into the cards the
 // renderer shows, filling "post" slots from the site's postList.json.
 // Copied from the launcher (sc-evo-launcher electron/news/posts.js); copy it again
-// after changes there instead of editing this file.
+// after changes there instead of editing this file. test/news-sync.test.js fails
+// when the two drift apart.
 // ═══════════════════════════════════════════════════════════════════════════
 const SITE_BASE = "https://scevo.org";
 const POST_LIST_PATH = "/assets/data/postList.json";
+const AUTHORS_PATH = "/assets/data/authors.json";
+
+// Patreon posts don't carry an author; they're written by Kat unless a slot says otherwise.
+const PATREON_AUTHOR = "Kat";
 
 // Launcher language → site locale. Missing (and en) means the English post.
 const SITE_LOCALES = { es: "esES", ko: "koKR", zh: "zhCN", ru: "ruRU", it: "itIT" };
@@ -79,7 +84,21 @@ function formatDate(iso, lang) {
 }
 
 const OVERRIDE_KEYS = ["title", "excerpt", "highlights", "imageUrl", "badge", "badgeColor", "linkUrl", "date", "type",
-  "imageText", "imageLabel", "imageBg", "imageAccent", "readMoreLabel"];
+  "imageText", "imageLabel", "imageBg", "imageAccent", "readMoreLabel", "author"];
+
+// Author key ("Kat", "HyperONE"…) → { author, authorIcon } from the site's authors.json
+// ({ Kat: { name: "Angel \"Kat\" Huerta", icon: "/assets/img/…" } }). Keys match
+// case-insensitively; an unknown key is shown as written.
+function resolveAuthor(key, authors) {
+  const k = String(key || "").trim();
+  if (!k) return {};
+  const map = authors && typeof authors === "object" ? authors : {};
+  const hit = map[k] || map[Object.keys(map).find((n) => n.toLowerCase() === k.toLowerCase())];
+  const out = { author: hit?.name || k };
+  const icon = absUrl(hit?.icon);
+  if (icon) out.authorIcon = icon;
+  return out;
+}
 const pickDefined = (o, keys) => {
   const out = {};
   for (const k of keys) {
@@ -91,7 +110,7 @@ const pickDefined = (o, keys) => {
 
 // One "post" slot → card. detail: { title, tags, excerpt } in the wanted language (optional).
 // tagNames: { "Update": "Actualización", … } for the wanted language (optional).
-function postCard(slot, post, { lang = "en", detail = null, tagNames = null } = {}) {
+function postCard(slot, post, { lang = "en", detail = null, tagNames = null, authors = null } = {}) {
   const tags = splitTags(post.tags);
   const ruleTag = slot.rule?.tag ? tags.find((t) => normTag(t) === normTag(slot.rule.tag)) || slot.rule.tag : null;
   const badgeEn = ruleTag || tags[0];
@@ -109,13 +128,14 @@ function postCard(slot, post, { lang = "en", detail = null, tagNames = null } = 
     badge,
     linkUrl: absUrl(post.link),
     post: post.link,
+    ...resolveAuthor(detail?.author || post.author, authors),
   };
   if (slot.variant) card.variant = slot.variant;
   return card;
 }
 
 // Applies overrides, then the slot's locales for `lang` (when applyLocales), and the card type rules.
-function finishCard(card, slot, { lang, applyLocales }) {
+function finishCard(card, slot, { lang, applyLocales, authors = null }) {
   const out = { ...card, ...pickDefined(slot.overrides, OVERRIDE_KEYS) };
   if (applyLocales) {
     Object.assign(out, pickDefined(slot.locales?.[lang], OVERRIDE_KEYS));
@@ -123,6 +143,9 @@ function finishCard(card, slot, { lang, applyLocales }) {
   } else if (slot.locales && Object.keys(slot.locales).length) {
     out.locales = slot.locales;
   }
+  // An overridden author is a key ("Kat"); turn it into the display name and icon.
+  const authorKey = (applyLocales && slot.locales?.[lang]?.author) || slot.overrides?.author;
+  if (authorKey) { delete out.authorIcon; Object.assign(out, resolveAuthor(authorKey, authors)); }
   if (!slot.overrides?.type && Array.isArray(out.highlights) && out.highlights.length) out.type = "patchnotes";
   return out;
 }
@@ -138,10 +161,11 @@ function selectPosts(feed, posts) {
   return picked;
 }
 
-// feed + sorted posts → cards. details: Map link → { title, tags, excerpt } for `lang`.
+// feed + sorted posts → cards. details: Map link → { title, tags, excerpt, author } for `lang`.
+// authors: the site's authors.json, for author display names and icons.
 // applyLocales: the launcher applies locales itself (true); the old-launcher snapshot keeps them (false).
 // withSlot adds `slot` (the feed index) to each card, for editors.
-function resolveFeed(feed, posts, { lang = "en", details = new Map(), tagNames = null, applyLocales = true, withSlot = false } = {}) {
+function resolveFeed(feed, posts, { lang = "en", details = new Map(), tagNames = null, authors = null, applyLocales = true, withSlot = false } = {}) {
   const picked = selectPosts(feed, posts);
   const cards = [];
   const push = (card, i) => cards.push(withSlot ? { ...card, slot: i } : card);
@@ -150,7 +174,7 @@ function resolveFeed(feed, posts, { lang = "en", details = new Map(), tagNames =
     if (slot.kind === "post") {
       const post = picked.get(i);
       if (!post) return;
-      push(finishCard(postCard(slot, post, { lang, detail: details.get(post.link), tagNames }), slot, { lang, applyLocales }), i);
+      push(finishCard(postCard(slot, post, { lang, detail: details.get(post.link), tagNames, authors }), slot, { lang, applyLocales, authors }), i);
     } else if (slot.kind === "banner") {
       const card = { id: slot.id, type: "banner", imageUrl: slot.imageUrl, linkUrl: slot.linkUrl, title: slot.title };
       if (slot.variant) card.variant = slot.variant;
@@ -161,6 +185,8 @@ function resolveFeed(feed, posts, { lang = "en", details = new Map(), tagNames =
       const { kind, overrides, enabled, ...rest } = slot;
       const out = { ...rest };
       if (applyLocales) { Object.assign(out, pickDefined(slot.locales?.[lang], OVERRIDE_KEYS)); delete out.locales; }
+      const authorKey = out.author || overrides?.author || (kind === "patreon" ? PATREON_AUTHOR : null);
+      if (authorKey) { delete out.authorIcon; Object.assign(out, resolveAuthor(authorKey, authors)); }
       push(out, i);
     }
   });
@@ -179,7 +205,9 @@ function createNewsResolver({ fetch, cache = null, base = SITE_BASE, timeoutMs =
     try {
       const res = await fetch(url, { signal: ctl.signal });
       const text = res.ok ? await res.text() : null;
-      mem.set(url, text);
+      // Only successes are remembered: one failed request must not blank the
+      // news for the rest of the session.
+      if (text !== null) mem.set(url, text);
       return text;
     } finally { clearTimeout(timer); }
   }
@@ -209,6 +237,7 @@ function createNewsResolver({ fetch, cache = null, base = SITE_BASE, timeoutMs =
       const detail = {
         title: localized ? meta.title : null,
         tags: localized ? meta.tags : null,
+        author: meta.author || null,
         excerpt: (localized ? meta.description : null) || (localized || !post.description ? excerptFrom(body) : null),
       };
       cache?.set(key, detail);
@@ -228,22 +257,35 @@ function createNewsResolver({ fetch, cache = null, base = SITE_BASE, timeoutMs =
     return cache?.get(`tags:${loc}`) || null;
   }
 
+  // { Kat: { name, icon, … }, … } from the site, falling back to the cache.
+  async function loadAuthors() {
+    try {
+      const text = await getText(base + AUTHORS_PATH);
+      if (text) {
+        const authors = JSON.parse(text.replace(/^﻿/, ""));
+        if (authors && typeof authors === "object") { cache?.set("authors", authors); return authors; }
+      }
+    } catch { /* fall through */ }
+    return cache?.get("authors") || null;
+  }
+
   async function resolve(feed, lang = "en", { applyLocales = true, withSlot = false } = {}) {
     const posts = await loadPosts();
     const picked = [...selectPosts(feed, posts).values()];
-    const [detailList, tagNames] = await Promise.all([
+    const [detailList, tagNames, authors] = await Promise.all([
       Promise.all(picked.map((p) => loadDetail(p, lang))),
       loadTagNames(lang),
+      loadAuthors(),
     ]);
     const details = new Map(picked.map((p, i) => [p.link, detailList[i]]));
-    return { cards: resolveFeed(feed, posts, { lang, details, tagNames, applyLocales, withSlot }), posts };
+    return { cards: resolveFeed(feed, posts, { lang, details, tagNames, authors, applyLocales, withSlot }), posts };
   }
 
-  return { resolve, loadPosts, loadDetail, loadTagNames, clear: () => mem.clear() };
+  return { resolve, loadPosts, loadDetail, loadTagNames, loadAuthors, clear: () => mem.clear() };
 }
 
 module.exports = {
-  SITE_BASE, SITE_LOCALES,
-  normTag, splitTags, sortPosts, pickPost, selectPosts, parseFrontMatter, excerptFrom, formatDate,
+  SITE_BASE, SITE_LOCALES, PATREON_AUTHOR,
+  normTag, resolveAuthor, splitTags, sortPosts, pickPost, selectPosts, parseFrontMatter, excerptFrom, formatDate,
   postCard, resolveFeed, createNewsResolver,
 };

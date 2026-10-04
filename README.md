@@ -88,6 +88,14 @@ Edit it on the **News** tab. The launcher shows the cards in `feed`, in order:
 - **Older launchers** read `cards`. Saving writes it as an English snapshot of the feed (without banners), so they keep showing news.
 - The announcement banner, `promo` and the locale strings are kept as they are on save.
 
+## Offline package
+
+For players who can't use the launcher: **Deploy tab → Build offline .zip** (or `run.cmd offline-zip`) writes `offline\SCEvo_Offline_Campaign-<campaign>_Evo-<version>.zip`.
+
+- **Contents:** only the files currently **published** in the live `update-manifest.json` on R2 (the public campaign package), read from `payload/` and checked by hash. Anything built but not yet deployed, such as work in progress, makes it stop and name the file. The files are laid out like the StarCraft II folder, plus `Play SC Evo.cmd` (starts `EvoCompleteLauncher.SC2Map` the way the launcher does) and a README (edit `tools\offline-readme.txt`). No melee maps or melee mods.
+- **To include new files,** deploy them first. It needs R2 to be reachable, and never falls back to local files.
+- **Local only:** nothing is uploaded, and `offline\` is not committed.
+
 ## What Build and Deploy guarantee
 
 - **Payload folders mirror the catalog.** Files no item claims any more are removed on Build.

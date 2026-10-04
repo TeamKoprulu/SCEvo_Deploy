@@ -74,3 +74,16 @@ test('checkNewsFeed: patreon slots and re-hosted images', () => {
   assert.deepEqual(codes([{ id: 'a', kind: 'patreon', rule: { index: 0 }, title: 'T' }]), ['news-feed-index']);
   assert.deepEqual(codes([{ id: 'a', kind: 'custom', imageUrl: `${R2_BASE}/assets/news/does-not-exist.png` }]), ['news-image-missing']);
 });
+
+test('patreon cards are credited to Kat unless an override names someone else', async () => {
+  const feed = [
+    { id: 'a', kind: 'patreon', rule: { index: 1 } },
+    { id: 'b', kind: 'patreon', rule: { index: 2 }, overrides: { author: 'HyperONE' } },
+  ];
+  await bakePatreonSlots(feed, POSTS, { rehost: true, download });
+  assert.equal(feed[0].author, 'Kat');
+  assert.equal(feed[1].author, 'HyperONE');
+  const authors = { Kat: { name: 'Angel "Kat" Huerta' }, HyperONE: { name: 'HyperONE' } };
+  const cards = news.resolveFeed(feed, [], { authors });
+  assert.deepEqual(cards.map((c) => c.author), ['Angel "Kat" Huerta', 'HyperONE']);
+});

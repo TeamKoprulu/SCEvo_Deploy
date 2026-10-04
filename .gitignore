@@ -12,6 +12,8 @@ deploy-config.json
 
 # Melee package build output (large; R2 is its home)
 meleepayload/
+# Offline .zip packages (built locally, ~1 GB each)
+offline/
 # Manifest backups (written by the tool, never uploaded)
 manifests/.history/
 *.bak.json

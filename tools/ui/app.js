@@ -812,6 +812,37 @@ $('#dpCopyLog').addEventListener('click', async () => {
 });
 $('#dpClearLog').addEventListener('click', () => { $('#dpLog').textContent = ''; });
 
+/* ── offline package ── */
+
+let OF_LAST = null; // repo-relative path of the last zip built
+listeners.add((msg) => {
+  if (msg.job !== 'offline-zip' || msg.type !== 'progress' || !msg.totalBytes) return;
+  const pct = (msg.doneBytes / msg.totalBytes) * 100;
+  $('#ofProgress .progress-bar').style.width = `${pct.toFixed(1)}%`;
+  $('#ofLabel').textContent = `Adding ${msg.name.split('/').pop()} (${msg.index}/${msg.total}) · ${Math.floor(pct)}%`;
+});
+$('#ofBuild').addEventListener('click', async () => {
+  $('#ofBuild').disabled = true;
+  $('#ofBody').hidden = false;
+  $('#ofProgress').hidden = false;
+  $('#ofDone').hidden = true;
+  $('#ofProgress .progress-bar').style.width = '0%';
+  $('#ofLabel').textContent = 'Checking the payload against the manifest…';
+  try {
+    const r = await api('POST', '/api/offline-zip');
+    OF_LAST = r.rel;
+    $('#ofProgress').hidden = true;
+    $('#ofLabel').innerHTML = `<span class="mono">${esc(r.rel)}</span> · ${fmtBytes(r.bytes)} · ${plural(r.entries, 'entry', 'entries')}`;
+    $('#ofDone').hidden = false;
+    toast('Offline package written.', 'ok');
+  } catch (e) {
+    $('#ofProgress').hidden = true;
+    $('#ofLabel').innerHTML = `<span style="color:var(--err)">${esc(e.message)}</span>`;
+    toast(e.message, 'err');
+  } finally { $('#ofBuild').disabled = false; }
+});
+$('#ofOpen').addEventListener('click', () => OF_LAST && api('POST', '/api/open-folder', { path: OF_LAST }).catch((e) => toast(e.message, 'err')));
+
 $('#dpRun').addEventListener('click', async () => {
   const force = $('#dpForce').checked;
   if (!DRY && !confirm(
@@ -1031,14 +1062,14 @@ let nwDrag = null;
 // The launcher's text header, drawn when a card has no image.
 const NW_HEADER_FIELDS = ['imageText', 'imageLabel', 'imageBg', 'imageAccent'];
 const NW_FIELDS = {
-  post:    ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
-  patreon: ['title', 'date', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
+  post:    ['title', 'author', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
+  patreon: ['title', 'author', 'date', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
   banner:  ['imageUrl', 'linkUrl', 'title'],
-  custom:  ['title', 'date', 'type', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', 'readMoreLabel', ...NW_HEADER_FIELDS],
+  custom:  ['title', 'author', 'date', 'type', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', 'readMoreLabel', ...NW_HEADER_FIELDS],
 };
 const NW_LOCAL_FIELDS = ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'readMoreLabel', 'imageText', 'imageLabel'];
 const NW_LABEL = {
-  title: 'Title', excerpt: 'Description', highlights: 'Highlights', imageUrl: 'Image URL', linkUrl: 'Link URL',
+  title: 'Title', author: 'Author (site name, e.g. Kat)', excerpt: 'Description', highlights: 'Highlights', imageUrl: 'Image URL', linkUrl: 'Link URL',
   badge: 'Badge', badgeColor: 'Badge colour', date: 'Date', type: 'Type', readMoreLabel: '“Read more” text',
   imageText: 'Header text', imageLabel: 'Header label', imageBg: 'Header background', imageAccent: 'Header accent',
 };

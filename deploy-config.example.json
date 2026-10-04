@@ -2,5 +2,7 @@
   "_comment": "Copy to deploy-config.json and set the paths for THIS machine. deploy-config.json is gitignored so each machine keeps its own. The tool's Settings tab writes this file for you.",
   "sc2InstallPath": "C:\\Program Files (x86)\\StarCraft II",
   "launcherRepoPath": "C:\\path\\to\\sc-evo-launcher",
-  "showVersionDebug": false
+  "showVersionDebug": false,
+  "cdnBase": "",
+  "_cdnBase": "Custom domain for downloads, e.g. https://cdn.scevo.org. Leave empty to use r2.dev. See sc-evo-launcher docs/cdn-custom-domain.md."
 }

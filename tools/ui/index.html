@@ -271,6 +271,23 @@
         </div>
         <pre class="log" id="dpLog"></pre>
       </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <div>
+            <h3>Offline package</h3>
+            <p class="sub">A .zip of the public campaign package for playing without the launcher: only the files currently <b>published on R2</b>
+              (anything built but not yet deployed is refused),
+              laid out like the StarCraft II folder, with a <code>Play SC Evo.cmd</code> and a README. No melee maps. Saved to <code>offline\</code>; nothing is uploaded.</p>
+          </div>
+          <div class="actions"><button class="btn" id="ofBuild">Build offline .zip</button></div>
+        </div>
+        <div class="sec-body" id="ofBody" hidden>
+          <div class="small" id="ofLabel"></div>
+          <div class="progress" id="ofProgress"><div class="progress-bar"></div></div>
+          <div class="actions" id="ofDone" hidden style="margin-top:var(--s2)"><button class="btn ghost sm" id="ofOpen">Show in folder</button></div>
+        </div>
+      </div>
     </section>
 
     <!-- ── NEWS ────────────────────────────────────────────────── -->

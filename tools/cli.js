@@ -9,7 +9,7 @@
 //   run.cmd build [--package p] [--only <source>]... [--force] [--dry-run]
 //   run.cmd generate [--package p]
 //   run.cmd deploy [--package p] [--dry-run] [--force] [--update-site]
-//
+//   run.cmd offline-zip                   zip the public campaign package for offline play (offline/)
 // <source> is the path inside the SC2 install, e.g. "Maps\SCEvo_MPMaps\SEL_1v1\Golden Wall SEL.SC2Map",
 // or just the file name when it's unique. Exits non-zero on failure.
 
@@ -162,6 +162,18 @@ const commands = {
       step: (id, state, detail) => log(`-- ${id}: ${state}${detail ? ` (${detail})` : ''}`),
     });
     if (r.aborted) { log(`Aborted at ${r.stage}.`); process.exitCode = 1; }
+  },
+
+  async 'offline-zip'() {
+    let shown = -1;
+    const r = await require('./lib/offline').buildOfflineZip({
+      log,
+      onProgress: (p) => {
+        const pct = Math.floor((p.doneBytes / p.totalBytes) * 100);
+        if (pct >= shown + 10) { shown = pct - (pct % 10); log(`  ${pct}%  ${p.name}`); }
+      },
+    });
+    log(r.file);
   },
 };
 
