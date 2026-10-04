@@ -160,6 +160,11 @@ function renderEnv() {
     c.launcherRepoPath
       ? (p.launcherValid ? '' : 'No package.json there — staging will warn and skip, and launcher-version.json will be left alone.')
       : 'Correct unless you are shipping a new launcher build. The exes and version file already in this repo upload unchanged.'));
+  rows.push(envRow(c.siteRepoPath ? (p.siteValid ? 'good' : 'bad') : 'good', 'Website repo',
+    c.siteRepoPath ? `<span class="mono">${esc(c.siteRepoPath)}</span>` : 'not configured',
+    c.siteRepoPath
+      ? (p.siteValid ? '' : 'No assets\\js\\site-links.js there — website links cannot be updated.')
+      : 'Set it to let Deploy update the website\'s launcher download links.'));
   rows.push(envRow(p.payloadExists ? 'good' : 'warn', 'payload/', p.payloadExists ? 'present' : 'missing'));
   rows.push(envRow(p.betaExists ? 'good' : 'warn', 'betapayload/', p.betaExists ? 'present' : 'missing'));
 
@@ -189,8 +194,10 @@ async function loadState() {
   await refreshReady();
   $('#stSc2').value = STATE.config.sc2InstallPath;
   $('#stLauncher').value = STATE.config.launcherRepoPath;
+  $('#stSite').value = STATE.config.siteRepoPath;
   $('#stDebug').checked = STATE.config.showVersionDebug;
   renderEnv();
+  syncDeployControls();
   return STATE;
 }
 
@@ -199,6 +206,7 @@ $('#stSave').addEventListener('click', async () => {
     await api('POST', '/api/config', {
       sc2InstallPath: $('#stSc2').value,
       launcherRepoPath: $('#stLauncher').value,
+      siteRepoPath: $('#stSite').value,
       showVersionDebug: $('#stDebug').checked,
     });
     await loadState();
@@ -220,6 +228,8 @@ $('#stPrune').addEventListener('click', async () => {
 
 let CAT = null;
 let CT_FILTER = 'campaign';
+// Ticked sources: Build then rebuilds only these, leaving every other built file untouched.
+let CT_SELECTED = new Set();
 
 const CHANNELS = { campaign: ['public', 'beta', 'both', 'off'], melee: ['public', 'off'] };
 const CH_LABEL = { public: 'Public', beta: 'Beta', both: 'Both', off: 'Off' };
@@ -270,7 +280,9 @@ function chSeg(r) {
 
 function itemRow(r) {
   const pill = r.status === 'missing' ? '<span class="pill err">source missing</span>' : buildPill(r);
+  const selectable = r.status !== 'missing' && r.build && r.build !== 'off';
   return `<div class="src" data-source="${esc(r.source)}">
+    ${selectable ? `<input type="checkbox" class="sel" title="Build only the ticked items"${CT_SELECTED.has(r.source) ? ' checked' : ''}>` : '<span class="sel-gap"></span>'}
     <div class="grow">
       <div class="name truncate">${esc(r.name)}</div>
       <div class="facts">${pill}${r.packed ? ' <span class="pill unchanged">packed</span>' : ''}</div>
@@ -308,7 +320,8 @@ function mapCard(r) {
     <img loading="lazy" src="${thumb}" alt="">
     <div class="mc-body">
       <div class="name truncate" title="${esc(m.name || r.name)}">${esc(m.name || r.name)}</div>
-      <div class="faint small">${m.players ? `${m.players} players` : '?'}${m.modes ? ` · ${esc(m.modes)}` : ''}</div>
+      <div class="faint small">${m.players ? `${m.players} players` : '?'}${(r.item?.modes || r.autoModes) ? ` · ${esc(r.item?.modes || r.autoModes)}` : ''}</div>
+      ${on ? `<input type="text" class="modes" value="${esc(r.item.modes ?? '')}" placeholder="Modes: ${esc(r.autoModes ?? '')}" title="Modes shown in the launcher. Empty uses the automatic label.">` : ''}
       <div class="faint small mono truncate" title="${esc(r.source)}">${esc(r.name)}</div>
       ${warn.map((w) => `<div class="small" style="color:var(--err)">${esc(w)}</div>`).join('')}
       <div class="mc-actions">
@@ -345,16 +358,39 @@ function renderCatalog() {
       <div class="grow"><div class="name truncate">${esc(r.name)}</div><div class="facts faint small mono">${esc(r.group)}</div></div>
       <button class="btn sm ghost unign">Un-ignore</button></div>`).join('') || '<div class="empty">Nothing ignored.</div>';
 
-  const counts = { built: 0, changed: 0, unbuilt: 0 };
-  for (const r of rows) if (r.item?.package === CT_FILTER && counts[r.build] !== undefined) counts[r.build]++;
-  $('#ctSummary').textContent = `${CT_FILTER}: ${counts.built} built, ${counts.changed} changed, ${counts.unbuilt} not built`;
-  $('#ctBuild').textContent = `Build ${CT_FILTER}`;
+  // Drop ticks on rows that left this package or were switched off.
+  const selectable = new Set(listed.filter((r) => r.status !== 'missing' && r.build && r.build !== 'off').map((r) => r.source));
+  CT_SELECTED = new Set([...CT_SELECTED].filter((s) => selectable.has(s)));
+  syncBuildBar();
   bindCatalog();
+}
+
+// Rows that Build would repackage (source edited, or never built).
+const pendingRows = () => (CAT?.rows ?? []).filter((r) => r.item?.package === CT_FILTER && (r.build === 'changed' || r.build === 'unbuilt'));
+
+function syncBuildBar() {
+  const counts = { built: 0, changed: 0, unbuilt: 0 };
+  for (const r of CAT?.rows ?? []) if (r.item?.package === CT_FILTER && counts[r.build] !== undefined) counts[r.build]++;
+  let summary = `${CT_FILTER}: ${counts.built} built, ${counts.changed} changed, ${counts.unbuilt} not built`;
+  if (CT_SELECTED.size) {
+    const left = pendingRows().filter((r) => !CT_SELECTED.has(r.source)).length;
+    if (left) summary += ` · ${plural(left, 'other changed item', 'other changed items')} will not be rebuilt`;
+  }
+  $('#ctSummary').textContent = summary;
+  $('#ctBuild').textContent = CT_SELECTED.size ? `Build ${CT_SELECTED.size} selected` : `Build ${CT_FILTER}`;
+  $('#ctSelectChanged').hidden = !pendingRows().length;
+  $('#ctClearSel').hidden = !CT_SELECTED.size;
+  $('#ctForce').parentElement.title = CT_SELECTED.size ? 'Applies to the ticked items only' : 'Applies to every item in the package';
 }
 
 function bindCatalog() {
   $$('#tab-catalog [data-source]').forEach((el) => {
     const source = el.dataset.source;
+    const sel = $('.sel', el);
+    if (sel) sel.addEventListener('change', () => {
+      if (sel.checked) CT_SELECTED.add(source); else CT_SELECTED.delete(source);
+      syncBuildBar();
+    });
     $$('[data-add]', el).forEach((b) => b.addEventListener('click', () => {
       const [pkg, channel] = b.dataset.add.split(':');
       catalogEdit({ source, patch: { package: pkg, channel } }, `${source.split('\\').pop()} → ${pkg} / ${channel}`);
@@ -366,6 +402,8 @@ function bindCatalog() {
     if (ign) ign.addEventListener('click', () => confirm(`Ignore ${source}?\n\nIt won't ship and won't be shown as new again.`) && catalogEdit({ source, ignore: true }, 'Ignored.'));
     const unign = $('.unign', el);
     if (unign) unign.addEventListener('click', () => catalogEdit({ source, ignore: false }, 'Un-ignored — it shows as new again.'));
+    const modes = $('input.modes', el);
+    if (modes) modes.addEventListener('change', () => catalogEdit({ source, patch: { modes: modes.value.trim() } }));
     const inc = $('.inc', el);
     if (inc) inc.addEventListener('click', () => {
       const on = el.classList.contains('on');
@@ -376,16 +414,24 @@ function bindCatalog() {
 
 $$('#ctFilter .seg-btn').forEach((b) => b.addEventListener('click', () => {
   $$('#ctFilter .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+  if (CT_FILTER !== b.dataset.f) CT_SELECTED = new Set();
   CT_FILTER = b.dataset.f;
   if (CAT && !CAT.needsInit) renderCatalog();
 }));
 $('#ctRefresh').addEventListener('click', () => loadCatalog().catch((e) => toast(e.message, 'err')));
+$('#ctSelectChanged').addEventListener('click', () => {
+  pendingRows().forEach((r) => CT_SELECTED.add(r.source));
+  renderCatalog();
+});
+$('#ctClearSel').addEventListener('click', () => { CT_SELECTED = new Set(); renderCatalog(); });
 
 $('#ctBuild').addEventListener('click', async () => {
   $('#ctBuild').disabled = true;
   LAST_BUILD_ERRORS = new Map();
+  const only = CT_SELECTED.size ? [...CT_SELECTED] : null;
   try {
-    const r = await api('POST', '/api/build', { packages: [CT_FILTER], force: $('#ctForce').checked });
+    const r = await api('POST', '/api/build', { packages: [CT_FILTER], only, force: $('#ctForce').checked });
+    if (only) CT_SELECTED = new Set();
     const bad = r.results.filter((x) => !x.ok);
     LAST_BUILD_ERRORS = new Map(bad.map((b) => [b.source, b.error]));
     const did = r.results.filter((x) => x.ok && x.action !== 'up-to-date').length;
@@ -400,10 +446,18 @@ $('#ctBuild').addEventListener('click', async () => {
   finally { $('#ctBuild').disabled = false; }
 });
 
+const BUILD_PHASE = { start: 'Checking', linking: 'Preparing', packing: 'Packaging', verifying: 'Verifying', deployed: 'Copying', done: 'Done with', error: 'Failed' };
 listeners.add((msg) => {
-  if (msg.job !== 'build' || msg.type !== 'progress' || !msg.file) return;
-  const detail = msg.phase === 'packing' ? `packing ${msg.fileCount} files` : msg.phase === 'start' ? 'checking' : msg.phase;
-  $('#ctSummary').textContent = `${msg.file} — ${detail}${msg.total ? ` (${msg.index}/${msg.total})` : ''}`;
+  if (msg.job !== 'build') return;
+  const box = $('#ctProgress');
+  if (msg.type === 'job-start') { box.hidden = false; $('.progress-bar', box).style.width = '0%'; return; }
+  if (msg.type === 'job-done' || msg.type === 'job-error') { box.hidden = true; return; }
+  if (msg.type !== 'progress' || !msg.file) return;
+  const pct = msg.totalBytes ? Math.min(100, (msg.doneBytes / msg.totalBytes) * 100) : 0;
+  $('.progress-bar', box).style.width = `${pct.toFixed(1)}%`;
+  const what = `${BUILD_PHASE[msg.phase] ?? msg.phase} ${msg.file}`;
+  const files = msg.phase === 'packing' && msg.fileCount ? ` · ${msg.fileCount} files` : '';
+  $('#ctProgressLabel').textContent = `${what}${msg.total ? ` (${msg.index}/${msg.total})` : ''}${files} · ${Math.floor(pct)}%`;
 });
 
 /* ── MANIFEST ────────────────────────────────────────────────────── */
@@ -667,8 +721,20 @@ function syncDeployControls() {
   run.textContent = DRY ? 'Start dry run' : 'Start live deploy';
   run.className = DRY ? 'btn primary' : 'btn danger';
   $$('#dpMode .seg-btn').forEach((b) => b.classList.toggle('hot', !DRY && b.dataset.mode === 'live'));
-}
 
+  // Website links follow the launcher, which only ships with the campaign package.
+  const siteOk = !!STATE?.paths?.siteValid;
+  const campaign = pk.includes('campaign');
+  $('#dpSite').disabled = !siteOk || !campaign;
+  $('#dpSiteNote').innerHTML = !siteOk
+    ? 'Set the website repo path in Settings first.'
+    : !campaign ? 'Only with the Campaign package (it carries the launcher).'
+    : `Edits <span class="mono">${esc(STATE.config.siteRepoPath)}\\assets\\js\\site-links.js</span> after the upload; you commit and push the site.`;
+}
+const updateSite = () => !$('#dpSite').disabled && $('#dpSite').checked;
+
+try { $('#dpSite').checked = localStorage.getItem('scevo.updateSite') === '1'; } catch {}
+$('#dpSite').addEventListener('change', (e) => { try { localStorage.setItem('scevo.updateSite', e.target.checked ? '1' : '0'); } catch {} });
 ['#dpPkgCampaign', '#dpPkgMelee'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
 $$('#dpMode .seg-btn').forEach((b) => b.addEventListener('click', () => {
   $$('#dpMode .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
@@ -751,6 +817,7 @@ $('#dpRun').addEventListener('click', async () => {
   if (!DRY && !confirm(
     `Upload to the LIVE R2 bucket?\n\n` +
     `Packages: ${deployPackages().join(' + ')}\n` +
+    (updateSite() ? `Website download links will be pointed at this launcher (uncommitted).\n` : '') +
     (force ? `\nWARNING: check failures will be ignored.\n` : '') +
     `\nUsers see the new manifests as soon as the upload finishes.`)) return;
 
@@ -761,7 +828,7 @@ $('#dpRun').addEventListener('click', async () => {
   resetXfer();
 
   try {
-    const r = await api('POST', '/api/deploy', { dryRun: DRY, force, packages: deployPackages() });
+    const r = await api('POST', '/api/deploy', { dryRun: DRY, force, packages: deployPackages(), updateSite: updateSite() });
     if (r.aborted) {
       const findings = r.stage === 'preflight' ? Object.values(r.preflight).flatMap((p) => p.findings)
         : r.stage === 'generate' ? (r.problems ?? []).map((p) => ({ level: 'error', code: 'unbuilt', message: p }))
@@ -798,8 +865,11 @@ let NW_DIRTY = false;
 let NW_LOC = '';          // '' = all languages (base), else a launcher language
 let NW_PREVIEW = new Map(); // feed index → resolved card in the preview language
 let NW_SITE = { posts: [], tags: [], error: null };
+let NW_PATREON = { posts: [], error: null, loaded: false };
 const NW_LANGS = ['en', 'es', 'zh', 'ko', 'ru'];
-const NW_KIND_LABEL = { post: 'site post', banner: 'banner', custom: 'custom' };
+const NW_KIND_LABEL = { post: 'site post', patreon: 'patreon', banner: 'banner', custom: 'custom' };
+// Slots whose fields are filled from a post; edits there are overrides.
+const isFed = (s) => s?.kind === 'post' || s?.kind === 'patreon';
 
 function setNewsDirty(on) {
   NW_DIRTY = on;
@@ -824,8 +894,23 @@ async function loadNews() {
   renderLocales();
   renderCardList();
   renderCardDetail();
+  if (!NW_PATREON.loaded) loadPatreonPosts(false);
   if (!NW_SITE.posts.length) loadSitePosts(false);
   else refreshPreview();
+}
+
+async function loadPatreonPosts(refresh) {
+  $('#nwPatreonState').textContent = 'Fetching Patreon posts…';
+  try {
+    const r = await api('GET', `/api/patreon-posts${refresh ? '?refresh=1' : ''}`);
+    NW_PATREON = { posts: r.posts, error: null, loaded: true };
+    $('#nwPatreonState').textContent = r.posts.length ? `${plural(r.posts.length, 'Patreon post', 'Patreon posts')} · newest ${r.posts[0].date.slice(0, 10)}` : `Patreon page "${r.vanity}" has no posts`;
+  } catch (e) {
+    NW_PATREON = { posts: [], error: e.message, loaded: true };
+    $('#nwPatreonState').textContent = `Patreon unreachable: ${e.message}`;
+  }
+  renderCardDetail();
+  refreshPreview();
 }
 
 async function loadSitePosts(refresh) {
@@ -897,6 +982,10 @@ function slotLabel(s) {
     const n = Number(s.rule?.index) || 1;
     return `${s.rule?.tag ? `Latest “${s.rule.tag}”` : 'Latest post'}${n > 1 ? ` #${n}` : ''}${s.exclude === 'used' ? ' · skip shown' : ''}`;
   }
+  if (s.kind === 'patreon') {
+    const n = Number(s.rule?.index) || 1;
+    return `Latest Patreon post${n > 1 ? ` #${n}` : ''}${s.exclude === 'used' ? ' · skip shown' : ''}`;
+  }
   if (s.kind === 'banner') return s.title || s.imageUrl?.split('/').pop() || 'Image banner';
   return s.title || s.id || 'untitled';
 }
@@ -908,13 +997,14 @@ function renderCardList() {
   if (!feed.length) { host.innerHTML = '<div class="empty">No cards. Add a site post, a banner or a custom card.</div>'; return; }
   host.innerHTML = feed.map((s, i) => {
     const shown = NW_PREVIEW.get(i);
-    const meta = s.kind === 'post' ? (shown ? shown.title : (NW_SITE.posts.length ? 'no matching post' : '')) : (s.date ?? '');
+    const meta = s.kind === 'post' ? (shown ? shown.title : (NW_SITE.posts.length ? 'no matching post' : ''))
+      : s.kind === 'patreon' ? (shown?.title ?? '') : (s.date ?? '');
     return `<div class="item ${i === NW_SEL ? 'sel' : ''}${s.enabled === false ? ' off' : ''}" data-i="${i}" draggable="true">
       <span class="drag" title="Drag to reorder">⠿</span>
-      <span class="pill ${s.kind === 'post' ? 'acc' : s.kind === 'banner' ? 'warn' : ''}">${NW_KIND_LABEL[s.kind] ?? 'custom'}</span>
+      <span class="pill ${isFed(s) ? 'acc' : s.kind === 'banner' ? 'warn' : ''}">${NW_KIND_LABEL[s.kind] ?? 'custom'}</span>
       ${s.variant ? `<span class="pill">${esc(s.variant)}</span>` : ''}
       <span class="grow"><span class="name truncate" style="display:block">${esc(slotLabel(s))}</span>
-        ${meta ? `<span class="meta truncate" style="display:block">${s.kind === 'post' ? '→ ' : ''}${esc(meta)}</span>` : ''}</span>
+        ${meta ? `<span class="meta truncate" style="display:block">${isFed(s) ? '→ ' : ''}${esc(meta)}</span>` : ''}</span>
     </div>`;
   }).join('');
 
@@ -938,16 +1028,25 @@ function renderCardList() {
 let nwDrag = null;
 
 // Fields per kind. In a language tab only the translatable ones show.
+// The launcher's text header, drawn when a card has no image.
+const NW_HEADER_FIELDS = ['imageText', 'imageLabel', 'imageBg', 'imageAccent'];
 const NW_FIELDS = {
-  post:   ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor'],
-  banner: ['imageUrl', 'linkUrl', 'title'],
-  custom: ['title', 'date', 'type', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', 'readMoreLabel'],
+  post:    ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
+  patreon: ['title', 'date', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
+  banner:  ['imageUrl', 'linkUrl', 'title'],
+  custom:  ['title', 'date', 'type', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', 'readMoreLabel', ...NW_HEADER_FIELDS],
 };
-const NW_LOCAL_FIELDS = ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'readMoreLabel'];
+const NW_LOCAL_FIELDS = ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'readMoreLabel', 'imageText', 'imageLabel'];
 const NW_LABEL = {
   title: 'Title', excerpt: 'Description', highlights: 'Highlights', imageUrl: 'Image URL', linkUrl: 'Link URL',
   badge: 'Badge', badgeColor: 'Badge colour', date: 'Date', type: 'Type', readMoreLabel: '“Read more” text',
+  imageText: 'Header text', imageLabel: 'Header label', imageBg: 'Header background', imageAccent: 'Header accent',
 };
+// The launcher's defaults (App.jsx NewsImage); the accent follows the channel theme.
+const headerAccent = (s) => (s?.variant === 'beta' ? '#ff6600' : '#00ff88');
+const headerDefault = (k, s) => ({ imageText: 'EVO UPDATE', imageBg: '#0a2a1a', imageAccent: headerAccent(s) }[k] ?? '');
+// Only plain colour values reach inline styles.
+const cssColor = (v, fallback) => (typeof v === 'string' && /^(#[0-9a-f]{3,8}|[a-z]+|(rgb|hsl)a?\([\d\s.,%]+\))$/i.test(v.trim()) ? v.trim() : fallback);
 
 // The object a field edit writes to: the slot (or its overrides) for all languages, else locales[lang].
 function editTarget(s, create) {
@@ -955,7 +1054,7 @@ function editTarget(s, create) {
     if (create) { s.locales ??= {}; s.locales[NW_LOC] ??= {}; }
     return s.locales?.[NW_LOC] ?? {};
   }
-  if (s.kind === 'post') { if (create) s.overrides ??= {}; return s.overrides ?? {}; }
+  if (isFed(s)) { if (create) s.overrides ??= {}; return s.overrides ?? {}; }
   return s;
 }
 
@@ -967,8 +1066,19 @@ function cleanSlot(s) {
   }
 }
 
-function fieldHtml(k, v) {
+function fieldHtml(k, v, s) {
   const val = k === 'highlights' ? (v ?? []).join('\n') : (v ?? '');
+  const def = headerDefault(k, s);
+  if (k === 'imageBg' || k === 'imageAccent') {
+    // Picker + text: the text box takes any CSS colour, and empty means the launcher default.
+    const hex = /^#[0-9a-f]{6}$/i.test(val) ? val : def;
+    return `<label>${NW_LABEL[k]}<span class="color-field">
+      <input type="color" data-c="${k}" value="${esc(hex)}" title="Pick a colour">
+      <input type="text" data-f="${k}" data-ph="${esc(def)}" value="${esc(val)}" placeholder="${esc(def)}"></span></label>`;
+  }
+  if (k === 'imageText' || k === 'imageLabel') {
+    return `<label>${NW_LABEL[k]}<input type="text" data-f="${k}" data-ph="${esc(def)}" value="${esc(val)}" placeholder="${esc(def)}"></label>`;
+  }
   if (k === 'type') {
     return `<label style="max-width:170px">${NW_LABEL[k]}<select data-f="type">
       ${['update', 'patchnotes'].map((t) => `<option value="${t}"${(v ?? 'update') === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`;
@@ -1007,18 +1117,30 @@ function renderCardDetail() {
         <input type="checkbox" data-x="exclude"${s.exclude === 'used' ? ' checked' : ''}> Skip posts shown above</label>
     </div>
     <p class="hint">“Which” 1 is the newest matching post, 2 the one before, and so on.${NW_SITE.error ? ` <b>scevo.org unreachable:</b> ${esc(NW_SITE.error)}` : ''}</p>` : ''}
+    ${s.kind === 'patreon' ? `
+    <div class="field-row">
+      <label style="max-width:120px">Which<input type="number" min="1" data-r="index" value="${Number(s.rule?.index) || 1}"></label>
+      <label class="check" style="flex:none;align-self:end" title="Skip posts that an earlier Patreon card already shows">
+        <input type="checkbox" data-x="exclude"${s.exclude === 'used' ? ' checked' : ''}> Skip posts shown above</label>
+      <label class="check" style="flex:none;align-self:end" title="Ignore Patreon's preview image and draw the text header">
+        <input type="checkbox" data-x="noImage"${s.noImage ? ' checked' : ''}> Hide image (use text header)</label>
+    </div>
+    <p class="hint">“Which” 1 is the newest Patreon post, 2 the one before, and so on. The post is filled in and its image copied to <code>assets/news/</code> when you save, so publish it with a campaign deploy.
+      Locked posts show Patreon's preview image, which is blurred unless the post has a public preview.${NW_PATREON.error ? ` <b>Patreon unreachable:</b> ${esc(NW_PATREON.error)}` : ''}</p>` : ''}
     ${s.kind === 'banner' ? '<p class="hint">The image fills the whole card; no text is shown. Title is only the hover text.</p>' : ''}
 
     <div class="sec-head" style="padding:var(--s3) 0 var(--s2);background:none;border:0">
-      <h3>${s.kind === 'post' ? 'Overrides' : 'Content'}</h3>
+      <h3>${isFed(s) ? 'Overrides' : 'Content'}</h3>
       <div class="seg" id="nwLocSeg">
         ${['', ...NW_LANGS].map((l) => `<button class="seg-btn${NW_LOC === l ? ' active' : ''}" data-l="${l}">${l || 'All languages'}${l && s.locales?.[l] ? ' •' : ''}</button>`).join('')}
       </div>
     </div>
     <p class="hint">${NW_LOC
       ? `Only for the launcher in <b>${NW_LOC}</b>. Empty fields use ${s.kind === 'post' ? 'the site post (in that language when translated)' : 'the All languages value'}.`
-      : s.kind === 'post' ? 'Empty fields are filled from the site post. Grey text is what it shows now.' : ''}</p>
-    <div class="nw-fields">${shownFields.map((k) => fieldHtml(k, target[k])).join('')}</div>
+      : s.kind === 'post' ? 'Empty fields are filled from the site post. Grey text is what it shows now.'
+      : s.kind === 'patreon' ? 'Empty fields are filled from the Patreon post. Grey text is what it shows now.' : ''}</p>
+    <div class="nw-fields">${shownFields.map((k) => fieldHtml(k, target[k], s)).join('')}</div>
+    ${s.kind !== 'banner' ? '<p class="hint">The header text, label and colours are drawn in place of the image when the card has none.</p>' : ''}
 
     <div class="sec-head" style="padding:var(--s3) 0 var(--s2);background:none;border:0"><h3>Preview <span class="faint small">(${previewLang()})</span></h3></div>
     <div id="nwPreview"></div>
@@ -1040,8 +1162,15 @@ function renderCardDetail() {
     newsChanged(false);
   }));
   $$('[data-x]', host).forEach((inp) => inp.addEventListener('change', () => {
-    if (inp.checked) s.exclude = 'used'; else delete s.exclude;
+    const k = inp.dataset.x;
+    if (inp.checked) s[k] = k === 'exclude' ? 'used' : true; else delete s[k];
     newsChanged(false);
+  }));
+  // The picker writes into its text box, which saves like any other field.
+  $$('[data-c]', host).forEach((pick) => pick.addEventListener('input', () => {
+    const text = $(`[data-f="${pick.dataset.c}"]`, host);
+    text.value = pick.value;
+    text.dispatchEvent(new Event('change'));
   }));
   $$('[data-f]', host).forEach((inp) => inp.addEventListener('change', () => {
     const k = inp.dataset.f;
@@ -1051,6 +1180,8 @@ function renderCardDetail() {
       if (list.length) t.highlights = list; else delete t.highlights;
     } else if (inp.value.trim()) t[k] = k === 'excerpt' ? inp.value : inp.value.trim();
     else delete t[k];
+    const pick = $(`[data-c="${k}"]`, host);
+    if (pick) pick.value = /^#[0-9a-f]{6}$/i.test(inp.value.trim()) ? inp.value.trim() : headerDefault(k, s);
     cleanSlot(s);
     newsChanged(false);
   }));
@@ -1072,13 +1203,24 @@ function renderCardDetail() {
 // Grey placeholder = what the card shows without this field (post slots).
 function fillPlaceholders() {
   const s = NEWS?.feed?.[NW_SEL];
-  if (!s || s.kind !== 'post') return;
+  if (!isFed(s)) return;
   const c = NW_PREVIEW.get(NW_SEL) ?? {};
   $$('#nwDetail [data-f]').forEach((inp) => {
     if (inp.tagName === 'SELECT') return;
     const v = c[inp.dataset.f];
-    inp.placeholder = Array.isArray(v) ? v.join('\n') : (v ?? '');
+    inp.placeholder = Array.isArray(v) ? v.join('\n') : (v ?? inp.dataset.ph ?? '');
   });
+}
+
+// The launcher's no-image header (App.jsx NewsImage), for the preview.
+function textHeader(c, s) {
+  const bg = cssColor(c.imageBg, '#0a2a1a');
+  const ac = cssColor(c.imageAccent, headerAccent(s));
+  return `<div class="nwhead" style="--nh-bg:${bg};--nh-ac:${ac}">
+    <div class="nh-grid"></div><div class="nh-glow"></div>
+    <div class="nh-text"><div class="nh-sc">StarCraft</div><div class="nh-evo">Evolution Complete</div>
+      <div class="nh-box">${esc(`${c.imageText || 'EVO UPDATE'} ${c.imageLabel || ''}`.trim())}</div></div>
+  </div>`;
 }
 
 function renderPreviewPane() {
@@ -1089,6 +1231,7 @@ function renderPreviewPane() {
   if (!c) {
     host.innerHTML = `<div class="empty small">${s?.enabled === false ? 'Hidden.' : s?.kind === 'post'
       ? (NW_SITE.posts.length ? 'No site post matches this rule; the card is left out.' : 'Waiting for scevo.org…')
+      : s?.kind === 'patreon' ? (NW_PATREON.loaded ? 'Patreon has no post at this position.' : 'Waiting for Patreon…')
       : s?.kind === 'banner' ? 'Set an image URL.' : 'Nothing to show.'}</div>`;
     return;
   }
@@ -1100,7 +1243,7 @@ function renderPreviewPane() {
     ? `<ul>${c.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>`
     : `<p>${esc(c.excerpt ?? '')}</p>`;
   host.innerHTML = `<div class="nwcard">
-    <div class="nwimg">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="">` : ''}
+    <div class="nwimg">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="">` : textHeader(c, s)}
       ${c.badge ? `<span class="nwbadge" style="${c.badgeColor ? `border-color:${esc(c.badgeColor)};color:${esc(c.badgeColor)}` : ''}">${esc(c.badge)}</span>` : ''}</div>
     <div class="nwbody"><b>${esc(c.title ?? '')}</b><span class="faint small">${esc(c.date ?? '')}</span>${body}
       ${c.linkUrl ? `<span class="faint small truncate">${esc(c.linkUrl)}</span>` : ''}</div>
@@ -1121,9 +1264,10 @@ function addSlot(slot) {
   newsChanged(true);
 }
 $('#nwAddPost').addEventListener('click', () => addSlot({ id: `post-${Date.now()}`, kind: 'post', rule: { index: 1 }, exclude: 'used' }));
+$('#nwAddPatreon').addEventListener('click', () => addSlot({ id: `patreon-${Date.now()}`, kind: 'patreon', rule: { index: 1 }, exclude: 'used' }));
 $('#nwAddBanner').addEventListener('click', () => addSlot({ id: `banner-${Date.now()}`, kind: 'banner' }));
 $('#nwAddCustom').addEventListener('click', () => addSlot({ id: `news-${Date.now()}`, kind: 'custom', title: 'New card', date: '', type: 'update', excerpt: '' }));
-$('#nwRefreshSite').addEventListener('click', () => loadSitePosts(true));
+$('#nwRefreshSite').addEventListener('click', () => { loadSitePosts(true); loadPatreonPosts(true); });
 
 $('#nwReload').addEventListener('click', () => {
   if (NW_DIRTY && !confirm('You have unsaved news changes. Discard them?')) return;

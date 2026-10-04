@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-04T00:29:10Z",
+  "lastUpdated": "2026-10-04T05:06:27Z",
   "version": "1.21",
   "requires": [
     "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
@@ -88,7 +88,7 @@
       "id": "6c8538b22c",
       "name": "Keres Passage SEL",
       "description": "Melee 1v1 2 Players map, designed for competitive play, TLMC#8 Submission.\n\nOriginal map by Kantuva.\nModified by HyperONE for use in the StarCraft Evolution League.",
-      "modes": "2",
+      "modes": "1v1",
       "players": 2,
       "size": {
         "w": 200,
@@ -111,7 +111,7 @@
       "id": "608a0aa791",
       "name": "Khione SEL",
       "description": "Melee \"2-in-1\" 4 players map, designed for competitive play.\n\nOriginal map by Kantuva.\nModified by HyperONE for use in the StarCraft Evolution League.",
-      "modes": "2",
+      "modes": "2v2 · FFA",
       "players": 4,
       "size": {
         "w": 208,
@@ -134,7 +134,7 @@
       "id": "8465eaf533",
       "name": "Eris SEL",
       "description": "Melee 1v1 2 players map, designed for competitive play. Map is Finalist of TLMC7\n\nOriginal map by Kantuva.\nModified by HyperONE for use in the StarCraft Evolution League.",
-      "modes": "2",
+      "modes": "1v1",
       "players": 2,
       "size": {
         "w": 248,
@@ -177,32 +177,6 @@
       }
     },
     {
-      "id": "339c17a9e2",
-      "name": "[SC:Evo] Vermeer (버미어)",
-      "description": "The official SC: Evo Complete port of Vermeer.\nSC: Evo Complete 제작진의 버미어 버전입니다.\nSC: Evo官方移植地图 维米尔 (Vermeer)\nOriginal map by LatiAs",
-      "modes": "1v1",
-      "players": 4,
-      "size": {
-        "w": 184,
-        "h": 184
-      },
-      "tileset": "Evo_JungleWorld",
-      "requiresMods": [
-        "Mods/SC Evolution Complete/SCEvo_MultiArtMod.SC2Mod",
-        "Mods/SC Evolution Complete/SCEvo_MultiArtAssets.SC2Mod"
-      ],
-      "file": {
-        "path": "maps/339c17a9e2.evm",
-        "size": 3520744,
-        "hash": "e7a70d36fe6e530208f73c9a9848cb8c327802f1738dddddb914e58c6417553d"
-      },
-      "thumbnail": {
-        "path": "thumbs/339c17a9e2.png",
-        "size": 58354,
-        "hash": "9cf6e192db06bb9567169ab1aa791fe14d306a8135f804e0bb49ba929bdaf2e6"
-      }
-    },
-    {
       "id": "88207603eb",
       "name": "Mothership SEL",
       "description": "Explore the inside of this capital ship with it's many crystals, engines and walkways.\n\nOriginal map by KillerSmile. Modified by HyperONE for the StarCraft Evolution League.",
@@ -229,7 +203,7 @@
       "id": "bb3d786005",
       "name": "Ruby Rock SEL",
       "description": "Ruby Rock is a standard map with seven bases per player. Resources are laid out so that it becomes more difficult to expand beyond the four most accessible bases.\n\nOriginal by Volumin. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "2",
+      "modes": "1v1",
       "players": 2,
       "size": {
         "w": 184,
@@ -252,7 +226,7 @@
       "id": "97620e8e3b",
       "name": "Torches SEL",
       "description": "From your natural you can gain access to a forward psuedo island base through a mineral wall. Separating your island from the opponents island as well as on the lowground on the left are gold wall bases. The island can be attacked through a rocked off ramp. Each island has a lone rich geyser.",
-      "modes": "2",
+      "modes": "1v1",
       "players": 2,
       "size": {
         "w": 160,
@@ -275,7 +249,7 @@
       "id": "b55ac6907a",
       "name": "Crimson Research Lab SEL",
       "description": "Welcome to the Crimson Forest!\n\nOriginal map by CharactR. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "4",
+      "modes": "2v2 · FFA",
       "players": 4,
       "size": {
         "w": 176,
@@ -321,7 +295,7 @@
       "id": "8e35c8bf61",
       "name": "Rust Bucket SEL",
       "description": "Teams on Rust Bucket start out in separate main bases, but share a joint natural expansion area. One lucky player on each team starts with an additional pocket expansion.\n\nOriginal map by Patches. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "4",
+      "modes": "2v2 · FFA",
       "players": 4,
       "size": {
         "w": 176,
@@ -344,7 +318,7 @@
       "id": "750820bf64",
       "name": "Rohana SEL",
       "description": "Start the map with separate nearby bases and expand to a shared partially rocked-off natural. A variety of expansion patterns allow you and your teammate to expand together or separately.\n\nOriginal map by themusic246. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "4",
+      "modes": "2v2 · FFA",
       "players": 4,
       "size": {
         "w": 256,
@@ -390,7 +364,7 @@
       "id": "8d495f60b3",
       "name": "Yellowjacket SEL",
       "description": "Start out with two small entrances into the natural each of which can be easily walled off. Work together with clustered expansions to defend common choke points.\n\nOriginal map by themusic246. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "4",
+      "modes": "2v2 · FFA",
       "players": 4,
       "size": {
         "w": 240,
@@ -459,7 +433,7 @@
       "id": "543be49fc5",
       "name": "Team Biodome SEL",
       "description": "This huge biodome drifting in space features three fortresses. Try to secure the open fortress as fast as you can for a lot of resources. This map can also be played as 2v2v2 in custom games. #TeamBiodome\n\nOriginal map by SUPEROUMAN. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "4 - 6",
+      "modes": "3v3 · FFA",
       "players": 6,
       "size": {
         "w": 184,
@@ -482,7 +456,7 @@
       "id": "082443539b",
       "name": "Undercurrent SEL",
       "description": "A large macro 2v2 map with plenty of safe expansions, but has a relatively short rush distance\n\nDeco courtesy of Marras.\n\nOriginal map by CharactR. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "4",
+      "modes": "2v2 · FFA",
       "players": 4,
       "size": {
         "w": 240,
@@ -505,7 +479,7 @@
       "id": "7bd531b600",
       "name": "Sanctuary III SEL",
       "description": "A uniquely violet plateau within a gloomy dreamscape; flat lowlands surround the highground that pierces through the center while rock tower pairs allow for either player to dictate maneuverability.\n\nOriginal by Avex. Modified by HyperONE for the StarCraft Evolution League.",
-      "modes": "2",
+      "modes": "1v1",
       "players": 2,
       "size": {
         "w": 184,

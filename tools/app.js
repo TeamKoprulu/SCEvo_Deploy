@@ -22,6 +22,7 @@ const mapcache = require('./lib/mapcache');
 const verify = require('./lib/verify');
 const r2 = require('./lib/r2');
 const news = require('./lib/news');
+const patreon = require('./lib/patreon');
 
 const UI_DIR = path.join(__dirname, 'ui');
 const TOKEN = crypto.randomBytes(16).toString('hex');
@@ -33,6 +34,15 @@ let COOKIE_NAME = 'scevo';
 
 let NEWS_RESOLVER = null;
 const newsResolver = () => (NEWS_RESOLVER ??= news.createNewsResolver({ fetch }));
+
+const patreonVanity = () => cfg.readConfig().patreonVanity || cfg.DEFAULT_PATREON_VANITY;
+// Patreon posts, or [] with the reason when Patreon can't be reached.
+async function patreonPosts(refresh = false) {
+  try { return { posts: await patreon.loadPatreonPosts({ vanity: patreonVanity(), refresh }), error: null }; }
+  catch (err) { return { posts: [], error: err.message }; }
+}
+// A patreon slot renders as a custom card, which carries the slot's whole top level; drop the editor-only keys.
+const stripSlotRule = ({ rule, exclude, noImage, ...card }) => card;
 
 /* ── SSE bus ─────────────────────────────────────────────────────────────── */
 
@@ -81,12 +91,14 @@ const routes = {
       config: {
         sc2InstallPath: c.sc2InstallPath ?? '',
         launcherRepoPath: c.launcherRepoPath ?? '',
+        siteRepoPath: c.siteRepoPath ?? '',
         showVersionDebug: c.showVersionDebug === true,
       },
       paths: {
         repoRoot: cfg.REPO_ROOT,
         sc2Valid: !!(c.sc2InstallPath && fs.existsSync(c.sc2InstallPath)),
         launcherValid: !!(c.launcherRepoPath && fs.existsSync(path.join(c.launcherRepoPath, 'package.json'))),
+        siteValid: require('./lib/site').siteValid(c.siteRepoPath),
         payloadExists: fs.existsSync(cfg.PAYLOAD_DIR),
         betaExists: fs.existsSync(cfg.BETA_DIR),
         meleeExists: fs.existsSync(cfg.MELEE_DIR),
@@ -113,7 +125,7 @@ const routes = {
 
   'POST /api/config': async (body) => {
     const patch = {};
-    for (const key of ['sc2InstallPath', 'launcherRepoPath']) {
+    for (const key of ['sc2InstallPath', 'launcherRepoPath', 'siteRepoPath']) {
       if (typeof body[key] === 'string') patch[key] = body[key].trim();
     }
     if (typeof body.showVersionDebug === 'boolean') patch.showVersionDebug = body.showVersionDebug;
@@ -145,6 +157,7 @@ const routes = {
       if (meleeCandidate) {
         const meta = mapcache.metaFor(r.abs, root);
         row.meta = meta;
+        row.autoModes = require('./lib/mapmeta').modesFor(meta.modes, meta.players);
         row.missingMods = (meta.requiresMods || []).filter((m) => !shipped.has(m.toLowerCase()));
       }
       return row;
@@ -262,7 +275,7 @@ const routes = {
   // body: { packages: ['campaign','melee'], dryRun, force }
   'POST /api/deploy': async (body) => runJob('deploy', async ({ log, progress, step }) => {
     const packages = (body.packages || []).filter((p) => catalog.PACKAGES.includes(p));
-    return deploy({ packages, dryRun: !!body.dryRun, force: !!body.force, log, progress, step });
+    return deploy({ packages, dryRun: !!body.dryRun, force: !!body.force, updateSite: !!body.updateSite, log, progress, step });
   }),
 
   'GET /api/remote-orphans': async (_b, url) => {
@@ -306,11 +319,21 @@ const routes = {
     return { posts: posts.map((p) => ({ link: p.link, title: p.title, date: p.date, tags: p.tags })), tags };
   },
 
+  // Patreon posts for the feed editor, newest first.
+  'GET /api/patreon-posts': async (_body, url) => {
+    const { posts, error } = await patreonPosts(!!url.searchParams.get('refresh'));
+    if (error) throw new Error(error);
+    return { vanity: patreonVanity(), posts: posts.map(({ id, title, date, url: link, imageUrl, locked }) => ({ id, title, date, url: link, hasImage: !!imageUrl, locked })) };
+  },
+
   // What the launcher would show for this feed in one language; each card carries its feed index.
+  // Patreon cards preview with Patreon's own (expiring) image URL; Save re-hosts it.
   'POST /api/news-preview': async (body) => {
     if (!Array.isArray(body.feed)) throw new Error('Missing feed');
-    const { cards } = await newsResolver().resolve(body.feed, body.lang || 'en', { withSlot: true });
-    return { cards };
+    const feed = structuredClone(body.feed);
+    if (feed.some((s) => s?.kind === 'patreon')) await patreon.bakePatreonSlots(feed, (await patreonPosts()).posts);
+    const { cards } = await newsResolver().resolve(feed, body.lang || 'en', { withSlot: true });
+    return { cards: cards.map(stripSlotRule) };
   },
 
   // Merges into the existing file so keys this editor doesn't know (promo, strings,
@@ -322,6 +345,10 @@ const routes = {
     const doc = { ...prev, ...body.news };
     if (prev.announcement && body.news.announcement) doc.announcement = { ...prev.announcement, ...body.news.announcement };
     const warnings = [];
+    if (Array.isArray(doc.feed) && doc.feed.some((s) => s?.kind === 'patreon')) {
+      // Fresh posts on every save, so a new Patreon post shows up without restarting the tool.
+      warnings.push(...await patreon.bakePatreonSlots(doc.feed, (await patreonPosts(true)).posts, { rehost: true }));
+    }
     if (Array.isArray(doc.feed)) {
       newsResolver().clear();
       const { cards, posts } = await newsResolver().resolve(doc.feed, 'en', { applyLocales: false });
@@ -329,7 +356,7 @@ const routes = {
         warnings.push('scevo.org could not be reached: the snapshot for older launchers keeps its previous cards.');
       } else {
         // Older launchers can't draw image-only cards.
-        doc.cards = cards.filter((c) => c.type !== 'banner').map(({ post, ...c }) => c);
+        doc.cards = cards.filter((c) => c.type !== 'banner').map(({ post, ...c }) => stripSlotRule(c));
       }
     }
     doc.lastUpdated = mf.nowIso();

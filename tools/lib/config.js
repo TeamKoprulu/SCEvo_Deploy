@@ -20,6 +20,10 @@ const HISTORY_DIR  = path.join(MANIFEST_DIR, '.history');
 const PAYLOAD_DIR  = path.join(REPO_ROOT, 'payload');
 const BETA_DIR     = path.join(REPO_ROOT, 'betapayload');
 const MELEE_DIR    = path.join(REPO_ROOT, 'meleepayload');
+const ASSETS_DIR   = path.join(REPO_ROOT, 'assets');
+
+// The Patreon page news cards are filled from; "patreonVanity" in deploy-config.json overrides it.
+const DEFAULT_PATREON_VANITY = 'TeamKopruluSC2';
 
 const PUBLIC_MANIFEST = path.join(MANIFEST_DIR, 'update-manifest.json');
 const BETA_MANIFEST   = path.join(MANIFEST_DIR, 'beta-manifest.json');
@@ -112,7 +116,7 @@ function ensureCacheDir() {
 
 module.exports = {
   REPO_ROOT, TOOLS_DIR, CACHE_DIR, CONFIG_PATH, CATALOG_PATH, MPQ_EDITOR,
-  MANIFEST_DIR, HISTORY_DIR, PAYLOAD_DIR, BETA_DIR, MELEE_DIR, OUTPUT_DIRS,
+  MANIFEST_DIR, HISTORY_DIR, PAYLOAD_DIR, BETA_DIR, MELEE_DIR, ASSETS_DIR, OUTPUT_DIRS, DEFAULT_PATREON_VANITY,
   PUBLIC_MANIFEST, BETA_MANIFEST, MELEE_MANIFEST, NEWS_FEED, LAUNCHER_VER,
   R2_BASE, BUCKET, SCHEMA_VERSION, DEFAULT_ROOTS, UPLOAD_FOLDERS, MANIFEST_FOLDER,
   readConfig, updateConfig, stripJunk, writeJsonAtomic, writeTextAtomic, ensureCacheDir,

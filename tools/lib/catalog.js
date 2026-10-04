@@ -193,6 +193,8 @@ function upsert(doc, source, patch) {
   let it = findItem(doc, source);
   if (!it) { it = { source, package: 'campaign', channel: 'off' }; doc.items.push(it); }
   Object.assign(it, patch);
+  // An emptied override (name, description, modes) falls back to the map's own value.
+  for (const [k, v] of Object.entries(patch)) if (v === '' || v === null) delete it[k];
   if (it.package === 'melee' && !CHANNELS.melee.includes(it.channel)) it.channel = it.channel === 'off' ? 'off' : 'public';
   if (it.package === 'melee' && isMap(it.source) && !it.mapId) it.mapId = newMapId();
   return doc;

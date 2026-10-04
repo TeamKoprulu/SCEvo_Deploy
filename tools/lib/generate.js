@@ -13,7 +13,7 @@ const catalog = require('./catalog');
 const mf = require('./manifest');
 const { hashOf } = require('./hashcache');
 const { destsOf, thumbPathOf, loadState } = require('./build');
-const { readMapMeta } = require('./mapmeta');
+const { readMapMeta, modesFor } = require('./mapmeta');
 
 const baseName = (p) => path.basename(p, path.extname(p));
 
@@ -78,7 +78,7 @@ async function meleeDoc(doc, sc2Root, overrides, problems) {
       id: item.mapId,
       name: item.name || meta.name,
       description: item.description ?? meta.description ?? '',
-      modes: meta.modes || '',
+      modes: item.modes || modesFor(meta.modes, meta.players),
       players: meta.players,
       size: meta.size || null,
       tileset: meta.tileset || null,

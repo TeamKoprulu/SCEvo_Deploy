@@ -78,4 +78,16 @@ function readMapMeta(archivePath, { sc2Root, thumbnailSize = 256 } = {}) {
   };
 }
 
-module.exports = { readMapMeta, depsOf, closure };
+// The modes label shown on a map card. Map authors put anything in DocInfo's short
+// description ("2", "4 - 6", "1v1"), so it's only used when it names a mode;
+// otherwise the label comes from the start locations.
+const MODE_TEXT = /\b\d+\s*v\s*\d+\b|\bffa\b/i;
+function modesFor(descShort, players) {
+  const text = String(descShort || '').trim();
+  if (MODE_TEXT.test(text)) return text;
+  if (players === 2) return '1v1';
+  if (players >= 4 && players % 2 === 0 && players <= 8) return `${players / 2}v${players / 2} · FFA`;
+  return players >= 3 ? 'FFA' : '';
+}
+
+module.exports = { readMapMeta, depsOf, closure, modesFor };

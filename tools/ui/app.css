@@ -337,6 +337,8 @@ textarea { resize: vertical; }
 .progress { height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; margin-top: 5px; border: 1px solid var(--line); }
 .progress-bar { height: 100%; width: 0; background: var(--accent); transition: width .2s linear; }
 .xfer-row.done .progress-bar { background: var(--ok); }
+.build-progress { padding: var(--s3) var(--s4) 0; }
+.build-progress[hidden] { display: none; }
 .xfer-files { margin-top: var(--s1); }
 .xfer-files div { font-size: 12px; color: var(--faint); font-family: var(--mono); }
 
@@ -387,9 +389,12 @@ textarea { resize: vertical; }
 .mapcard.on { opacity: 1; border-color: var(--acc, #3b82f6); }
 .mapcard img { width: 72px; height: 72px; flex: none; object-fit: contain; background: #05080b; border-radius: 4px; }
 .mapcard .mc-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.mapcard input.modes { margin-top: 4px; padding: 3px 6px; font-size: 12px; }
 .mapcard .mc-actions { margin-top: auto; display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; padding-top: var(--s2); }
 .src select.pkg { flex: none; }
 .src .ch { flex: none; }
+.src input.sel { flex: none; width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
+.src .sel-gap { flex: none; width: 16px; }
 .src select.pkg { width: auto; min-width: 0; padding: 4px 8px; font-size: 12.5px; }
 
 .toast.warn { border-left-color: var(--warn); }
@@ -407,3 +412,17 @@ textarea { resize: vertical; }
 .nwbody b { color: var(--accent); font-size: 15px; }
 .nwbody p, .nwbody ul { margin: 6px 0 0; color: #7a8a9a; font-size: 13px; line-height: 1.5; }
 .nwbody ul { padding-left: 18px; }
+/* The launcher's no-image header (App.jsx NewsImage); always dark, like the launcher. */
+.nwhead { position: absolute; inset: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--nh-bg); }
+.nh-grid { position: absolute; inset: 0; opacity: .08; background-size: 24px 24px;
+  background-image: linear-gradient(var(--nh-ac) 1px, transparent 1px), linear-gradient(90deg, var(--nh-ac) 1px, transparent 1px); }
+.nh-glow { position: absolute; width: 160px; height: 160px; border-radius: 50%; background: var(--nh-ac); filter: blur(60px); opacity: .25; }
+.nh-text { position: relative; text-align: center; letter-spacing: 3px; text-transform: uppercase; }
+.nh-sc { font-size: 11px; color: var(--nh-ac); opacity: .7; margin-bottom: 4px; }
+.nh-evo { font-size: 10px; color: #fff; opacity: .5; letter-spacing: 5px; }
+.nh-box { margin-top: 10px; font-size: 13px; font-weight: 700; color: #fff; padding: 4px 14px; border-radius: 2px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--nh-ac) 13%, transparent), color-mix(in srgb, var(--nh-ac) 27%, transparent));
+  border: 1px solid color-mix(in srgb, var(--nh-ac) 33%, transparent); }
+.color-field { display: flex; gap: var(--s2); align-items: center; }
+.color-field input[type=color] { flex: none; width: 36px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r1); background: none; cursor: pointer; }
+.color-field input[type=text] { flex: 1; min-width: 0; }

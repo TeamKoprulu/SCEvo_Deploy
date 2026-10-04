@@ -231,7 +231,19 @@ async function stageLauncherArtifacts() {
     fs.copyFileSync(src, dest);
     out.staged.push(path.basename(dest));
   }
+  // Launchers self-update only when the published version differs from their own,
+  // so a new exe under the old version number reaches nobody.
+  const published = publishedLauncherVersion();
+  let repoVersion = null;
+  try { repoVersion = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).version; } catch {}
+  if (out.staged.length && repoVersion && repoVersion === published) {
+    out.warnings.push(`The launcher exe changed but its version is still ${repoVersion}, so players won't be offered it. Bump "version" in the launcher repo's package.json and rebuild.`);
+  }
   return out;
+}
+
+function publishedLauncherVersion() {
+  try { return JSON.parse(fs.readFileSync(LAUNCHER_VER, 'utf8')).version ?? null; } catch { return null; }
 }
 
 // Writes launcher-version.json from the launcher repo's package.json version.
@@ -244,12 +256,13 @@ function writeLauncherVersion() {
     return { ok: false, error: `package.json not found (launcherRepoPath: ${cfg.launcherRepoPath || 'unset'})` };
   }
   const version = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
+  const previous = publishedLauncherVersion();
   const doc = { version };
   if (cfg.showVersionDebug === true) doc.showVersionDebug = true;
   doc.portable  = { url: `${R2_BASE}/launcher/${encodeURI(PORTABLE_EXE)}` };
   doc.installer = { url: `${R2_BASE}/installer/${encodeURI(SETUP_EXE)}` };
   writeTextAtomic(LAUNCHER_VER, JSON.stringify(doc, null, 2) + '\n');
-  return { ok: true, version, path: LAUNCHER_VER };
+  return { ok: true, version, previous, path: LAUNCHER_VER };
 }
 
 module.exports = {

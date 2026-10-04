@@ -8,7 +8,7 @@
 //   run.cmd ignore <source>   /   run.cmd unignore <source>
 //   run.cmd build [--package p] [--only <source>]... [--force] [--dry-run]
 //   run.cmd generate [--package p]
-//   run.cmd deploy [--package p] [--dry-run] [--force]
+//   run.cmd deploy [--package p] [--dry-run] [--force] [--update-site]
 //
 // <source> is the path inside the SC2 install, e.g. "Maps\SCEvo_MPMaps\SEL_1v1\Golden Wall SEL.SC2Map",
 // or just the file name when it's unique. Exits non-zero on failure.
@@ -32,6 +32,7 @@ function parse(argv) {
     else if (a === '--only') args.only.push(argv[++i]);
     else if (a === '--force') args.force = true;
     else if (a === '--dry-run') args.dryRun = true;
+    else if (a === '--update-site') args.updateSite = true;
     else args._.push(a);
   }
   return args;
@@ -157,7 +158,7 @@ const commands = {
 
   async deploy(args) {
     const r = await deploy({
-      packages: packagesOf(args), dryRun: !!args.dryRun, force: !!args.force, log,
+      packages: packagesOf(args), dryRun: !!args.dryRun, force: !!args.force, updateSite: !!args.updateSite, log,
       step: (id, state, detail) => log(`-- ${id}: ${state}${detail ? ` (${detail})` : ''}`),
     });
     if (r.aborted) { log(`Aborted at ${r.stage}.`); process.exitCode = 1; }

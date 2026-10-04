@@ -23,9 +23,10 @@ Two packages ship from here:
 Typical release:
 
 1. **Catalog tab** (or `run.cmd status`): decide on anything listed as *new*, and set each item's channel.
-2. **Catalog tab → Build campaign / Build melee** (or `run.cmd build --package campaign|melee`): only changed sources are repackaged, and the manifests are regenerated.
+2. **Catalog tab → Build campaign / Build melee** (or `run.cmd build --package campaign|melee`): only changed sources are repackaged, and the manifests are regenerated. To ship only some files, tick them first (or **Select changed**) and click **Build N selected** (or `--only <source>`); every other built file stays byte-identical, so players re-download only what you ticked.
 3. **Manifest tab:** set versions, the critical-update notice or the beta settings, then **Write manifest**.
 4. **Deploy tab** (`run.cmd deploy --package … [--dry-run]`): dry run first, then live.
+   - **Update website download links** (`--update-site`, campaign only): after the upload, points the website's launcher downloads (`assets\js\site-links.js` in the **Website repo path** from Settings) at the R2 copies, with `?v=<launcher version>`. The file is edited in place and left uncommitted, whatever else is uncommitted there; commit and push the site to publish it.
 
 ## The catalog: `deploy-catalog.json`
 
@@ -64,6 +65,9 @@ run.cmd promote "Loomings3Legacy.SC2Map" public
 - **Opaque names:** each map gets a random `mapId` once and ships as `meleepayload/maps/<mapId>.evm`, with its minimap as `thumbs/<mapId>.png`.
 - **Metadata** (name, players, modes, size, tileset, and the SCEvo mods it needs) is read from the map itself.
 - **Missing mods:** the build warns when a map needs a mod that ships in neither package.
+- **Modes** on a map card come from the map's short description when it names a mode (`1v1`, `2v2`, `FFA`), otherwise from its start locations (2 → `1v1`, 4 → `2v2 · FFA`, …). Type in the card's Modes box to override it.
+- **Previews before download:** the launcher shows each pool map's name, players, modes and minimap from `melee-manifest.json` and `thumbs/`, so they appear once the melee package is deployed.
+- **On players' PCs:** downloaded maps live in `%APPDATA%\sc-evo-launcher\melee\`; each game is played from a modified copy in `%TEMP%\SCEvoLauncher\<game>`. Nothing goes into SC2's Maps folder.
 
 ## News: `manifests/news-feed.json`
 
@@ -72,9 +76,12 @@ Edit it on the **News** tab. The launcher shows the cards in `feed`, in order:
 | Kind | What it shows |
 |---|---|
 | **Site post** | A post from `scevo.org/assets/data/postList.json`: the newest with a tag ("Which" 1), the one before (2), and so on, or the newest of any tag. **Skip posts shown above** stops two cards showing the same post. |
+| **Patreon post** | A post from the Patreon page (`TeamKopruluSC2`; set `patreonVanity` in `deploy-config.json` to change it): the newest ("Which" 1), the one before (2), and so on. Locked posts show Patreon's preview image, blurred unless the post has a public preview. **Hide image** uses the text header instead. |
 | **Image banner** | Only an image, the whole card is the link. |
 | **Custom card** | A card you write yourself. |
 
+- **Patreon cards are filled in when you save**, not live. Patreon's image links expire after a few weeks, so the preview image is copied to `assets/news/` and the card points at its R2 copy. **Deploy the campaign package** after saving, so the image is uploaded (Verify reports a card whose image is missing from `assets/`).
+- **Text header:** a card without an image shows the launcher's text header. Set its **Header text**, **Header label**, **Header background** and **Header accent** on any site post, Patreon or custom card.
 - **The launcher fills site posts live.** A new post on the site shows up without a deploy; it's in the player's language when the site has a translation (`posts/<slug>.<locale>.md`), otherwise English.
 - **Overrides:** any field you fill replaces what the site post shows. **All languages** applies everywhere; a language tab applies only to the launcher in that language. The preview shows the result for the selected language.
 - **Shown on** limits a card to the public or beta channel.
@@ -107,5 +114,6 @@ Edit it on the **News** tab. The launcher shows the cards in `feed`, in order:
 | `tools/lib/mapmeta.js`, `tools/lib/sc2map/` | melee map metadata (`sc2map/` is copied from the launcher's reader; copy it again when the launcher's changes) |
 | `tools/lib/deploy.js`, `r2.js`, `verify.js` | deploy sequence, rclone, checks |
 | `tools/lib/news.js` | news feed resolution (copied from the launcher's `electron/news/posts.js`; copy it again when that changes) |
+| `tools/lib/patreon.js` | Patreon posts for news cards, filled in and image re-hosted on save |
 | `tools/test/` | `node --test "tools/test/*.test.js"` |
 | `legacy/` | the old PowerShell scripts, kept for reference only |

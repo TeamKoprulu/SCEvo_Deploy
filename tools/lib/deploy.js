@@ -13,13 +13,14 @@ const { generate } = require('./generate');
 const verify = require('./verify');
 const r2 = require('./r2');
 const mf = require('./manifest');
+const site = require('./site');
 
 const MANIFESTS = {
   campaign: ['update-manifest.json', 'beta-manifest.json', 'news-feed.json', 'launcher-version.json'],
   melee: ['melee-manifest.json'],
 };
 
-async function deploy({ packages, dryRun = false, force = false, log = () => {}, progress = () => {}, step = () => {} }) {
+async function deploy({ packages, dryRun = false, force = false, updateSite = false, log = () => {}, progress = () => {}, step = () => {} }) {
   if (!packages || !packages.length) throw new Error('Choose at least one package to deploy');
   const doc = catalog.load();
   if (!doc) throw new Error('No deploy-catalog.json yet. Run: run.cmd init');
@@ -66,8 +67,10 @@ async function deploy({ packages, dryRun = false, force = false, log = () => {},
     staged.staged.forEach((f) => log(`Staged ${f}`));
     staged.warnings.forEach((w) => log(`WARNING: ${w}`));
     launcherVersion = r2.writeLauncherVersion();
-    log(launcherVersion.ok ? `launcher-version.json -> v${launcherVersion.version}` : `WARNING: ${launcherVersion.error}`);
-    step('stage', 'done', launcherVersion.ok ? `launcher v${launcherVersion.version}` : 'launcher repo not configured');
+    const lv = launcherVersion;
+    const versionText = lv.ok ? (lv.previous && lv.previous !== lv.version ? `launcher ${lv.previous} → ${lv.version}` : `launcher ${lv.version} (unchanged)`) : null;
+    log(lv.ok ? `launcher-version.json: ${versionText}` : `WARNING: ${lv.error}`);
+    step('stage', 'done', versionText ?? 'launcher repo not configured');
   } else {
     step('stage', 'skipped', 'melee only');
   }
@@ -119,8 +122,37 @@ async function deploy({ packages, dryRun = false, force = false, log = () => {},
     const bad = published.filter((f) => f.level === 'error');
     step('confirm', bad.length ? 'failed' : 'done', bad.length ? `${bad.length} manifest(s) did not read back` : 'published manifests match');
   }
+
+  // 8. Website download links — last, so the site never points at files that didn't upload.
+  const siteResult = updateWebsite({ packages, dryRun, updateSite, log, step });
+
   log(dryRun ? 'Dry run complete.' : 'Deploy complete.');
-  return { stage: 'complete', dryRun, packages, preflight: Object.fromEntries(pre), uploads, postflight: post, published, launcherVersion };
+  return { stage: 'complete', dryRun, packages, preflight: Object.fromEntries(pre), uploads, postflight: post, published, launcherVersion, site: siteResult };
+}
+
+function updateWebsite({ packages, dryRun, updateSite, log, step }) {
+  const siteRepoPath = cfg.readConfig().siteRepoPath;
+  if (!updateSite) { step('site', 'skipped', 'not ticked'); return null; }
+  if (!packages.includes('campaign')) { step('site', 'skipped', 'campaign not deployed'); return null; }
+  if (!site.siteValid(siteRepoPath)) { step('site', 'skipped', 'website repo path not set (Settings)'); return null; }
+  step('site', 'active');
+  try {
+    const lv = mf.readManifest(cfg.LAUNCHER_VER);
+    const r = site.updateSiteLinks({ siteRepoPath, version: lv?.version, portableUrl: lv?.portable?.url, installerUrl: lv?.installer?.url, dryRun });
+    if (!r.changed) {
+      step('site', 'done', `already ${lv.version}`);
+    } else {
+      log(`${dryRun ? 'Would update' : 'Updated'} ${r.file}: launcher links → ${lv.version}${dryRun ? '' : ' (uncommitted in the website repo; commit and push to publish)'}`);
+      for (const k of Object.keys(r.after)) log(`  ${k}: ${r.before[k]} → ${r.after[k]}`);
+      step('site', 'done', `${dryRun ? 'would point' : 'points'} at ${lv.version}${dryRun ? '' : ' — commit & push the site'}`);
+    }
+    return r;
+  } catch (err) {
+    // The deploy itself succeeded; a site problem shouldn't read as a failed upload.
+    log(`WARNING: website links not updated: ${err.message}`);
+    step('site', 'failed', err.message);
+    return { error: err.message };
+  }
 }
 
 module.exports = { deploy, MANIFESTS };

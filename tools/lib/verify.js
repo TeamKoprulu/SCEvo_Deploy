@@ -9,7 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  REPO_ROOT, PAYLOAD_DIR, BETA_DIR, MANIFEST_DIR, R2_BASE,
+  REPO_ROOT, PAYLOAD_DIR, BETA_DIR, MANIFEST_DIR, ASSETS_DIR, R2_BASE,
   PUBLIC_MANIFEST, BETA_MANIFEST, readConfig, stripJunk,
 } = require('./config');
 const { hashOf } = require('./hashcache');
@@ -188,12 +188,18 @@ function checkNewsFeed(news, knownTags = null) {
   const known = knownTags && new Set(knownTags.map((t) => String(t).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '')));
   feed.forEach((s, i) => {
     const where = `feed[${i}]${s?.id ? ` (${s.id})` : ''}`;
-    if (!s || !['post', 'banner', 'custom'].includes(s.kind)) { out.push(finding(ERROR, 'news-feed-kind', `${where}: kind must be post, banner or custom`)); return; }
+    if (!s || !['post', 'patreon', 'banner', 'custom'].includes(s.kind)) { out.push(finding(ERROR, 'news-feed-kind', `${where}: kind must be post, patreon, banner or custom`)); return; }
     if (!s.id) out.push(finding(WARN, 'news-feed-id', `${where}: no id`));
     else if (ids.has(s.id)) out.push(finding(ERROR, 'news-feed-dup', `${where}: id "${s.id}" is used twice`));
     else ids.set(s.id, i);
     if (s.kind === 'banner' && !s.imageUrl) out.push(finding(ERROR, 'news-banner-image', `${where}: a banner needs an image URL`));
-    if (s.kind === 'post') {
+    if (s.kind === 'patreon' && !s.title) out.push(finding(WARN, 'news-patreon-unbaked', `${where}: this Patreon card has no post filled in yet. Save it from the News tab.`));
+    // Images the tool re-hosts (Patreon previews) live in assets/ and only reach R2 with a campaign deploy.
+    const assetRel = typeof s.imageUrl === 'string' && s.imageUrl.startsWith(`${R2_BASE}/assets/`) ? s.imageUrl.slice(R2_BASE.length + '/assets/'.length) : null;
+    if (assetRel && !fs.existsSync(path.join(ASSETS_DIR, ...decodeURI(assetRel).split('/')))) {
+      out.push(finding(ERROR, 'news-image-missing', `${where}: its image assets/${assetRel} is not in the assets folder, so the card would show a broken image`));
+    }
+    if (s.kind === 'post' || s.kind === 'patreon') {
       const n = s.rule?.index ?? 1;
       if (!Number.isInteger(n) || n < 1) out.push(finding(ERROR, 'news-feed-index', `${where}: rule.index must be 1 or more`));
       const tag = s.rule?.tag;

@@ -53,9 +53,15 @@
           </div>
         </div>
         <div class="sec-body flush" id="ctList"></div>
+        <div class="build-progress" id="ctProgress" hidden>
+          <div class="small" id="ctProgressLabel">Starting…</div>
+          <div class="progress"><div class="progress-bar"></div></div>
+        </div>
         <div class="actionbar">
           <span class="summary" id="ctSummary"></span>
           <div class="actions" style="margin-left:auto">
+            <button class="btn ghost sm" id="ctSelectChanged" hidden title="Tick every item whose source changed or was never built">Select changed</button>
+            <button class="btn ghost sm" id="ctClearSel" hidden>Clear selection</button>
             <label class="check" style="margin:0"><input type="checkbox" id="ctForce"> Repackage even if unchanged</label>
             <button class="btn primary" id="ctBuild">Build campaign</button>
           </div>
@@ -208,6 +214,8 @@
                 <label class="check"><input type="checkbox" id="dpPkgMelee"> Melee vs AI <span class="faint">(meleepayload, melee-manifest.json)</span></label>
               </div>
               <p class="hint" id="dpBranchNote"></p>
+              <label class="check"><input type="checkbox" id="dpSite"> Update website download links</label>
+              <p class="hint" id="dpSiteNote"></p>
             </div>
             <div>
               <h4>Mode</h4>
@@ -242,6 +250,7 @@
               <li data-step="postflight"><span class="marker">4</span><div><div class="label">Verify files on the CDN</div><div class="note"></div></div></li>
               <li data-step="manifests"><span class="marker">5</span><div><div class="label">Publish manifests</div><div class="note"></div></div></li>
               <li data-step="confirm"><span class="marker">6</span><div><div class="label">Confirm published manifests</div><div class="note"></div></div></li>
+              <li data-step="site"><span class="marker">7</span><div><div class="label">Update website links</div><div class="note"></div></div></li>
             </ol>
           </div>
         </div>
@@ -270,7 +279,7 @@
         <div class="sec-head">
           <div>
             <h2>News feed</h2>
-            <p class="sub">Cards and the announcement banner the launcher shows on its home screen. Site posts are filled in live by the launcher from scevo.org.</p>
+            <p class="sub">Cards and the announcement banner the launcher shows on its home screen. Site posts are filled in live by the launcher from scevo.org; Patreon cards are filled in when you save.</p>
           </div>
           <div class="actions">
             <button class="btn ghost" id="nwReload">Reload</button>
@@ -294,10 +303,11 @@
 
       <div class="section">
         <div class="sec-head"><h3>Cards <span class="badge" id="nwCount">0</span></h3>
-          <span class="faint small" id="nwSiteState"></span>
+          <span class="faint small"><span id="nwSiteState"></span><br><span id="nwPatreonState"></span></span>
           <div class="actions">
-            <button class="btn ghost sm" id="nwRefreshSite" title="Fetch postList.json again">Refresh site posts</button>
+            <button class="btn ghost sm" id="nwRefreshSite" title="Fetch the scevo.org and Patreon posts again">Refresh posts</button>
             <button class="btn sm" id="nwAddPost">Add site post</button>
+            <button class="btn sm" id="nwAddPatreon">Add Patreon post</button>
             <button class="btn sm" id="nwAddBanner">Add image banner</button>
             <button class="btn sm" id="nwAddCustom">Add custom card</button>
           </div>
@@ -346,6 +356,12 @@
             publishes a downgrade to every user. Blank means the exes and version file
             already in this repo are uploaded unchanged.
           </div>
+
+          <label>Website repo path <span class="hint-inline">optional</span>
+            <input id="stSite" type="text" placeholder="D:\SCBW\EvoSite">
+          </label>
+          <p class="hint">The scevo.org repo. With <b>Update website download links</b> ticked on the Deploy tab, a campaign deploy points
+            <code>assets\js\site-links.js</code> at the launcher it just published. The file is edited in place, uncommitted; you commit and push the site.</p>
 
           <label class="check"><input type="checkbox" id="stDebug"> Emit <code>showVersionDebug</code> in launcher-version.json</label>
           <div class="actions"><button class="btn primary" id="stSave">Save settings</button></div>

@@ -49,6 +49,18 @@ function fingerprint(abs) {
   return `d|${count}|${size}|${Math.round(newest)}`;
 }
 
+// Fingerprint fields: "d|count|size|newest" (folder) or "f|size|mtime" (packed file).
+const fpBytes  = (fp) => { const p = String(fp).split('|'); return Number(p[0] === 'd' ? p[2] : p[1]) || 0; };
+const fpNewest = (fp) => Number(String(fp).split('|').pop()) || 0;
+
+// A built file older than the newest file in its source was built from an older
+// version of it — e.g. a payload adopted when the catalog was created, after the
+// source had already been edited. The fingerprint alone can't see that.
+const MTIME_SLACK_MS = 2000;
+function isStale(fp, dest) {
+  try { return fpNewest(fp) > fs.statSync(dest).mtimeMs + MTIME_SLACK_MS; } catch { return true; }
+}
+
 // Absolute payload paths an item's file must exist at.
 function destsOf(item) {
   const target = catalog.targetOf(item);
@@ -91,19 +103,33 @@ async function build(opts) {
   const results = [];
   let index = 0;
 
+  // Byte-weighted progress across the whole build: up-to-date items finish at
+  // once, a packing item advances with the archive MPQEditor is writing.
+  const fps = new Map();
+  for (const it of todo) {
+    const row = byKey.get(catalog.keyOf(it.source));
+    try { if (row?.abs) fps.set(it, fingerprint(row.abs)); } catch {}
+  }
+  const totalBytes = [...fps.values()].reduce((n, fp) => n + fpBytes(fp), 0);
+  let doneBytes = 0;
+
   for (const item of todo) {
     index++;
     const row = byKey.get(catalog.keyOf(item.source));
     const name = path.basename(item.source);
-    progress({ phase: 'start', file: name, index, total: todo.length });
+    const itemBytes = fps.has(item) ? fpBytes(fps.get(item)) : 0;
+    const report = (p) => progress({ index, total: todo.length, totalBytes, ...p,
+      // Output is compressed, so written bytes only approximate the share done; cap below 100%.
+      doneBytes: doneBytes + (p.bytes ? Math.min(p.bytes / (itemBytes || 1), 0.95) * itemBytes : 0) });
+    report({ phase: 'start', file: name });
     if (!row || !row.abs) { results.push({ source: item.source, ok: false, action: 'missing', error: 'source not found in the SC2 install' }); continue; }
 
     try {
-      const fp = fingerprint(row.abs);
+      const fp = fps.get(item) ?? fingerprint(row.abs);
       const prev = state[catalog.keyOf(item.source)];
       const dests = destsOf(item);
       const fresh = !force && prev && prev.fingerprint === fp;
-      const have = fresh ? dests.filter((d) => sameFile(d, prev.size)) : [];
+      const have = fresh ? dests.filter((d) => sameFile(d, prev.size) && !isStale(fp, d)) : [];
 
       let action;
       if (fresh && have.length === dests.length) {
@@ -122,7 +148,7 @@ async function build(opts) {
         action = 'packaged';
         if (!dryRun) {
           if (!fs.existsSync(MPQ_EDITOR)) throw new Error(`MPQEditor.exe not found at ${MPQ_EDITOR}`);
-          const r = await mpq.buildOne({ relPath: item.source, sourceDir: row.abs }, dests, progress);
+          const r = await mpq.buildOne({ relPath: item.source, sourceDir: row.abs }, dests, report);
           if (!r.ok) throw new Error(r.error);
         }
       }
@@ -152,6 +178,8 @@ async function build(opts) {
       log(`FAILED ${name}: ${err.message}`);
       results.push({ source: item.source, ok: false, action: 'error', error: err.message });
     }
+    doneBytes += itemBytes;
+    report({ phase: 'done', file: name });
     if (!dryRun) saveState(state);
   }
 
@@ -189,8 +217,11 @@ async function adoptExisting(doc, sc2Root, log = () => {}) {
     const dests = destsOf(item);
     if (!row || !row.abs || !dests.length || !fs.existsSync(dests[0])) continue;
     if (state[catalog.keyOf(item.source)]) continue;
+    const fp = fingerprint(row.abs);
+    // A payload older than its source wasn't built from it; leave it "not built".
+    if (isStale(fp, dests[0])) { log(`Not adopting ${path.basename(item.source)}: the source was edited after it was built`); continue; }
     const { hash, size } = await hashOf(dests[0]);
-    state[catalog.keyOf(item.source)] = { fingerprint: fingerprint(row.abs), hash, size };
+    state[catalog.keyOf(item.source)] = { fingerprint: fp, hash, size };
     adopted++;
   }
   saveState(state);
@@ -211,9 +242,9 @@ function statusOf(doc, rows) {
     if (!prev || !dests.every((d) => sameFile(d, prev.size))) { out.set(catalog.keyOf(r.source), 'unbuilt'); continue; }
     let fp = null;
     try { fp = r.abs ? fingerprint(r.abs) : null; } catch {}
-    out.set(catalog.keyOf(r.source), fp === prev.fingerprint ? 'built' : 'changed');
+    out.set(catalog.keyOf(r.source), fp === prev.fingerprint && !dests.some((d) => isStale(fp, d)) ? 'built' : 'changed');
   }
   return out;
 }
 
-module.exports = { build, adoptExisting, statusOf, destsOf, thumbPathOf, fingerprint, loadState, STATE_FILE };
+module.exports = { build, adoptExisting, statusOf, destsOf, thumbPathOf, fingerprint, isStale, loadState, STATE_FILE };

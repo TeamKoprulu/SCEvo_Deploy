@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-05-09T00:00:00Z",
+  "lastUpdated": "2026-10-04T05:12:20Z",
   "strings": {
     "en": {
       "play": "PLAY",
@@ -285,74 +285,106 @@
   },
   "cards": [
     {
-      "id": "news-betapatchnotes_061",
-      "title": "Campaign Update 0.6.1",
-      "date": "July 12, 2026",
-      "type": "patchnotes",
-      "imageLabel": "Campaign 0.6.1",
-      "imageText": "EVO",
+      "id": "post-1791077400327",
+      "type": "update",
+      "title": "1.21 Patch Notes",
+      "date": "September 14, 2026",
+      "excerpt": "Patch 1.21 contains incremental balance adjustments across all three Brood War races. It is also the last major balance update I will be involved in for the foreseeable future.",
+      "imageUrl": "https://scevo.org/assets/img/blog/blog-update-1_21.webp",
+      "badge": "Update",
+      "linkUrl": "https://scevo.org/posts/evo-update-1_21.html",
       "imageBg": "#2a0a10",
-      "imageAccent": "#ff0025",
-      "highlights": [
-        "Lurkers now usable by the AI",
-        "Mission 5 Balance adjustments",
-        "Minor Bugfixes."
-      ],
+      "imageAccent": "#ff0025"
+    },
+    {
+      "id": "post-1791077399519",
+      "type": "patchnotes",
+      "title": "Beta 0.6",
+      "date": "July 4, 2026",
+      "excerpt": "Campaign Open Beta Update 0.6",
+      "imageUrl": "https://scevo.org/assets/img/blog/blog-loomings-0_6.webp",
       "badge": "Campaign",
-      "badgeColor": "#ff0025",
-      "linkUrl": "https://scevo.org/posts/evo-campaign-loomings-0_6"
-    },
-    {
-      "id": "news-1.19",
-      "title": "SC: Evo 1.19",
-      "date": "May 9, 2026",
-      "type": "update",
-      "imageUrl": "https://scevo.org/assets/img/blog/blog-update-1_20.webp",
-      "imageLabel": "1.20.1",
-      "imageText": "EVO UPDATE",
+      "linkUrl": "https://scevo.org/posts/evo-campaign-loomings-0_6.html",
+      "highlights": [
+        "- Major Launcher Reworks",
+        "- CN Region Download support",
+        "- Mission 5 available for everyone"
+      ],
       "imageBg": "#0a242a",
-      "imageAccent": "#00c5ff",
-      "badge": "New Update",
-      "badgeColor": "#00c5ff",
-      "excerpt": "...",
-      "linkUrl": "https://scevo.org/posts/evo-update-1_20_1",
-      "readMoreLabel": "Read more",
-      "locales": {
-        "en": {
-          "title": "SC: Evo 1.20.1",
-          "date": "June 30, 2026",
-          "readMoreLabel": "Read more",
-          "excerpt": "1.20.1: follow-up balance adjustments including reduced Concussive/Explosive damage against Shields, a Hydralisk attack speed compensation, and Protoss late-game nerfs to Dark Templar, Mind Control, and Recall."
-        }
-      }
+      "imageAccent": "#00c5ff"
     },
     {
-      "id": "patreon-may2026",
-      "title": "May Development Update",
-      "date": "June 7, 2026",
+      "id": "patreon-1791077400768",
+      "patreonId": "164489935",
       "type": "update",
-      "imageLabel": "May Update",
-      "imageText": "PATREON",
-      "imageBg": "#2a1b0a",
-      "imageAccent": "#ff9500",
+      "title": "June/July Developer Updates",
+      "date": "August 21, 2026",
+      "excerpt": "",
+      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/june-july-164489935",
       "badge": "Patreon",
-      "badgeColor": "#ff9500",
-      "excerpt": "...",
-      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/may-developer-160446092?utm_medium=clipboard_copy&utm_source=copyLink&utm_campaign=postshare_creator&utm_content=join_link",
-      "readMoreLabel": "Read more",
-      "locales": {
-        "en": {
-          "title": "May Development Update",
-          "date": "June 7, 2026",
-          "readMoreLabel": "Read more",
-          "excerpt": "Just a small side-update, work has been a little slow for me due to some hardware issues, i am in the process of replacing a couple PC parts which rendered me unable to work on many parts of the project. I will sort it out soon, but i am able to work on model animation again."
-        }
-      }
+      "imageUrl": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/assets/news/patreon-164489935-ffe2dba0.png",
+      "imageAccent": "#ff9500",
+      "imageBg": "#2a1b0a"
     }
   ],
   "announcement": {
-    "enabled": false,
-    "message": "New Launcher Update Available! head to scevo.org to download the latest version of the Launcher.",
-    "type": "warning"
-  }
+    "enabled": true,
+    "message": "Melee VS AI games are now available through the Launcher!",
+    "type": "info"
+  },
+  "feed": [
+    {
+      "id": "post-1791077400327",
+      "kind": "post",
+      "rule": {
+        "index": 1,
+        "tag": "Update"
+      },
+      "exclude": "used",
+      "overrides": {
+        "imageAccent": "#ff0025",
+        "imageBg": "#2a0a10"
+      }
+    },
+    {
+      "id": "post-1791077399519",
+      "kind": "post",
+      "rule": {
+        "index": 1,
+        "tag": "Campaign"
+      },
+      "exclude": "used",
+      "overrides": {
+        "imageAccent": "#00c5ff",
+        "imageBg": "#0a242a",
+        "highlights": [
+          "- Major Launcher Reworks",
+          "- CN Region Download support",
+          "- Mission 5 available for everyone"
+        ]
+      }
+    },
+    {
+      "id": "patreon-1791077400768",
+      "kind": "patreon",
+      "rule": {
+        "index": 1
+      },
+      "exclude": "used",
+      "overrides": {
+        "imageAccent": "#ff9500",
+        "imageBg": "#2a1b0a"
+      },
+      "patreonId": "164489935",
+      "type": "update",
+      "title": "June/July Developer Updates",
+      "date": "August 21, 2026",
+      "excerpt": "",
+      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/june-july-164489935",
+      "badge": "Patreon",
+      "imageUrl": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/assets/news/patreon-164489935-ffe2dba0.png",
+      "imageAccent": "#ff9500",
+      "imageBg": "#2a1b0a"
+    }
+  ]
 }

@@ -233,7 +233,7 @@
     {
       "source": "Maps\\SCEvo_MPMaps\\SCEVO_Vermeer.SC2Map",
       "package": "melee",
-      "channel": "public",
+      "channel": "off",
       "mapId": "339c17a9e2"
     },
     {
@@ -335,6 +335,7 @@
     "Maps\\SCEvo\\LegacyLoomings\\10x10 grid.SC2Map",
     "Maps\\SCEvo\\LegacyLoomings\\10x10grid comp.SC2Map",
     "Maps\\SCEvo\\LegacyLoomings\\9x9 grid.SC2Map",
+    "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_Campaign.SC2Mod",
     "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_CampaignArmory.SC2Mod",
     "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_CampaignGlues.SC2Mod",
     "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_GluesAssets.SC2Mod",

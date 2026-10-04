@@ -149,7 +149,12 @@ async function buildOne(src, targets, onProgress) {
 
     writeTextAtomic(scriptAbs, mpqScript(outRel, linkRel, hashSize));
 
-    const run = await runMpqEditor(scriptRel);
+    // MPQEditor reports nothing while it works; the archive's growing size is the only progress signal.
+    const poll = setInterval(() => {
+      try { emit('packing', { fileCount, hashSize, bytes: fs.statSync(outAbs).size }); } catch { /* not created yet */ }
+    }, 500);
+    let run;
+    try { run = await runMpqEditor(scriptRel); } finally { clearInterval(poll); }
 
     if (!fs.existsSync(outAbs)) {
       return fail(`MPQEditor produced no output (exit ${run.code}). Script kept at ${scriptRel}`, run);
