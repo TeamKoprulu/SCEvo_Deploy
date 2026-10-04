@@ -270,11 +270,10 @@
         <div class="sec-head">
           <div>
             <h2>News feed</h2>
-            <p class="sub">Cards and the announcement banner the launcher shows on its home screen.</p>
+            <p class="sub">Cards and the announcement banner the launcher shows on its home screen. Site posts are filled in live by the launcher from scevo.org.</p>
           </div>
           <div class="actions">
             <button class="btn ghost" id="nwReload">Reload</button>
-            <button class="btn ghost" id="nwAddCard">Add card</button>
             <button class="btn primary" id="nwSave">Save news-feed.json</button>
           </div>
         </div>
@@ -294,7 +293,15 @@
       </div>
 
       <div class="section">
-        <div class="sec-head"><h3>Cards <span class="badge" id="nwCount">0</span></h3></div>
+        <div class="sec-head"><h3>Cards <span class="badge" id="nwCount">0</span></h3>
+          <span class="faint small" id="nwSiteState"></span>
+          <div class="actions">
+            <button class="btn ghost sm" id="nwRefreshSite" title="Fetch postList.json again">Refresh site posts</button>
+            <button class="btn sm" id="nwAddPost">Add site post</button>
+            <button class="btn sm" id="nwAddBanner">Add image banner</button>
+            <button class="btn sm" id="nwAddCustom">Add custom card</button>
+          </div>
+        </div>
         <div class="split">
           <div class="list" id="nwList"></div>
           <div class="detail" id="nwDetail"></div>

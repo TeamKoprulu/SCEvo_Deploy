@@ -21,6 +21,7 @@ const { deploy } = require('./lib/deploy');
 const mapcache = require('./lib/mapcache');
 const verify = require('./lib/verify');
 const r2 = require('./lib/r2');
+const news = require('./lib/news');
 
 const UI_DIR = path.join(__dirname, 'ui');
 const TOKEN = crypto.randomBytes(16).toString('hex');
@@ -29,6 +30,9 @@ const TOKEN = crypto.randomBytes(16).toString('hex');
 // different ports would otherwise clobber each other's token. Assigned once the
 // server is listening; no request can arrive before that.
 let COOKIE_NAME = 'scevo';
+
+let NEWS_RESOLVER = null;
+const newsResolver = () => (NEWS_RESOLVER ??= news.createNewsResolver({ fetch }));
 
 /* ── SSE bus ─────────────────────────────────────────────────────────────── */
 
@@ -294,11 +298,43 @@ const routes = {
     return { exists: !!doc, news: doc ?? null };
   },
 
+  // Site posts for the feed editor: newest first, plus every tag in use.
+  'GET /api/site-posts': async (_body, url) => {
+    if (url.searchParams.get('refresh')) newsResolver().clear();
+    const posts = await newsResolver().loadPosts();
+    const tags = [...new Map(posts.flatMap((p) => news.splitTags(p.tags)).map((t) => [news.normTag(t), t])).values()].sort();
+    return { posts: posts.map((p) => ({ link: p.link, title: p.title, date: p.date, tags: p.tags })), tags };
+  },
+
+  // What the launcher would show for this feed in one language; each card carries its feed index.
+  'POST /api/news-preview': async (body) => {
+    if (!Array.isArray(body.feed)) throw new Error('Missing feed');
+    const { cards } = await newsResolver().resolve(body.feed, body.lang || 'en', { withSlot: true });
+    return { cards };
+  },
+
+  // Merges into the existing file so keys this editor doesn't know (promo, strings,
+  // announcement.locales) survive. With a feed, "cards" becomes its English snapshot
+  // for launchers that predate the feed.
   'POST /api/news': async (body) => {
     if (!body.news || typeof body.news !== 'object') throw new Error('Missing news payload');
-    const doc = { ...body.news, lastUpdated: mf.nowIso() };
+    const prev = mf.readManifest(cfg.NEWS_FEED) ?? {};
+    const doc = { ...prev, ...body.news };
+    if (prev.announcement && body.news.announcement) doc.announcement = { ...prev.announcement, ...body.news.announcement };
+    const warnings = [];
+    if (Array.isArray(doc.feed)) {
+      newsResolver().clear();
+      const { cards, posts } = await newsResolver().resolve(doc.feed, 'en', { applyLocales: false });
+      if (!posts.length && doc.feed.some((s) => s.kind === 'post')) {
+        warnings.push('scevo.org could not be reached: the snapshot for older launchers keeps its previous cards.');
+      } else {
+        // Older launchers can't draw image-only cards.
+        doc.cards = cards.filter((c) => c.type !== 'banner').map(({ post, ...c }) => c);
+      }
+    }
+    doc.lastUpdated = mf.nowIso();
     mf.writeManifest(cfg.NEWS_FEED, doc);
-    return { written: path.relative(cfg.REPO_ROOT, cfg.NEWS_FEED) };
+    return { written: path.relative(cfg.REPO_ROOT, cfg.NEWS_FEED), warnings };
   },
 
   'POST /api/cache-prune': async () => ({ removed: hashcache.prune(), cache: hashcache.stats() }),

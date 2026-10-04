@@ -65,6 +65,22 @@ run.cmd promote "Loomings3Legacy.SC2Map" public
 - **Metadata** (name, players, modes, size, tileset, and the SCEvo mods it needs) is read from the map itself.
 - **Missing mods:** the build warns when a map needs a mod that ships in neither package.
 
+## News: `manifests/news-feed.json`
+
+Edit it on the **News** tab. The launcher shows the cards in `feed`, in order:
+
+| Kind | What it shows |
+|---|---|
+| **Site post** | A post from `scevo.org/assets/data/postList.json`: the newest with a tag ("Which" 1), the one before (2), and so on, or the newest of any tag. **Skip posts shown above** stops two cards showing the same post. |
+| **Image banner** | Only an image, the whole card is the link. |
+| **Custom card** | A card you write yourself. |
+
+- **The launcher fills site posts live.** A new post on the site shows up without a deploy; it's in the player's language when the site has a translation (`posts/<slug>.<locale>.md`), otherwise English.
+- **Overrides:** any field you fill replaces what the site post shows. **All languages** applies everywhere; a language tab applies only to the launcher in that language. The preview shows the result for the selected language.
+- **Shown on** limits a card to the public or beta channel.
+- **Older launchers** read `cards`. Saving writes it as an English snapshot of the feed (without banners), so they keep showing news.
+- The announcement banner, `promo` and the locale strings are kept as they are on save.
+
 ## What Build and Deploy guarantee
 
 - **Payload folders mirror the catalog.** Files no item claims any more are removed on Build.
@@ -90,5 +106,6 @@ run.cmd promote "Loomings3Legacy.SC2Map" public
 | `tools/lib/generate.js` | the three manifests from the catalog |
 | `tools/lib/mapmeta.js`, `tools/lib/sc2map/` | melee map metadata (`sc2map/` is copied from the launcher's reader; copy it again when the launcher's changes) |
 | `tools/lib/deploy.js`, `r2.js`, `verify.js` | deploy sequence, rclone, checks |
+| `tools/lib/news.js` | news feed resolution (copied from the launcher's `electron/news/posts.js`; copy it again when that changes) |
 | `tools/test/` | `node --test "tools/test/*.test.js"` |
 | `legacy/` | the old PowerShell scripts, kept for reference only |

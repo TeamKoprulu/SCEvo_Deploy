@@ -787,9 +787,19 @@ $('#dpRun').addEventListener('click', async () => {
 
 /* ── NEWS ────────────────────────────────────────────────────────── */
 
+// news-feed.json "feed" is an ordered list of slots:
+//   post    a site post picked by rule (tag + nth newest), fields overridable
+//   banner  an image-only card
+//   custom  a hand-written card (the old "cards" format)
+// Saving also writes "cards", the English snapshot older launchers read.
 let NEWS = null;
 let NW_SEL = 0;
 let NW_DIRTY = false;
+let NW_LOC = '';          // '' = all languages (base), else a launcher language
+let NW_PREVIEW = new Map(); // feed index → resolved card in the preview language
+let NW_SITE = { posts: [], tags: [], error: null };
+const NW_LANGS = ['en', 'es', 'zh', 'ko', 'ru'];
+const NW_KIND_LABEL = { post: 'site post', banner: 'banner', custom: 'custom' };
 
 function setNewsDirty(on) {
   NW_DIRTY = on;
@@ -803,15 +813,33 @@ async function loadNews() {
   NEWS = r.news ?? { schemaVersion: 1, strings: {}, cards: [], announcement: { enabled: false, message: '', type: 'info' } };
   NEWS.announcement ??= { enabled: false, message: '', type: 'info' };
   NEWS.cards ??= [];
+  // First edit of an old file: its cards become custom slots.
+  NEWS.feed ??= NEWS.cards.map((c) => ({ kind: 'custom', ...c }));
   $('#nwAnnEnabled').checked = !!NEWS.announcement.enabled;
   $('#nwAnnType').value = NEWS.announcement.type ?? 'info';
   $('#nwAnnMsg').value = NEWS.announcement.message ?? '';
   syncAnnPill();
-  NW_SEL = Math.min(NW_SEL, Math.max(0, NEWS.cards.length - 1));
+  NW_SEL = Math.min(NW_SEL, Math.max(0, NEWS.feed.length - 1));
   setNewsDirty(false);
   renderLocales();
   renderCardList();
   renderCardDetail();
+  if (!NW_SITE.posts.length) loadSitePosts(false);
+  else refreshPreview();
+}
+
+async function loadSitePosts(refresh) {
+  $('#nwSiteState').textContent = 'Fetching scevo.org posts…';
+  try {
+    const r = await api('GET', `/api/site-posts${refresh ? '?refresh=1' : ''}`);
+    NW_SITE = { posts: r.posts, tags: r.tags, error: null };
+    $('#nwSiteState').textContent = r.posts.length ? `${plural(r.posts.length, 'site post', 'site posts')} · newest ${r.posts[0].date}` : 'scevo.org returned no posts';
+  } catch (e) {
+    NW_SITE = { posts: [], tags: [], error: e.message };
+    $('#nwSiteState').textContent = `scevo.org unreachable: ${e.message}`;
+  }
+  renderCardDetail();
+  refreshPreview();
 }
 
 function syncAnnPill() {
@@ -843,16 +871,52 @@ function renderLocales() {
   }).join('');
 }
 
+const previewLang = () => NW_LOC || 'en';
+let nwPreviewTimer = null;
+let nwPreviewSeq = 0;
+function refreshPreview() {
+  clearTimeout(nwPreviewTimer);
+  nwPreviewTimer = setTimeout(async () => {
+    const seq = ++nwPreviewSeq;
+    try {
+      const r = await api('POST', '/api/news-preview', { feed: NEWS.feed, lang: previewLang() });
+      if (seq !== nwPreviewSeq) return;
+      NW_PREVIEW = new Map(r.cards.map((c) => [c.slot, c]));
+    } catch (e) {
+      if (seq !== nwPreviewSeq) return;
+      NW_PREVIEW = new Map();
+    }
+    renderCardList();
+    renderPreviewPane();
+    fillPlaceholders();
+  }, 250);
+}
+
+function slotLabel(s) {
+  if (s.kind === 'post') {
+    const n = Number(s.rule?.index) || 1;
+    return `${s.rule?.tag ? `Latest “${s.rule.tag}”` : 'Latest post'}${n > 1 ? ` #${n}` : ''}${s.exclude === 'used' ? ' · skip shown' : ''}`;
+  }
+  if (s.kind === 'banner') return s.title || s.imageUrl?.split('/').pop() || 'Image banner';
+  return s.title || s.id || 'untitled';
+}
+
 function renderCardList() {
   const host = $('#nwList');
-  $('#nwCount').textContent = NEWS.cards.length;
-  if (!NEWS.cards.length) { host.innerHTML = '<div class="empty">No cards.</div>'; return; }
-  host.innerHTML = NEWS.cards.map((c, i) => `<div class="item ${i === NW_SEL ? 'sel' : ''}" data-i="${i}" draggable="true">
-    <span class="drag" title="Drag to reorder">⠿</span>
-    <span class="pill ${c.type === 'patchnotes' ? 'acc' : ''}">${esc(c.type ?? 'update')}</span>
-    <span class="name grow">${esc(c.title || c.id || 'untitled')}</span>
-    <span class="meta">${esc(c.date ?? '')}</span>
-  </div>`).join('');
+  const feed = NEWS.feed;
+  $('#nwCount').textContent = feed.length;
+  if (!feed.length) { host.innerHTML = '<div class="empty">No cards. Add a site post, a banner or a custom card.</div>'; return; }
+  host.innerHTML = feed.map((s, i) => {
+    const shown = NW_PREVIEW.get(i);
+    const meta = s.kind === 'post' ? (shown ? shown.title : (NW_SITE.posts.length ? 'no matching post' : '')) : (s.date ?? '');
+    return `<div class="item ${i === NW_SEL ? 'sel' : ''}${s.enabled === false ? ' off' : ''}" data-i="${i}" draggable="true">
+      <span class="drag" title="Drag to reorder">⠿</span>
+      <span class="pill ${s.kind === 'post' ? 'acc' : s.kind === 'banner' ? 'warn' : ''}">${NW_KIND_LABEL[s.kind] ?? 'custom'}</span>
+      ${s.variant ? `<span class="pill">${esc(s.variant)}</span>` : ''}
+      <span class="grow"><span class="name truncate" style="display:block">${esc(slotLabel(s))}</span>
+        ${meta ? `<span class="meta truncate" style="display:block">${s.kind === 'post' ? '→ ' : ''}${esc(meta)}</span>` : ''}</span>
+    </div>`;
+  }).join('');
 
   $$('.item', host).forEach((el) => {
     const i = +el.dataset.i;
@@ -864,80 +928,224 @@ function renderCardList() {
     el.addEventListener('drop', (e) => {
       e.preventDefault();
       if (nwDrag === null || nwDrag === i) return;
-      const [moved] = NEWS.cards.splice(nwDrag, 1);
-      NEWS.cards.splice(i, 0, moved);
+      const [moved] = feed.splice(nwDrag, 1);
+      feed.splice(i, 0, moved);
       NW_SEL = i; nwDrag = null;
-      setNewsDirty(true);
-      renderCardList(); renderCardDetail();
+      newsChanged(true);
     });
   });
 }
 let nwDrag = null;
 
+// Fields per kind. In a language tab only the translatable ones show.
+const NW_FIELDS = {
+  post:   ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor'],
+  banner: ['imageUrl', 'linkUrl', 'title'],
+  custom: ['title', 'date', 'type', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', 'readMoreLabel'],
+};
+const NW_LOCAL_FIELDS = ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'readMoreLabel'];
+const NW_LABEL = {
+  title: 'Title', excerpt: 'Description', highlights: 'Highlights', imageUrl: 'Image URL', linkUrl: 'Link URL',
+  badge: 'Badge', badgeColor: 'Badge colour', date: 'Date', type: 'Type', readMoreLabel: '“Read more” text',
+};
+
+// The object a field edit writes to: the slot (or its overrides) for all languages, else locales[lang].
+function editTarget(s, create) {
+  if (NW_LOC) {
+    if (create) { s.locales ??= {}; s.locales[NW_LOC] ??= {}; }
+    return s.locales?.[NW_LOC] ?? {};
+  }
+  if (s.kind === 'post') { if (create) s.overrides ??= {}; return s.overrides ?? {}; }
+  return s;
+}
+
+function cleanSlot(s) {
+  if (s.overrides && !Object.keys(s.overrides).length) delete s.overrides;
+  if (s.locales) {
+    for (const l of Object.keys(s.locales)) if (!Object.keys(s.locales[l] ?? {}).length) delete s.locales[l];
+    if (!Object.keys(s.locales).length) delete s.locales;
+  }
+}
+
+function fieldHtml(k, v) {
+  const val = k === 'highlights' ? (v ?? []).join('\n') : (v ?? '');
+  if (k === 'type') {
+    return `<label style="max-width:170px">${NW_LABEL[k]}<select data-f="type">
+      ${['update', 'patchnotes'].map((t) => `<option value="${t}"${(v ?? 'update') === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`;
+  }
+  if (k === 'excerpt' || k === 'highlights') {
+    return `<label>${NW_LABEL[k]}${k === 'highlights' ? ' <span class="hint-inline">one per line; makes a patch-notes card</span>' : ''}
+      <textarea rows="3" data-f="${k}">${esc(val)}</textarea></label>`;
+  }
+  return `<label>${NW_LABEL[k]}<input type="text" data-f="${k}" value="${esc(val)}"></label>`;
+}
+
 function renderCardDetail() {
   const host = $('#nwDetail');
-  const c = NEWS.cards[NW_SEL];
-  if (!c) { host.innerHTML = '<div class="detail-empty">Select a card to edit it, or add one.</div>'; return; }
+  const s = NEWS?.feed?.[NW_SEL];
+  if (!s) { host.innerHTML = '<div class="detail-empty">Select a card to edit it, or add one.</div>'; return; }
+  const target = editTarget(s, false);
+  const fields = NW_FIELDS[s.kind] ?? NW_FIELDS.custom;
+  const shownFields = NW_LOC ? fields.filter((k) => NW_LOCAL_FIELDS.includes(k)) : fields;
+  const tags = [...new Set([...(NW_SITE.tags ?? []), ...(s.rule?.tag ? [s.rule.tag] : [])])];
+
   host.innerHTML = `
     <div class="field-row">
-      <label>ID<input type="text" data-k="id" value="${esc(c.id ?? '')}"></label>
-      <label>Date<input type="text" data-k="date" value="${esc(c.date ?? '')}"></label>
-      <label style="max-width:170px">Type<select data-k="type">
-        <option value="update"${c.type === 'update' ? ' selected' : ''}>update</option>
-        <option value="patchnotes"${c.type === 'patchnotes' ? ' selected' : ''}>patchnotes</option>
-      </select></label>
+      <label>ID<input type="text" data-s="id" value="${esc(s.id ?? '')}"></label>
+      <label style="max-width:170px">Shown on<select data-s="variant">
+        ${[['', 'both channels'], ['public', 'public only'], ['beta', 'beta only']].map(([v, l]) =>
+          `<option value="${v}"${(s.variant ?? '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="check" style="flex:none;align-self:end"><input type="checkbox" data-s="enabled"${s.enabled === false ? '' : ' checked'}> Shown</label>
     </div>
-    <label>Title<input type="text" data-k="title" value="${esc(c.title ?? '')}"></label>
-    <label>Excerpt<textarea rows="3" data-k="excerpt">${esc(c.excerpt ?? '')}</textarea></label>
-    <label>Highlights <span class="hint-inline">one per line</span><textarea rows="4" data-k="highlights">${esc((c.highlights ?? []).join('\n'))}</textarea></label>
+    ${s.kind === 'post' ? `
     <div class="field-row">
-      <label>Link URL<input type="text" data-k="linkUrl" value="${esc(c.linkUrl ?? '')}"></label>
-      <label>Image URL<input type="text" data-k="imageUrl" value="${esc(c.imageUrl ?? '')}"></label>
+      <label>Post with tag<select data-r="tag">
+        <option value="">any tag (latest posts)</option>
+        ${tags.map((t) => `<option${s.rule?.tag === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+      <label style="max-width:120px">Which<input type="number" min="1" data-r="index" value="${Number(s.rule?.index) || 1}"></label>
+      <label class="check" style="flex:none;align-self:end" title="Skip posts that an earlier card already shows">
+        <input type="checkbox" data-x="exclude"${s.exclude === 'used' ? ' checked' : ''}> Skip posts shown above</label>
     </div>
+    <p class="hint">“Which” 1 is the newest matching post, 2 the one before, and so on.${NW_SITE.error ? ` <b>scevo.org unreachable:</b> ${esc(NW_SITE.error)}` : ''}</p>` : ''}
+    ${s.kind === 'banner' ? '<p class="hint">The image fills the whole card; no text is shown. Title is only the hover text.</p>' : ''}
+
+    <div class="sec-head" style="padding:var(--s3) 0 var(--s2);background:none;border:0">
+      <h3>${s.kind === 'post' ? 'Overrides' : 'Content'}</h3>
+      <div class="seg" id="nwLocSeg">
+        ${['', ...NW_LANGS].map((l) => `<button class="seg-btn${NW_LOC === l ? ' active' : ''}" data-l="${l}">${l || 'All languages'}${l && s.locales?.[l] ? ' •' : ''}</button>`).join('')}
+      </div>
+    </div>
+    <p class="hint">${NW_LOC
+      ? `Only for the launcher in <b>${NW_LOC}</b>. Empty fields use ${s.kind === 'post' ? 'the site post (in that language when translated)' : 'the All languages value'}.`
+      : s.kind === 'post' ? 'Empty fields are filled from the site post. Grey text is what it shows now.' : ''}</p>
+    <div class="nw-fields">${shownFields.map((k) => fieldHtml(k, target[k])).join('')}</div>
+
+    <div class="sec-head" style="padding:var(--s3) 0 var(--s2);background:none;border:0"><h3>Preview <span class="faint small">(${previewLang()})</span></h3></div>
+    <div id="nwPreview"></div>
+
     <div class="actions" style="margin-top:var(--s4)">
       <button class="btn danger" id="nwRemove">Remove card</button>
     </div>`;
 
-  $$('[data-k]', host).forEach((inp) => inp.addEventListener('change', () => {
-    const k = inp.dataset.k;
-    if (k === 'highlights') {
-      const list = inp.value.split('\n').map((s) => s.trim()).filter(Boolean);
-      if (list.length) c.highlights = list; else delete c.highlights;
-    } else if (!inp.value.trim() && ['imageUrl', 'linkUrl'].includes(k)) delete c[k];
-    else c[k] = inp.value;
-    setNewsDirty(true);
-    renderCardList();
+  $$('[data-s]', host).forEach((inp) => inp.addEventListener('change', () => {
+    const k = inp.dataset.s;
+    if (k === 'enabled') { if (inp.checked) delete s.enabled; else s.enabled = false; }
+    else if (inp.value.trim()) s[k] = inp.value.trim(); else delete s[k];
+    newsChanged(false);
   }));
-
+  $$('[data-r]', host).forEach((inp) => inp.addEventListener('change', () => {
+    s.rule ??= {};
+    if (inp.dataset.r === 'index') s.rule.index = Math.max(1, Number(inp.value) || 1);
+    else if (inp.value) s.rule.tag = inp.value; else delete s.rule.tag;
+    newsChanged(false);
+  }));
+  $$('[data-x]', host).forEach((inp) => inp.addEventListener('change', () => {
+    if (inp.checked) s.exclude = 'used'; else delete s.exclude;
+    newsChanged(false);
+  }));
+  $$('[data-f]', host).forEach((inp) => inp.addEventListener('change', () => {
+    const k = inp.dataset.f;
+    const t = editTarget(s, true);
+    if (k === 'highlights') {
+      const list = inp.value.split('\n').map((x) => x.trim()).filter(Boolean);
+      if (list.length) t.highlights = list; else delete t.highlights;
+    } else if (inp.value.trim()) t[k] = k === 'excerpt' ? inp.value : inp.value.trim();
+    else delete t[k];
+    cleanSlot(s);
+    newsChanged(false);
+  }));
+  $$('#nwLocSeg .seg-btn', host).forEach((b) => b.addEventListener('click', () => {
+    NW_LOC = b.dataset.l;
+    renderCardDetail();
+    refreshPreview();
+  }));
   $('#nwRemove').addEventListener('click', () => {
-    if (!confirm(`Remove the card "${c.title || c.id}"?`)) return;
-    NEWS.cards.splice(NW_SEL, 1);
+    if (!confirm(`Remove "${slotLabel(s)}"?`)) return;
+    NEWS.feed.splice(NW_SEL, 1);
     NW_SEL = Math.max(0, NW_SEL - 1);
-    setNewsDirty(true);
-    renderCardList(); renderCardDetail();
+    newsChanged(true);
+  });
+  renderPreviewPane();
+  fillPlaceholders();
+}
+
+// Grey placeholder = what the card shows without this field (post slots).
+function fillPlaceholders() {
+  const s = NEWS?.feed?.[NW_SEL];
+  if (!s || s.kind !== 'post') return;
+  const c = NW_PREVIEW.get(NW_SEL) ?? {};
+  $$('#nwDetail [data-f]').forEach((inp) => {
+    if (inp.tagName === 'SELECT') return;
+    const v = c[inp.dataset.f];
+    inp.placeholder = Array.isArray(v) ? v.join('\n') : (v ?? '');
   });
 }
+
+function renderPreviewPane() {
+  const host = $('#nwPreview');
+  if (!host) return;
+  const s = NEWS.feed[NW_SEL];
+  const c = NW_PREVIEW.get(NW_SEL);
+  if (!c) {
+    host.innerHTML = `<div class="empty small">${s?.enabled === false ? 'Hidden.' : s?.kind === 'post'
+      ? (NW_SITE.posts.length ? 'No site post matches this rule; the card is left out.' : 'Waiting for scevo.org…')
+      : s?.kind === 'banner' ? 'Set an image URL.' : 'Nothing to show.'}</div>`;
+    return;
+  }
+  if (c.type === 'banner') {
+    host.innerHTML = `<div class="nwcard banner"><img src="${esc(c.imageUrl)}" alt=""></div>`;
+    return;
+  }
+  const body = Array.isArray(c.highlights) && c.highlights.length && c.type === 'patchnotes'
+    ? `<ul>${c.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>`
+    : `<p>${esc(c.excerpt ?? '')}</p>`;
+  host.innerHTML = `<div class="nwcard">
+    <div class="nwimg">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="">` : ''}
+      ${c.badge ? `<span class="nwbadge" style="${c.badgeColor ? `border-color:${esc(c.badgeColor)};color:${esc(c.badgeColor)}` : ''}">${esc(c.badge)}</span>` : ''}</div>
+    <div class="nwbody"><b>${esc(c.title ?? '')}</b><span class="faint small">${esc(c.date ?? '')}</span>${body}
+      ${c.linkUrl ? `<span class="faint small truncate">${esc(c.linkUrl)}</span>` : ''}</div>
+  </div>`;
+}
+
+function newsChanged(listOnly) {
+  setNewsDirty(true);
+  renderCardList();
+  if (listOnly) renderCardDetail();
+  refreshPreview();
+}
+
+function addSlot(slot) {
+  NEWS.feed.unshift(slot);
+  NW_SEL = 0;
+  NW_LOC = '';
+  newsChanged(true);
+}
+$('#nwAddPost').addEventListener('click', () => addSlot({ id: `post-${Date.now()}`, kind: 'post', rule: { index: 1 }, exclude: 'used' }));
+$('#nwAddBanner').addEventListener('click', () => addSlot({ id: `banner-${Date.now()}`, kind: 'banner' }));
+$('#nwAddCustom').addEventListener('click', () => addSlot({ id: `news-${Date.now()}`, kind: 'custom', title: 'New card', date: '', type: 'update', excerpt: '' }));
+$('#nwRefreshSite').addEventListener('click', () => loadSitePosts(true));
 
 $('#nwReload').addEventListener('click', () => {
   if (NW_DIRTY && !confirm('You have unsaved news changes. Discard them?')) return;
   loadNews().catch((e) => toast(e.message, 'err'));
 });
-$('#nwAddCard').addEventListener('click', () => {
-  NEWS.cards.unshift({ id: `news-${Date.now()}`, title: 'New card', date: '', type: 'update', excerpt: '' });
-  NW_SEL = 0;
-  setNewsDirty(true);
-  renderCardList(); renderCardDetail();
-});
 $('#nwSave').addEventListener('click', async () => {
   try {
-    NEWS.announcement = {
-      enabled: $('#nwAnnEnabled').checked,
-      message: $('#nwAnnMsg').value,
-      type: $('#nwAnnType').value,
+    const { cards, ...rest } = NEWS;
+    const news = {
+      ...rest,
+      announcement: {
+        ...NEWS.announcement,
+        enabled: $('#nwAnnEnabled').checked,
+        message: $('#nwAnnMsg').value,
+        type: $('#nwAnnType').value,
+      },
     };
-    const r = await api('POST', '/api/news', { news: NEWS });
+    const r = await api('POST', '/api/news', { news });
     setNewsDirty(false);
-    toast(`Wrote ${r.written}.`, 'ok');
+    if (r.warnings?.length) toast(r.warnings.join(' '), 'warn');
+    else toast(`Wrote ${r.written}.`, 'ok');
+    await loadNews();
   } catch (e) { toast(e.message, 'err'); }
 });
 

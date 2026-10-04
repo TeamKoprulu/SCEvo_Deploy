@@ -178,6 +178,35 @@ async function checkAgainstDisk(manifest, branch, onProgress) {
 
 /* ── news feed / localisation ────────────────────────────────────────────── */
 
+// The "feed" slots the launcher resolves. knownTags (optional) are the site's tags.
+function checkNewsFeed(news, knownTags = null) {
+  const out = [];
+  const feed = news?.feed;
+  if (feed === undefined) return out;
+  if (!Array.isArray(feed)) return [finding(ERROR, 'news-feed-shape', 'news-feed.json "feed" must be a list')];
+  const ids = new Map();
+  const known = knownTags && new Set(knownTags.map((t) => String(t).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '')));
+  feed.forEach((s, i) => {
+    const where = `feed[${i}]${s?.id ? ` (${s.id})` : ''}`;
+    if (!s || !['post', 'banner', 'custom'].includes(s.kind)) { out.push(finding(ERROR, 'news-feed-kind', `${where}: kind must be post, banner or custom`)); return; }
+    if (!s.id) out.push(finding(WARN, 'news-feed-id', `${where}: no id`));
+    else if (ids.has(s.id)) out.push(finding(ERROR, 'news-feed-dup', `${where}: id "${s.id}" is used twice`));
+    else ids.set(s.id, i);
+    if (s.kind === 'banner' && !s.imageUrl) out.push(finding(ERROR, 'news-banner-image', `${where}: a banner needs an image URL`));
+    if (s.kind === 'post') {
+      const n = s.rule?.index ?? 1;
+      if (!Number.isInteger(n) || n < 1) out.push(finding(ERROR, 'news-feed-index', `${where}: rule.index must be 1 or more`));
+      const tag = s.rule?.tag;
+      if (tag && known && !known.has(tag.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, ''))) {
+        out.push(finding(WARN, 'news-feed-tag', `${where}: no site post has the tag "${tag}"`));
+      }
+    }
+    if (s.variant && !['public', 'beta'].includes(s.variant)) out.push(finding(ERROR, 'news-feed-variant', `${where}: variant must be public or beta`));
+  });
+  if (feed.length && !Array.isArray(news.cards)) out.push(finding(WARN, 'news-no-snapshot', 'news-feed.json has a feed but no "cards" snapshot: launchers older than the feed show no news. Save it from the News tab.'));
+  return out;
+}
+
 // The launcher's t() helper falls back with `||`, so an empty string degrades to
 // English rather than rendering blank. That makes untranslated stubs invisible
 // in testing — this surfaces them instead.
@@ -379,7 +408,7 @@ async function preflight(branch, onProgress) {
   // breaks the whole news pane.
   const news = checkJsonHygiene(path.join(MANIFEST_DIR, 'news-feed.json'));
   findings.push(...news.findings.filter((f) => f.code !== 'schema-version'));
-  if (news.parsed) findings.push(...checkNewsStrings(news.parsed));
+  if (news.parsed) findings.push(...checkNewsStrings(news.parsed), ...checkNewsFeed(news.parsed));
 
   return summarize(findings);
 }
@@ -465,7 +494,7 @@ function summarize(findings) {
 
 module.exports = {
   preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, meleeFiles,
-  checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings,
+  checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings, checkNewsFeed,
   fetchJson, headFile, summarize,
   LARGE_FILE_BYTES,
 };
