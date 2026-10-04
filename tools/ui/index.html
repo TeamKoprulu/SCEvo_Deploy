@@ -10,7 +10,7 @@
   <header class="topbar">
     <div class="brand">SC<span>Evo</span> Deploy</div>
     <nav class="tabs">
-      <button class="tab active" data-tab="package">Package</button>
+      <button class="tab active" data-tab="catalog">Catalog</button>
       <button class="tab" data-tab="manifest">Manifest<span class="dirty" id="mfDirtyDot" hidden></span></button>
       <button class="tab" data-tab="verify">Verify</button>
       <button class="tab" data-tab="deploy">Deploy</button>
@@ -24,37 +24,59 @@
   <div class="ready" id="ready"></div>
 
   <main>
-    <!-- ── PACKAGE ─────────────────────────────────────────────── -->
-    <section class="panel active" id="tab-package">
-      <div id="pkgWarn"></div>
+    <!-- ── CATALOG ─────────────────────────────────────────────── -->
+    <section class="panel active" id="tab-catalog">
+      <div id="ctWarn"></div>
+
+      <div class="section" id="ctNewSection" hidden>
+        <div class="sec-head">
+          <div>
+            <h2>New in the SC2 install <span class="badge" id="ctNewCount">0</span></h2>
+            <p class="sub">Decide once: ship it with the campaign, put a map in the melee pool, track it switched off, or ignore it for good.</p>
+          </div>
+        </div>
+        <div class="sec-body flush" id="ctNew"></div>
+      </div>
 
       <div class="section">
         <div class="sec-head">
           <div>
-            <h2>Package</h2>
-            <p class="sub">Builds <code>.SC2Map</code> / <code>.SC2Mod</code> archives from the SC2 install into <code>payload/</code>.</p>
+            <h2>Catalog</h2>
+            <p class="sub">Where every mod and map ships. Changes save to <code>deploy-catalog.json</code> at once; <b>Build</b> then updates the payload folders and manifests.</p>
           </div>
           <div class="actions">
-            <button class="btn ghost" id="pkgRefresh">Rescan</button>
-            <button class="btn ghost" id="pkgSelectChanged">Select everything already in payload</button>
-            <button class="btn ghost" id="pkgSelectNew">Select new only</button>
-            <button class="btn ghost" id="pkgClear">Clear</button>
+            <div class="seg" id="ctFilter">
+              <button class="seg-btn active" data-f="campaign">Campaign</button>
+              <button class="seg-btn" data-f="melee">Melee</button>
+            </div>
+            <button class="btn ghost" id="ctRefresh">Rescan</button>
           </div>
         </div>
-        <div class="sec-body flush" id="pkgList"></div>
+        <div class="sec-body flush" id="ctList"></div>
         <div class="actionbar">
-          <span class="summary" id="pkgSummary">Nothing selected.</span>
+          <span class="summary" id="ctSummary"></span>
           <div class="actions" style="margin-left:auto">
-            <button class="btn primary" id="pkgBuild">Package selected</button>
+            <label class="check" style="margin:0"><input type="checkbox" id="ctForce"> Repackage even if unchanged</label>
+            <button class="btn primary" id="ctBuild">Build campaign</button>
           </div>
         </div>
       </div>
 
-      <details class="section" id="pkgVetoSection" hidden>
-        <summary class="sec-head"><h3>Vetoed sources <span class="badge" id="pkgVetoCount">0</span></h3>
-          <p class="sub">Skipped by every build until un-vetoed. Stored in <code>sc2packager-ignored.json</code>.</p>
+      <div class="section" id="ctMapsSection" hidden>
+        <div class="sec-head">
+          <div>
+            <h2>Melee map pool <span class="badge" id="ctMapCount">0</span></h2>
+            <p class="sub">Maps the launcher's Melee vs AI tab offers. Included maps ship under an opaque name in <code>meleepayload/maps/</code>.</p>
+          </div>
+        </div>
+        <div class="sec-body"><div class="mapgrid" id="ctMaps"></div></div>
+      </div>
+
+      <details class="section" id="ctIgnoredSection">
+        <summary class="sec-head"><h3>Ignored <span class="badge" id="ctIgnoredCount">0</span></h3>
+          <p class="sub">Never deployed and never asked about again. Stored in <code>deploy-catalog.json</code>.</p>
         </summary>
-        <div class="sec-body flush" id="pkgVetoList"></div>
+        <div class="sec-body flush" id="ctIgnored"></div>
       </details>
     </section>
 
@@ -64,15 +86,16 @@
         <div class="sec-head">
           <div>
             <h2>Manifest</h2>
-            <p class="sub">Module order is preserved; new files append at the end. Nothing is written until you save.</p>
+            <p class="sub">Generated from the catalog and the built files. Only the settings below are edited here.</p>
           </div>
           <div class="actions">
             <div class="seg" id="mfBranch">
               <button class="seg-btn active" data-branch="public">Public</button>
               <button class="seg-btn" data-branch="beta">Beta</button>
+              <button class="seg-btn" data-branch="melee">Melee</button>
             </div>
             <button class="btn ghost" id="mfReload">Reload</button>
-            <button class="btn primary" id="mfSave">Save manifest</button>
+            <button class="btn primary" id="mfSave">Write manifest</button>
           </div>
         </div>
       </div>
@@ -88,6 +111,12 @@
                 <label>Core (multiplayer)<input id="mfVerCore" type="text" placeholder="1.20.3"></label>
                 <label>Campaign<input id="mfVerCampaign" type="text" placeholder="0.6.1"></label>
               </div>
+            </div>
+            <div id="mfMeleeMeta" hidden>
+              <div class="field-row">
+                <label>Melee package version<input id="mfMeleeVersion" type="text" placeholder="1.0.0"></label>
+              </div>
+              <p class="hint">The launcher shows "update available" when this changes.</p>
             </div>
             <div id="mfBetaMeta" hidden>
               <label class="check"><input type="checkbox" id="mfBetaEnabled"> Beta enabled</label>
@@ -111,7 +140,7 @@
           </div>
         </div>
 
-        <div class="section">
+        <div class="section" id="mfCritSection">
           <div class="sec-head"><h3>Critical update</h3><span class="pill" id="mfCritPill">off</span></div>
           <div class="sec-body">
             <p class="hint">Carried forward from the existing manifest — saving can never silently disable it.</p>
@@ -127,15 +156,13 @@
         </div>
       </div>
 
+      <div id="mfProblems"></div>
       <div class="section">
         <div class="sec-head">
-          <h3>Modules <span class="badge" id="mfCount">0</span></h3>
-          <div class="actions"><label class="check" style="margin:0"><input type="checkbox" id="mfDropMissing"> Drop modules whose file is missing on disk</label></div>
+          <h3>Contents <span class="badge" id="mfCount">0</span></h3>
+          <span class="pill" id="mfFresh"></span>
         </div>
-        <div class="split">
-          <div class="list" id="mfList"></div>
-          <div class="detail" id="mfDetail"></div>
-        </div>
+        <div class="sec-body flush" id="mfList"></div>
       </div>
     </section>
 
@@ -151,6 +178,7 @@
             <div class="seg" id="vfBranch">
               <button class="seg-btn active" data-branch="public">Public</button>
               <button class="seg-btn" data-branch="beta">Beta</button>
+              <button class="seg-btn" data-branch="melee">Melee</button>
             </div>
             <button class="btn ghost" id="vfOrphans">Check remote orphans</button>
             <button class="btn primary" id="vfRun">Run checks</button>
@@ -174,10 +202,10 @@
         <div class="sec-body">
           <div class="row2">
             <div>
-              <h4>Validate against</h4>
-              <div class="seg" id="dpBranch" style="margin-top:var(--s2)">
-                <button class="seg-btn active" data-branch="public">Public</button>
-                <button class="seg-btn" data-branch="beta">Beta</button>
+              <h4>Packages</h4>
+              <div style="margin-top:var(--s2)">
+                <label class="check"><input type="checkbox" id="dpPkgCampaign" checked> Campaign <span class="faint">(payload, betapayload, launcher, news)</span></label>
+                <label class="check"><input type="checkbox" id="dpPkgMelee"> Melee vs AI <span class="faint">(meleepayload, melee-manifest.json)</span></label>
               </div>
               <p class="hint" id="dpBranchNote"></p>
             </div>
@@ -207,6 +235,7 @@
           <div class="sec-head"><h3>Steps</h3></div>
           <div class="sec-body flush" style="padding:var(--s2) 0">
             <ol class="rail" id="dpRail">
+              <li data-step="generate"><span class="marker">0</span><div><div class="label">Regenerate manifests</div><div class="note"></div></div></li>
               <li data-step="preflight"><span class="marker">1</span><div><div class="label">Preflight checks</div><div class="note"></div></div></li>
               <li data-step="stage"><span class="marker">2</span><div><div class="label">Stage launcher artifacts</div><div class="note"></div></div></li>
               <li data-step="payload"><span class="marker">3</span><div><div class="label">Upload payload &amp; binaries</div><div class="note"></div></div></li>

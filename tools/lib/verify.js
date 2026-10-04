@@ -341,9 +341,9 @@ async function postflight(manifest, branch, onProgress) {
 }
 
 // Confirms the published manifests parse and match what we just wrote.
-async function verifyPublishedManifests() {
+async function verifyPublishedManifests(files) {
   const out = [];
-  for (const file of [PUBLIC_MANIFEST, BETA_MANIFEST]) {
+  for (const file of (files || [PUBLIC_MANIFEST, BETA_MANIFEST])) {
     if (!fs.existsSync(file)) continue;
     const name = path.basename(file);
     const live = await fetchJson(`${R2_BASE}/manifests/${name}`);
@@ -384,6 +384,74 @@ async function preflight(branch, onProgress) {
   return summarize(findings);
 }
 
+/* ── melee package ───────────────────────────────────────────────────────── */
+
+const { MELEE_MANIFEST, MELEE_DIR } = require('./config');
+
+// Every file the melee manifest points at, relative to meleepayload/.
+function meleeFiles(manifest) {
+  const out = [];
+  for (const m of (manifest?.modules ?? [])) for (const f of (m.files ?? [])) out.push({ label: f.path, ...f });
+  for (const map of (manifest?.maps ?? [])) {
+    if (map.file) out.push({ label: `${map.name} (${map.file.path})`, ...map.file });
+    if (map.thumbnail) out.push({ label: `${map.name} thumbnail`, ...map.thumbnail });
+  }
+  return out;
+}
+
+async function preflightMelee(onProgress) {
+  const findings = [];
+  const hygiene = checkJsonHygiene(MELEE_MANIFEST);
+  findings.push(...hygiene.findings);
+  const doc = hygiene.parsed;
+  if (!doc) return summarize(findings);
+
+  if (!String(doc.version || '').trim()) findings.push(finding(ERROR, 'melee-version', 'melee-manifest.json has no version'));
+  const ids = new Set();
+  for (const map of (doc.maps ?? [])) {
+    if (!/^[0-9a-f]{10}$/.test(String(map.id || ''))) findings.push(finding(ERROR, 'melee-map-id', `${map.name}: map id must be 10 hex characters`));
+    if (ids.has(map.id)) findings.push(finding(ERROR, 'melee-map-dup', `Duplicate map id ${map.id}`));
+    ids.add(map.id);
+    if (!map.players || map.players < 2) findings.push(finding(ERROR, 'melee-map-players', `${map.name}: needs at least 2 start locations`));
+    if (!map.thumbnail) findings.push(finding(WARN, 'melee-map-thumb', `${map.name}: no thumbnail`));
+  }
+  for (const m of (doc.modules ?? [])) for (const f of (m.files ?? [])) {
+    if (!/^Mods\//.test(f.path)) findings.push(finding(ERROR, 'path-root', `"${f.path}" must start with "Mods/"`));
+  }
+  if (!(doc.maps ?? []).length) findings.push(finding(WARN, 'melee-no-maps', 'The melee package has no maps'));
+
+  const files = meleeFiles(doc);
+  let checked = 0;
+  for (const f of files) {
+    onProgress && onProgress({ phase: 'verify', file: f.label, checked, total: files.length });
+    checked++;
+    const abs = path.join(MELEE_DIR, ...String(f.path).split('/'));
+    if (!fs.existsSync(abs)) { findings.push(finding(ERROR, 'file-absent', `${f.label} is in melee-manifest.json but not in meleepayload/`, abs)); continue; }
+    const st = fs.statSync(abs);
+    if (st.size !== f.size) { findings.push(finding(ERROR, 'size-mismatch', `${f.label}: manifest says ${f.size} bytes, file is ${st.size}`)); continue; }
+    const { hash } = await hashOf(abs);
+    if (hash !== f.hash) findings.push(finding(ERROR, 'hash-mismatch', `${f.label}: hash does not match the file on disk`));
+  }
+  onProgress && onProgress({ phase: 'done', checked, total: files.length });
+  return summarize(findings);
+}
+
+async function postflightMelee(manifest, onProgress) {
+  const out = [];
+  const files = meleeFiles(manifest);
+  let done = 0;
+  for (const f of files) {
+    const url = `${R2_BASE}/meleepayload/${encodeURI(f.path)}`;
+    onProgress && onProgress({ phase: 'head', file: f.label, done, total: files.length });
+    done++;
+    const r = await headFile(url);
+    if (!r.ok) out.push(finding(ERROR, 'cdn-missing', `${f.label} is not reachable on the CDN (${r.error ?? 'HTTP ' + r.status})`, url));
+    else if (r.length !== f.size) out.push(finding(ERROR, 'cdn-size', `${f.label}: CDN serves ${r.length} bytes, manifest says ${f.size}`, url));
+  }
+  if (!out.length) out.push(finding(OK, 'cdn-ok', `All ${files.length} melee file(s) verified on the CDN`));
+  return out;
+}
+
 function summarize(findings) {
   const errors = findings.filter((f) => f.level === ERROR);
   const warnings = findings.filter((f) => f.level === WARN);
@@ -396,7 +464,7 @@ function summarize(findings) {
 }
 
 module.exports = {
-  preflight, postflight, verifyPublishedManifests, checkDrift,
+  preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, meleeFiles,
   checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings,
   fetchJson, headFile, summarize,
   LARGE_FILE_BYTES,

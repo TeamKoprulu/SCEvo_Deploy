@@ -46,7 +46,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 /* ── tabs ────────────────────────────────────────────────────────── */
 
 // Loaders run on tab entry so a tab is never showing data from three actions ago.
-const TAB_LOADERS = { package: loadSources, manifest: () => loadManifest(), news: () => loadNews(), settings: loadState };
+const TAB_LOADERS = { catalog: loadCatalog, manifest: () => loadManifest(), news: () => loadNews(), settings: loadState };
 
 $$('.tab').forEach((btn) => btn.addEventListener('click', () => {
   $$('.tab').forEach((b) => b.classList.toggle('active', b === btn));
@@ -216,173 +216,211 @@ $('#stPrune').addEventListener('click', async () => {
   } catch (e) { toast(e.message, 'err'); }
 });
 
-/* ── PACKAGE ─────────────────────────────────────────────────────── */
+/* ── CATALOG ─────────────────────────────────────────────────────── */
 
-let SOURCES = [];
+let CAT = null;
+let CT_FILTER = 'campaign';
 
-async function loadSources() {
-  const data = await api('GET', '/api/sources');
-  SOURCES = data.sources ?? [];
+const CHANNELS = { campaign: ['public', 'beta', 'both', 'off'], melee: ['public', 'off'] };
+const CH_LABEL = { public: 'Public', beta: 'Beta', both: 'Both', off: 'Off' };
+const BUILD_PILL = { built: ['ok', 'built'], changed: ['warn', 'changed'], unbuilt: ['new', 'not built'], off: ['', 'off'] };
+// source -> error from the last build, so a failure stays on its row after the toast is gone.
+let LAST_BUILD_ERRORS = new Map();
+
+function buildPill(r) {
+  const err = LAST_BUILD_ERRORS.get(r.source);
+  if (err) return `<span class="pill err" title="${esc(err)}">build failed</span>`;
+  const [cls, label] = BUILD_PILL[r.build] ?? ['', r.build ?? ''];
+  return label ? `<span class="pill ${cls}">${esc(label)}</span>` : '';
+}
+
+async function loadCatalog() {
+  CAT = await api('GET', '/api/catalog');
   const warn = [];
-  if (data.error) warn.push(`<div class="banner err"><b>Cannot scan sources</b>${esc(data.error)}</div>`);
-  if (data.missingRoots?.length) {
-    warn.push(`<div class="banner warn"><b>Not found in the SC2 install</b><span class="mono">${data.missingRoots.map(esc).join('<br>')}</span></div>`);
+  if (CAT.needsInit) {
+    $('#ctWarn').innerHTML = `<div class="banner warn"><b>No catalog yet</b>Create <code>deploy-catalog.json</code> from what is deployed today. Nothing changes for players.
+      <div class="actions" style="margin-top:var(--s2)"><button class="btn primary" id="ctInit">Create catalog</button></div></div>`;
+    $('#ctInit').addEventListener('click', async () => {
+      try { const r = await api('POST', '/api/catalog-init'); toast(`Catalog created: ${r.items} items, ${r.ignored} ignored.`, 'ok'); loadCatalog(); }
+      catch (e) { toast(e.message, 'err'); }
+    });
+    return;
   }
-  $('#pkgWarn').innerHTML = warn.join('');
-  renderSources();
+  if (CAT.error) warn.push(`<div class="banner err"><b>Cannot scan sources</b>${esc(CAT.error)}</div>`);
+  if (CAT.missingRoots?.length) warn.push(`<div class="banner warn"><b>Roots not found in the SC2 install</b><span class="mono">${CAT.missingRoots.map(esc).join('<br>')}</span></div>`);
+  $('#ctWarn').innerHTML = warn.join('');
+  renderCatalog();
 }
 
-// Groups by the parent folder inside the SC2 install, so Maps and Mods don't
-// interleave into one 12-row wall.
-function groupOf(relPath) {
-  const parts = relPath.split('\\');
-  return parts.length > 1 ? parts.slice(0, -1).join('\\') : relPath;
+async function catalogEdit(body, okMessage) {
+  try {
+    await api('POST', '/api/catalog', body);
+    if (okMessage) toast(okMessage, 'ok');
+    await loadCatalog();
+  } catch (e) { toast(e.message, 'err'); }
 }
 
-const DESTS = [['', 'Skip'], ['payload', 'Payload'], ['betapayload', 'Beta'], ['both', 'Both']];
+const isMeleeMap = (r) => r.kind === 'map' && (r.item?.package === 'melee' || (!r.item && /SCEvo_MPMaps/i.test(r.source)));
 
-function srcRow(s, i) {
-  const facts = [
-    `<span class="pill unchanged">${plural(s.fileCount, 'file', 'files')}</span>`,
-    s.inPayload ? '<span class="pill acc">in payload</span>' : '',
-    s.inBetapayload ? '<span class="pill acc">in beta</span>' : '',
-    !s.inPayload && !s.inBetapayload ? '<span class="pill new">new</span>' : '',
-  ].filter(Boolean).join(' ');
+function chSeg(r) {
+  const pkg = r.item.package;
+  return `<div class="seg ch">${CHANNELS[pkg].map((c) =>
+    `<button class="seg-btn${r.item.channel === c ? ' active' : ''}" data-ch="${c}">${CH_LABEL[c]}</button>`).join('')}</div>`;
+}
 
-  const dest = s.vetoed ? '' : `<div class="seg dest">${DESTS.map(([v, l]) =>
-    `<button class="seg-btn${(s._action ?? '') === v ? ' active' : ''}" data-dest="${v}">${l}</button>`).join('')}</div>`;
-
-  return `<div class="src ${s.vetoed ? 'is-vetoed' : ''}" data-i="${i}">
+function itemRow(r) {
+  const pill = r.status === 'missing' ? '<span class="pill err">source missing</span>' : buildPill(r);
+  return `<div class="src" data-source="${esc(r.source)}">
     <div class="grow">
-      <div class="name truncate">${esc(s.name)}</div>
-      <div class="facts">${facts}</div>
+      <div class="name truncate">${esc(r.name)}</div>
+      <div class="facts">${pill}${r.packed ? ' <span class="pill unchanged">packed</span>' : ''}</div>
     </div>
-    ${dest}
-    <button class="btn sm ${s.vetoed ? 'ghost' : 'danger'} veto">${s.vetoed ? 'Un-veto' : 'Veto'}</button>
+    <select class="pkg"><option value="campaign"${r.item.package === 'campaign' ? ' selected' : ''}>Campaign</option><option value="melee"${r.item.package === 'melee' ? ' selected' : ''}>Melee</option></select>
+    ${chSeg(r)}
+    <button class="btn sm ghost ign">Ignore</button>
   </div>`;
 }
 
-function renderSources() {
-  const active = SOURCES.map((s, i) => [s, i]).filter(([s]) => !s.vetoed);
-  const vetoed = SOURCES.map((s, i) => [s, i]).filter(([s]) => s.vetoed);
-
-  const groups = new Map();
-  for (const [s, i] of active) {
-    const g = groupOf(s.relPath);
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g).push([s, i]);
-  }
-
-  $('#pkgList').innerHTML = active.length
-    ? [...groups].map(([g, rows]) =>
-        `<div class="srcgroup"><h4>${esc(g)}</h4>${rows.map(([s, i]) => srcRow(s, i)).join('')}</div>`).join('')
-    : '<div class="empty">No source folders found. Check the SC2 install path in Settings.</div>';
-
-  $('#pkgVetoSection').hidden = vetoed.length === 0;
-  $('#pkgVetoCount').textContent = vetoed.length;
-  $('#pkgVetoList').innerHTML = vetoed.map(([s, i]) => srcRow(s, i)).join('');
-
-  bindSources($('#pkgList'));
-  bindSources($('#pkgVetoList'));
-  renderPkgSummary();
+function newRow(r) {
+  return `<div class="src" data-source="${esc(r.source)}">
+    <div class="grow">
+      <div class="name truncate">${esc(r.name)}</div>
+      <div class="facts"><span class="pill new">new</span> <span class="faint small mono">${esc(r.group)}</span>${r.packed ? ' <span class="pill unchanged">packed</span>' : ''}</div>
+    </div>
+    <button class="btn sm" data-add="campaign:public">Campaign</button>
+    <button class="btn sm" data-add="campaign:beta">Campaign beta</button>
+    ${r.kind === 'mod' || isMeleeMap(r) ? '<button class="btn sm" data-add="melee:public">Melee</button>' : ''}
+    <button class="btn sm ghost" data-add="campaign:off">Track, off</button>
+    <button class="btn sm danger ign">Ignore</button>
+  </div>`;
 }
 
-function bindSources(host) {
-  $$('.src', host).forEach((el) => {
-    const s = SOURCES[+el.dataset.i];
-    $$('.dest .seg-btn', el).forEach((b) => b.addEventListener('click', () => {
-      s._action = b.dataset.dest;
-      $$('.dest .seg-btn', el).forEach((x) => x.classList.toggle('active', x === b));
-      renderPkgSummary();
+function mapCard(r) {
+  const m = r.meta || {};
+  const on = r.item?.package === 'melee' && r.item.channel === 'public';
+  const thumb = `/api/thumb?source=${encodeURIComponent(r.source)}&t=${TOKEN}`;
+  const warn = [];
+  if (m.error) warn.push(`unreadable: ${m.error}`);
+  else if (m.supported === false) warn.push(`not a melee map (${m.reason})`);
+  if (on && r.missingMods?.length) warn.push(`needs ${r.missingMods.map((p) => p.split('/').pop()).join(', ')}, which isn't shipped`);
+  const pill = on ? buildPill(r) : '';
+  return `<div class="mapcard${on ? ' on' : ''}" data-source="${esc(r.source)}">
+    <img loading="lazy" src="${thumb}" alt="">
+    <div class="mc-body">
+      <div class="name truncate" title="${esc(m.name || r.name)}">${esc(m.name || r.name)}</div>
+      <div class="faint small">${m.players ? `${m.players} players` : '?'}${m.modes ? ` · ${esc(m.modes)}` : ''}</div>
+      <div class="faint small mono truncate" title="${esc(r.source)}">${esc(r.name)}</div>
+      ${warn.map((w) => `<div class="small" style="color:var(--err)">${esc(w)}</div>`).join('')}
+      <div class="mc-actions">
+        <button class="btn sm ${on ? 'ghost' : 'primary'} inc">${on ? 'Remove from pool' : 'Add to pool'}</button>
+        ${pill}
+        ${!r.item ? '<button class="btn sm ghost ign">Ignore</button>' : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderCatalog() {
+  const rows = CAT.rows ?? [];
+  const fresh = rows.filter((r) => r.status === 'new' && !isMeleeMap(r));
+  $('#ctNewSection').hidden = !fresh.length;
+  $('#ctNewCount').textContent = fresh.length;
+  $('#ctNew').innerHTML = fresh.map(newRow).join('');
+
+  const listed = rows.filter((r) => r.item && r.item.package === CT_FILTER && !(CT_FILTER === 'melee' && r.kind === 'map'));
+  const groups = new Map();
+  for (const r of listed) { if (!groups.has(r.group)) groups.set(r.group, []); groups.get(r.group).push(r); }
+  $('#ctList').innerHTML = listed.length
+    ? [...groups].map(([g, rs]) => `<div class="srcgroup"><h4>${esc(g)}</h4>${rs.map(itemRow).join('')}</div>`).join('')
+    : `<div class="empty">Nothing in the ${CT_FILTER} package yet.</div>`;
+
+  const maps = rows.filter(isMeleeMap).filter((r) => r.status !== 'ignored');
+  $('#ctMapsSection').hidden = CT_FILTER !== 'melee';
+  $('#ctMapCount').textContent = `${maps.filter((r) => r.item?.channel === 'public').length} of ${maps.length}`;
+  $('#ctMaps').innerHTML = maps.length ? maps.map(mapCard).join('') : '<div class="empty">No maps under the melee roots.</div>';
+
+  const ignored = rows.filter((r) => r.status === 'ignored');
+  $('#ctIgnoredCount').textContent = ignored.length;
+  $('#ctIgnored').innerHTML = ignored.map((r) => `<div class="src" data-source="${esc(r.source)}">
+      <div class="grow"><div class="name truncate">${esc(r.name)}</div><div class="facts faint small mono">${esc(r.group)}</div></div>
+      <button class="btn sm ghost unign">Un-ignore</button></div>`).join('') || '<div class="empty">Nothing ignored.</div>';
+
+  const counts = { built: 0, changed: 0, unbuilt: 0 };
+  for (const r of rows) if (r.item?.package === CT_FILTER && counts[r.build] !== undefined) counts[r.build]++;
+  $('#ctSummary').textContent = `${CT_FILTER}: ${counts.built} built, ${counts.changed} changed, ${counts.unbuilt} not built`;
+  $('#ctBuild').textContent = `Build ${CT_FILTER}`;
+  bindCatalog();
+}
+
+function bindCatalog() {
+  $$('#tab-catalog [data-source]').forEach((el) => {
+    const source = el.dataset.source;
+    $$('[data-add]', el).forEach((b) => b.addEventListener('click', () => {
+      const [pkg, channel] = b.dataset.add.split(':');
+      catalogEdit({ source, patch: { package: pkg, channel } }, `${source.split('\\').pop()} → ${pkg} / ${channel}`);
     }));
-    el.querySelector('.veto').addEventListener('click', async () => {
-      try {
-        await api('POST', '/api/veto', { relPath: s.relPath, vetoed: !s.vetoed });
-        s.vetoed = !s.vetoed;
-        if (s.vetoed) s._action = '';
-        renderSources();
-        toast(s.vetoed ? `Vetoed ${s.name}` : `Un-vetoed ${s.name}`, 'ok');
-      } catch (e) { toast(e.message, 'err'); }
+    $$('.ch .seg-btn', el).forEach((b) => b.addEventListener('click', () => catalogEdit({ source, patch: { channel: b.dataset.ch } })));
+    const pkg = $('.pkg', el);
+    if (pkg) pkg.addEventListener('change', () => catalogEdit({ source, patch: { package: pkg.value, channel: pkg.value === 'melee' ? 'public' : 'off' } }));
+    const ign = $('.ign', el);
+    if (ign) ign.addEventListener('click', () => confirm(`Ignore ${source}?\n\nIt won't ship and won't be shown as new again.`) && catalogEdit({ source, ignore: true }, 'Ignored.'));
+    const unign = $('.unign', el);
+    if (unign) unign.addEventListener('click', () => catalogEdit({ source, ignore: false }, 'Un-ignored — it shows as new again.'));
+    const inc = $('.inc', el);
+    if (inc) inc.addEventListener('click', () => {
+      const on = el.classList.contains('on');
+      catalogEdit({ source, patch: { package: 'melee', channel: on ? 'off' : 'public' } });
     });
   });
 }
 
-function selectedItems() {
-  return SOURCES.filter((s) => !s.vetoed && s._action).map((s) => ({
-    relPath: s.relPath,
-    targets: s._action === 'both' ? ['payload', 'betapayload'] : [s._action],
-  }));
-}
+$$('#ctFilter .seg-btn').forEach((b) => b.addEventListener('click', () => {
+  $$('#ctFilter .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+  CT_FILTER = b.dataset.f;
+  if (CAT && !CAT.needsInit) renderCatalog();
+}));
+$('#ctRefresh').addEventListener('click', () => loadCatalog().catch((e) => toast(e.message, 'err')));
 
-function renderPkgSummary() {
-  const items = selectedItems();
-  const toPayload = items.filter((i) => i.targets.includes('payload')).length;
-  const toBeta    = items.filter((i) => i.targets.includes('betapayload')).length;
-  $('#pkgSummary').textContent = items.length
-    ? `${plural(items.length, 'source', 'sources')} selected — ${toPayload} → payload, ${toBeta} → betapayload`
-    : 'Nothing selected.';
-  $('#pkgBuild').disabled = items.length === 0;
-}
-
-$('#pkgRefresh').addEventListener('click', () => loadSources().catch((e) => toast(e.message, 'err')));
-$('#pkgSelectChanged').addEventListener('click', () => {
-  SOURCES.forEach((s) => { if (!s.vetoed && s.inPayload) s._action = 'payload'; });
-  renderSources();
-});
-$('#pkgSelectNew').addEventListener('click', () => {
-  SOURCES.forEach((s) => { if (!s.vetoed && !s.inPayload && !s.inBetapayload) s._action = 'payload'; });
-  renderSources();
-});
-$('#pkgClear').addEventListener('click', () => {
-  SOURCES.forEach((s) => { s._action = ''; });
-  renderSources();
-});
-
-$('#pkgBuild').addEventListener('click', async () => {
-  const items = selectedItems();
-  if (!items.length) return toast('Nothing selected.', 'err');
-  $('#pkgBuild').disabled = true;
-  $('#pkgBuild').textContent = 'Packaging…';
+$('#ctBuild').addEventListener('click', async () => {
+  $('#ctBuild').disabled = true;
+  LAST_BUILD_ERRORS = new Map();
   try {
-    const { results } = await api('POST', '/api/package', { items });
-    const bad = results.filter((r) => !r.ok);
-    bad.forEach((r) => console.error(r.name, r.error, r.stdout, r.stderr));
-    toast(bad.length
-      ? `${bad.length} failed: ${bad.map((b) => `${b.name} — ${b.error}`).join(' · ')}`
-      : `Packaged ${plural(results.length, 'archive', 'archives')}.`, bad.length ? 'err' : 'ok');
-    await loadSources();
+    const r = await api('POST', '/api/build', { packages: [CT_FILTER], force: $('#ctForce').checked });
+    const bad = r.results.filter((x) => !x.ok);
+    LAST_BUILD_ERRORS = new Map(bad.map((b) => [b.source, b.error]));
+    const did = r.results.filter((x) => x.ok && x.action !== 'up-to-date').length;
+    const msgs = [`${did} built or copied`, `${r.results.length - did - bad.length} already up to date`];
+    if (r.pruned.length) msgs.push(`${r.pruned.length} removed`);
+    const changed = r.manifests.filter((m) => m.changed).map((m) => m.file);
+    if (changed.length) msgs.push(`wrote ${changed.join(', ')}`);
+    toast(bad.length ? `${bad.length} failed: ${bad.map((b) => `${b.source.split('\\').pop()} — ${b.error}`).join(' · ')}` : msgs.join(' · '), bad.length ? 'err' : 'ok');
+    if (r.problems.length) toast(r.problems.join(' · '), 'err');
+    await loadCatalog();
   } catch (e) { toast(e.message, 'err'); }
-  finally { $('#pkgBuild').textContent = 'Package selected'; renderPkgSummary(); }
+  finally { $('#ctBuild').disabled = false; }
 });
 
-// Live packaging progress in the action bar.
 listeners.add((msg) => {
-  if (msg.job !== 'package') return;
-  if (msg.type === 'progress' && msg.file) {
-    const detail = msg.phase === 'packing' ? `packing ${msg.fileCount} files`
-      : msg.phase === 'deployed' ? `copied to ${msg.dest}` : msg.phase;
-    $('#pkgSummary').textContent = `${msg.file} — ${detail}${msg.total ? ` (${msg.index}/${msg.total})` : ''}`;
-  }
+  if (msg.job !== 'build' || msg.type !== 'progress' || !msg.file) return;
+  const detail = msg.phase === 'packing' ? `packing ${msg.fileCount} files` : msg.phase === 'start' ? 'checking' : msg.phase;
+  $('#ctSummary').textContent = `${msg.file} — ${detail}${msg.total ? ` (${msg.index}/${msg.total})` : ''}`;
 });
 
 /* ── MANIFEST ────────────────────────────────────────────────────── */
 
 let BRANCH = 'public';
 let MANIFEST = null;
-let MF_SEL = 0;
 let MF_DIRTY = false;
 
 function setManifestDirty(on) {
   MF_DIRTY = on;
   $('#mfDirtyDot').hidden = !on;
   $('#mfDirtyBanner').hidden = !on;
-  $('#mfSave').textContent = on ? 'Save manifest •' : 'Save manifest';
+  $('#mfSave').textContent = on ? 'Write manifest •' : 'Write manifest';
 }
 
-// Every path that throws away in-memory edits goes through here. Previously the
-// branch buttons and Reload silently discarded them.
 function confirmDiscard() {
-  return !MF_DIRTY || confirm('You have unsaved manifest changes. Discard them?');
+  return !MF_DIRTY || confirm('You have unsaved settings. Discard them?');
 }
 
 $$('#mfBranch .seg-btn').forEach((b) => b.addEventListener('click', () => {
@@ -395,16 +433,19 @@ $$('#mfBranch .seg-btn').forEach((b) => b.addEventListener('click', () => {
 
 async function loadManifest() {
   MANIFEST = await api('GET', `/api/manifest?branch=${BRANCH}`);
-  const isBeta = BRANCH === 'beta';
+  if (MANIFEST.needsInit) { $('#mfList').innerHTML = '<div class="empty">Create the catalog on the Catalog tab first.</div>'; return; }
+  const isBeta = BRANCH === 'beta', isMelee = BRANCH === 'melee';
 
-  $('#mfMetaTitle').textContent = isBeta ? 'Beta metadata' : 'Versions';
-  $('#mfPublicVersions').hidden = isBeta;
+  $('#mfMetaTitle').textContent = isBeta ? 'Beta metadata' : isMelee ? 'Melee package' : 'Versions';
+  $('#mfPublicVersions').hidden = isBeta || isMelee;
   $('#mfBetaMeta').hidden = !isBeta;
-  // Severity is a public-manifest concept only.
+  $('#mfMeleeMeta').hidden = !isMelee;
+  $('#mfCritSection').hidden = isMelee;
   $('#mfCritSevWrap').style.display = isBeta ? 'none' : '';
 
   $('#mfVerCore').value = MANIFEST.versions?.multiplayer ?? '';
   $('#mfVerCampaign').value = MANIFEST.versions?.campaign ?? '';
+  $('#mfMeleeVersion').value = MANIFEST.meleeVersion ?? '';
 
   const cu = MANIFEST.criticalUpdate ?? {};
   $('#mfCritEnabled').checked = !!cu.enabled;
@@ -426,10 +467,8 @@ async function loadManifest() {
     syncBetaGate();
   }
 
-  MF_SEL = Math.min(MF_SEL, Math.max(0, MANIFEST.modules.length - 1));
   setManifestDirty(false);
-  renderModuleList();
-  renderModuleDetail();
+  renderManifestEntries();
 }
 
 function syncCritPill() {
@@ -442,128 +481,25 @@ function syncBetaGate() {
   $('#mfBetaFields').style.opacity = $('#mfBetaEnabled').checked ? '1' : '.5';
 }
 
-// Meta fields live outside MANIFEST until save, so they mark dirty by hand.
 ['#mfVerCore', '#mfVerCampaign', '#mfCritMin', '#mfCritMsg', '#mfCritSev', '#mfBetaName',
- '#mfBetaAccent', '#mfBetaMajor', '#mfBetaFull', '#mfBetaCore', '#mfBetaCode']
+ '#mfBetaAccent', '#mfBetaMajor', '#mfBetaFull', '#mfBetaCore', '#mfBetaCode', '#mfMeleeVersion']
   .forEach((sel) => $(sel).addEventListener('input', () => { setManifestDirty(true); syncCritPill(); }));
 $('#mfCritEnabled').addEventListener('change', () => { setManifestDirty(true); syncCritPill(); });
 $('#mfBetaEnabled').addEventListener('change', () => { setManifestDirty(true); syncBetaGate(); });
 
-function renderModuleList() {
-  const host = $('#mfList');
-  $('#mfCount').textContent = MANIFEST.modules.length;
-  if (!MANIFEST.modules.length) {
-    host.innerHTML = '<div class="empty">No modules. Build archives on the Package tab first.</div>';
-    return;
-  }
-  host.innerHTML = MANIFEST.modules.map((m, i) => {
-    const f = m.files?.[0] ?? {};
-    return `<div class="item ${i === MF_SEL ? 'sel' : ''}" data-i="${i}" draggable="true">
-      <span class="drag" title="Drag to reorder">⠿</span>
-      <span class="pill ${m.state}">${esc(m.state)}</span>
-      <span class="name grow">${esc(m.name || m.id)}</span>
-      <span class="meta">${f.size ? fmtBytes(f.size) : '—'}</span>
-    </div>`;
-  }).join('');
-
-  $$('.item', host).forEach((el) => {
-    const i = +el.dataset.i;
-    el.addEventListener('click', () => { MF_SEL = i; renderModuleList(); renderModuleDetail(); });
-    el.addEventListener('dragstart', () => { el.classList.add('dragging'); dragIndex = i; });
-    el.addEventListener('dragend', () => { el.classList.remove('dragging'); $$('.item', host).forEach((x) => x.classList.remove('drop-target')); });
-    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-target'); });
-    el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
-    el.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (dragIndex === null || dragIndex === i) return;
-      const [moved] = MANIFEST.modules.splice(dragIndex, 1);
-      MANIFEST.modules.splice(i, 0, moved);
-      MF_SEL = i;
-      dragIndex = null;
-      setManifestDirty(true);
-      renderModuleList();
-      renderModuleDetail();
-    });
-  });
-}
-let dragIndex = null;
-
-function renderModuleDetail() {
-  const host = $('#mfDetail');
-  const m = MANIFEST.modules[MF_SEL];
-  if (!m) { host.innerHTML = '<div class="detail-empty">Select a module to edit it.</div>'; return; }
-  const f = m.files?.[0] ?? {};
-  const urls = f.downloadUrls?.join('\n') ?? f.downloadUrl ?? '';
-  const drift = (f.state !== 'missing' && f.manifestSize != null && f.manifestSize !== f.size)
-    ? `<div class="banner warn"><b>Size drift</b>Manifest says ${f.manifestSize?.toLocaleString()} bytes, the file on disk is ${f.size?.toLocaleString()}. Saving adopts the disk value.</div>`
-    : '';
-  const gone = m.state === 'missing'
-    ? '<div class="banner err"><b>File missing on disk</b>This module points at an archive that is not in the payload folder. Either rebuild it on the Package tab, remove the module, or tick "Drop modules whose file is missing".</div>'
-    : '';
-
-  host.innerHTML = `
-    ${gone}${drift}
-    <div class="field-row">
-      <label>Module ID<input type="text" data-k="id" value="${esc(m.id)}"></label>
-      <label>Name<input type="text" data-k="name" value="${esc(m.name)}"></label>
-      <label style="max-width:170px">Type<select data-k="type">
-        <option value=""${!m.type ? ' selected' : ''}>(omit)</option>
-        <option value="core"${m.type === 'core' ? ' selected' : ''}>core</option>
-        <option value="campaign"${m.type === 'campaign' ? ' selected' : ''}>campaign</option>
-      </select></label>
-    </div>
-    <label>Description<input type="text" data-k="description" value="${esc(m.description)}"></label>
-
-    <h4 style="margin:var(--s4) 0 var(--s2)">File</h4>
-    <div class="env">
-      ${envRow('good', 'Path', `<span class="mono">${esc(f.path ?? '—')}</span>`)}
-      ${envRow('good', 'Size', f.size ? `${fmtBytes(f.size)} <span class="faint">(${f.size.toLocaleString()} bytes)</span>` : '—')}
-      ${envRow('good', 'sha256', `<span class="mono small">${esc(f.hash ?? '—')}</span>`)}
-    </div>
-
-    <details class="section" style="margin-top:var(--s4)">
-      <summary class="sec-head"><h3>Mirror URLs</h3><span class="pill ${urls ? 'acc' : ''}">${urls ? 'set' : 'default'}</span></summary>
-      <div class="sec-body">
-        <p class="hint">Normally empty — the launcher derives the R2 URL from the path. One URL per line; two or more become <code>downloadUrls</code> and are ping-raced by the client.</p>
-        <textarea rows="3" data-k="urls" placeholder="(none)">${esc(urls)}</textarea>
-      </div>
-    </details>
-
-    <div class="actions" style="margin-top:var(--s4)">
-      <button class="btn" id="mfPromote">${BRANCH === 'beta' ? 'Copy file to payload/' : 'Copy file to betapayload/'}</button>
-      <button class="btn danger" id="mfRemove">Remove module</button>
-    </div>`;
-
-  $$('[data-k]', host).forEach((inp) => inp.addEventListener('change', () => {
-    const k = inp.dataset.k;
-    if (k === 'urls') {
-      const list = inp.value.split('\n').map((s) => s.trim()).filter(Boolean);
-      delete m.files[0].downloadUrl; delete m.files[0].downloadUrls;
-      if (list.length > 1) m.files[0].downloadUrls = list;
-      else if (list.length === 1) m.files[0].downloadUrl = list[0];
-    } else m[k] = inp.value;
-    setManifestDirty(true);
-    renderModuleList();
-  }));
-
-  $('#mfRemove').addEventListener('click', () => {
-    if (!confirm(`Remove "${m.name || m.id}" from the manifest?\n\nThe built archive stays on disk; only the manifest entry goes.`)) return;
-    MANIFEST.modules.splice(MF_SEL, 1);
-    MF_SEL = Math.max(0, MF_SEL - 1);
-    setManifestDirty(true);
-    renderModuleList();
-    renderModuleDetail();
-  });
-
-  $('#mfPromote').addEventListener('click', async () => {
-    try {
-      await api('POST', '/api/promote', {
-        paths: [m.files[0].path],
-        direction: BRANCH === 'beta' ? 'toPublic' : 'toBeta',
-      });
-      toast(`Copied ${m.files[0].path}`, 'ok');
-    } catch (e) { toast(e.message, 'err'); }
-  });
+function renderManifestEntries() {
+  const entries = MANIFEST.entries ?? [];
+  $('#mfCount').textContent = entries.filter((e) => e.state !== 'removed').length;
+  const fresh = $('#mfFresh');
+  fresh.textContent = MANIFEST.upToDate ? 'matches the catalog' : 'out of date — Write manifest or Build';
+  fresh.className = `pill ${MANIFEST.upToDate ? 'ok' : 'warn'}`;
+  $('#mfProblems').innerHTML = (MANIFEST.problems ?? []).length
+    ? `<div class="banner err"><b>Not everything is built</b>${MANIFEST.problems.map(esc).join('<br>')}</div>` : '';
+  $('#mfList').innerHTML = entries.length ? entries.map((e) => `<div class="item">
+      <span class="pill ${e.state === 'removed' ? 'err' : e.state}">${esc(e.state)}</span>
+      <span class="name grow">${esc(e.name)} <span class="faint small mono">${esc(e.path)}</span></span>
+      <span class="meta">${e.players ? `${e.players}P · ` : ''}${e.size ? fmtBytes(e.size) : ''}</span>
+    </div>`).join('') : '<div class="empty">Nothing in this manifest. Switch items on in the Catalog tab and build.</div>';
 }
 
 $('#mfReload').addEventListener('click', () => {
@@ -573,20 +509,18 @@ $('#mfReload').addEventListener('click', () => {
 
 $('#mfSave').addEventListener('click', async () => {
   try {
-    const payload = {
-      branch: BRANCH,
-      modules: MANIFEST.modules,
-      dropMissing: $('#mfDropMissing').checked,
-      criticalUpdate: {
+    const payload = { branch: BRANCH };
+    if (BRANCH !== 'melee') {
+      payload.criticalUpdate = {
         enabled: $('#mfCritEnabled').checked,
         minVersion: $('#mfCritMin').value.trim(),
         message: $('#mfCritMsg').value.trim(),
         severity: $('#mfCritSev').value,
-      },
-    };
+      };
+    }
     if (BRANCH === 'public') {
       payload.versions = { multiplayer: $('#mfVerCore').value.trim(), campaign: $('#mfVerCampaign').value.trim() };
-    } else {
+    } else if (BRANCH === 'beta') {
       let codeHash = MANIFEST.betaMeta?.codeHash ?? '';
       const plain = $('#mfBetaCode').value.trim();
       if (plain) codeHash = (await api('POST', '/api/beta-code-hash', { code: plain })).codeHash;
@@ -599,10 +533,14 @@ $('#mfSave').addEventListener('click', async () => {
         coreVersion: $('#mfBetaCore').value.trim(),
         codeHash,
       };
+    } else {
+      payload.meleeVersion = $('#mfMeleeVersion').value.trim();
     }
     const r = await api('POST', '/api/manifest', payload);
     setManifestDirty(false);
-    toast(`Wrote ${r.written} — ${plural(r.modules, 'module', 'modules')}.`, 'ok');
+    const changed = r.written.filter((w) => w.changed).map((w) => w.file);
+    toast(changed.length ? `Wrote ${changed.join(', ')}.` : 'Nothing changed.', 'ok');
+    if (r.problems.length) toast(r.problems.join(' · '), 'err');
     await loadManifest();
   } catch (e) { toast(e.message, 'err'); }
 });
@@ -701,7 +639,7 @@ $('#vfOrphans').addEventListener('click', async () => {
       if (!paths.length) return toast('Nothing selected.', 'err');
       if (!confirm(`Permanently delete ${plural(paths.length, 'object', 'objects')} from R2?\n\n${paths.join('\n')}`)) return;
       try {
-        await api('POST', '/api/remote-delete', { prefix: VBRANCH === 'beta' ? 'betapayload' : 'payload', paths });
+        await api('POST', '/api/remote-delete', { prefix: r.prefix, paths });
         toast(`Deleted ${plural(paths.length, 'object', 'objects')}.`, 'ok');
         $('#vfOrphans').click();
       } catch (e) { toast(e.message, 'err'); }
@@ -711,16 +649,17 @@ $('#vfOrphans').addEventListener('click', async () => {
 
 /* ── DEPLOY ──────────────────────────────────────────────────────── */
 
-// Its own branch state. This used to read VBRANCH — a control on another tab.
-let DBRANCH = 'public';
 let DRY = true;
 
-const UPLOAD_ORDER = ['payload', 'betapayload', 'assets', 'launcher', 'installer', 'manifests'];
+const UPLOAD_ORDER = ['payload', 'betapayload', 'meleepayload', 'assets', 'launcher', 'installer', 'manifests'];
+const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee'].filter(Boolean);
 
 function syncDeployControls() {
-  $('#dpBranchNote').innerHTML =
-    `Preflight and CDN verification run against <code>manifests/${DBRANCH === 'beta' ? 'beta-manifest.json' : 'update-manifest.json'}</code>. ` +
-    `Both <code>payload/</code> and <code>betapayload/</code> upload either way — this picks which manifest is checked, not what is sent.`;
+  const pk = deployPackages();
+  $('#dpBranchNote').innerHTML = pk.length
+    ? `Manifests are regenerated from the catalog first. Only the chosen packages' folders and manifests are uploaded.`
+    : '<b>Choose at least one package.</b>';
+  $('#dpRun').disabled = !pk.length;
   $('#dpModeNote').innerHTML = DRY
     ? 'Nothing is written to R2. rclone reports what it <em>would</em> transfer.'
     : '<b>Uploads to the live bucket.</b> Users see the new manifests as soon as step 5 finishes.';
@@ -730,11 +669,7 @@ function syncDeployControls() {
   $$('#dpMode .seg-btn').forEach((b) => b.classList.toggle('hot', !DRY && b.dataset.mode === 'live'));
 }
 
-$$('#dpBranch .seg-btn').forEach((b) => b.addEventListener('click', () => {
-  $$('#dpBranch .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
-  DBRANCH = b.dataset.branch;
-  syncDeployControls();
-}));
+['#dpPkgCampaign', '#dpPkgMelee'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
 $$('#dpMode .seg-btn').forEach((b) => b.addEventListener('click', () => {
   $$('#dpMode .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
   DRY = b.dataset.mode === 'dry';
@@ -815,7 +750,7 @@ $('#dpRun').addEventListener('click', async () => {
   const force = $('#dpForce').checked;
   if (!DRY && !confirm(
     `Upload to the LIVE R2 bucket?\n\n` +
-    `Validating against: ${DBRANCH} manifest\n` +
+    `Packages: ${deployPackages().join(' + ')}\n` +
     (force ? `\nWARNING: check failures will be ignored.\n` : '') +
     `\nUsers see the new manifests as soon as the upload finishes.`)) return;
 
@@ -826,9 +761,11 @@ $('#dpRun').addEventListener('click', async () => {
   resetXfer();
 
   try {
-    const r = await api('POST', '/api/deploy', { dryRun: DRY, force, branch: DBRANCH });
+    const r = await api('POST', '/api/deploy', { dryRun: DRY, force, packages: deployPackages() });
     if (r.aborted) {
-      const findings = (r.stage === 'preflight' ? r.preflight.findings : r.postflight) ?? [];
+      const findings = r.stage === 'preflight' ? Object.values(r.preflight).flatMap((p) => p.findings)
+        : r.stage === 'generate' ? (r.problems ?? []).map((p) => ({ level: 'error', code: 'unbuilt', message: p }))
+        : (r.postflight ?? []);
       $('#dpResult').innerHTML =
         `<div class="banner err"><b>Aborted at ${esc(r.stage)} — nothing was published.</b>` +
         (r.stage === 'postflight'
@@ -1017,5 +954,5 @@ syncDeployControls();
 connectEvents();
 refreshProbe();
 loadState()
-  .then(loadSources)
+  .then(loadCatalog)
   .catch((e) => toast(e.message, 'err'));

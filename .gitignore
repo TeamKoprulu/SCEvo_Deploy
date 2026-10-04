@@ -9,3 +9,9 @@ Build-SC2Files.mpq2k
 
 # Machine-specific paths - see deploy-config.example.json
 deploy-config.json
+
+# Melee package build output (large; R2 is its home)
+meleepayload/
+# Manifest backups (written by the tool, never uploaded)
+manifests/.history/
+*.bak.json

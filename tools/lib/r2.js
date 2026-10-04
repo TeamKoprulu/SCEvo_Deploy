@@ -100,7 +100,8 @@ function rcloneProbe(timeoutMs = 15000) {
 // Runs `rclone copy` for one folder, streaming parsed stats to onProgress.
 // `copy` not `sync` — a blind sync on a 1.1 GB bucket is one typo away from
 // deleting production. Orphan cleanup is an explicit, reviewed action instead.
-function uploadFolder(localName, { dryRun = false, onProgress, onLog } = {}) {
+// include: only these file names (rclone --include). exclude: patterns to skip.
+function uploadFolder(localName, { dryRun = false, onProgress, onLog, include = null, exclude = [] } = {}) {
   const localPath = path.join(REPO_ROOT, localName);
   return new Promise((resolve) => {
     if (!fs.existsSync(localPath)) {
@@ -115,6 +116,12 @@ function uploadFolder(localName, { dryRun = false, onProgress, onLog } = {}) {
       '-v',
     ];
     if (dryRun) args.push('--dry-run');
+    // Ordered rules: excludes first, then the allow-list, then drop everything else.
+    for (const pattern of exclude) args.push('--filter', `- ${pattern}`);
+    if (include) {
+      for (const name of include) args.push('--filter', `+ ${name}`);
+      args.push('--filter', '- **');
+    }
 
     const child = spawn('rclone', args, { windowsHide: true });
     let stderrTail = '';

@@ -1,0 +1,353 @@
+{
+  "schemaVersion": 1,
+  "roots": [
+    {
+      "rel": "Maps\\SCEvo\\LegacyLoomings",
+      "kind": "map"
+    },
+    {
+      "rel": "Maps\\SCEvo\\LegacyRebelYell",
+      "kind": "map"
+    },
+    {
+      "rel": "Maps\\SCEvo\\EvoCompleteLauncher.SC2Map",
+      "kind": "map",
+      "single": true
+    },
+    {
+      "rel": "Maps\\SCEvo_MPMaps",
+      "kind": "map",
+      "depth": 2
+    },
+    {
+      "rel": "Mods\\SC Evolution Complete",
+      "kind": "mod"
+    },
+    {
+      "rel": "Mods\\SC Evolution Complete\\SCEvo_CampaignMods",
+      "kind": "mod"
+    }
+  ],
+  "melee": {
+    "version": "1.21",
+    "requires": [
+      "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
+      "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod"
+    ]
+  },
+  "items": [
+    {
+      "source": "Maps\\SCEvo\\EvoCompleteLauncher.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyLoomings\\Loomings0Legacy.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyLoomings\\Loomings1Legacy.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyLoomings\\Loomings2Legacy.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyLoomings\\Loomings3Legacy.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyLoomings\\Loomings4Legacy.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyLoomings\\Loomings5Legacy.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyLoomings\\LoomingsStory.SC2Map",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_Assets.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "core"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_Core.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "core"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_Legacy.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "core"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_Achievements.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_CampaignAssets.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_CampaignCommons.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_CampaignLegacy.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_ImprovedCampaignAI.SC2Mod",
+      "package": "campaign",
+      "channel": "public",
+      "module": {
+        "type": "campaign"
+      }
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_Multi.SC2Mod",
+      "package": "melee",
+      "channel": "public"
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SC2_5015_Balance.SC2Mod",
+      "package": "melee",
+      "channel": "public"
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_MultiArtMod.SC2Mod",
+      "package": "melee",
+      "channel": "public"
+    },
+    {
+      "source": "Mods\\SC Evolution Complete\\SCEvo_MultiArtAssets.SC2Mod",
+      "package": "melee",
+      "channel": "public"
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyRebelYell\\RebelStory.SC2Map",
+      "package": "campaign",
+      "channel": "off"
+    },
+    {
+      "source": "Maps\\SCEvo\\LegacyRebelYell\\RebelYell1Legacy.SC2Map",
+      "package": "campaign",
+      "channel": "off"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Golden Wall SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "c31bddeb6a"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SCEVO_FightingSpirit.SC2Map",
+      "package": "melee",
+      "channel": "off",
+      "mapId": "103673f559"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Keres Passage SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "6c8538b22c"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Khione SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "608a0aa791"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Eris SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "8465eaf533"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Cosmic Sapphire SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "16d432427e"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SCEVO_Vermeer.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "339c17a9e2"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Mothership SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "88207603eb"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Ruby Rock SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "bb3d786005"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Torches SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "97620e8e3b"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Crimson Research Lab SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "b55ac6907a"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Gemgarden SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "5f852d3988"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Rust Bucket SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "8e35c8bf61"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Rohana SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "750820bf64"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Rhoskallian SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "ef1efecdfb"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Yellowjacket SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "8d495f60b3"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\New Bed of Chaos SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "ee1aa3ff89"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Memecatcher SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "a0cad3f1ab"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Team Biodome SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "543be49fc5"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Undercurrent SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "082443539b"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_1v1\\Sanctuary III SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "7bd531b600"
+    },
+    {
+      "source": "Maps\\SCEvo_MPMaps\\SEL_2v2\\Reclamation SEL.SC2Map",
+      "package": "melee",
+      "channel": "public",
+      "mapId": "e62efd7e7b"
+    }
+  ],
+  "ignore": [
+    "Maps\\SCEvo_MPMaps\\SCEVO_116x152.SC2Map",
+    "Maps\\SCEvo_MPMaps\\SCEVO_152x116.SC2Map",
+    "Maps\\SCEvo_MPMaps\\SCEVO_152x152.SC2Map",
+    "Maps\\SCEvo_MPMaps\\SCEVO_Preloader.SC2Map",
+    "Maps\\SCEvo\\LegacyLoomings\\10x10 grid.SC2Map",
+    "Maps\\SCEvo\\LegacyLoomings\\10x10grid comp.SC2Map",
+    "Maps\\SCEvo\\LegacyLoomings\\9x9 grid.SC2Map",
+    "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_CampaignArmory.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_CampaignGlues.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_GluesAssets.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\SCEvo_LegacyBuildingSizes.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\upgrades.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_CampaignMods\\upgradesComp.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_Extension_KR.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_Extension.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_Glues.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_GluesAssets.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_LegacyExtension_KR.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_LegacyExtension.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_MuliArtAssetsBackup.SC2Mod",
+    "Mods\\SC Evolution Complete\\SCEvo_ObserverMod.SC2Mod"
+  ]
+}

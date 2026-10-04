@@ -8,19 +8,22 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const REPO_ROOT   = path.resolve(__dirname, '..', '..');
-const TOOLS_DIR   = path.join(REPO_ROOT, 'tools');
-const CACHE_DIR   = path.join(TOOLS_DIR, '.cache');
-const CONFIG_PATH = path.join(REPO_ROOT, 'deploy-config.json');
-const VETO_PATH   = path.join(REPO_ROOT, 'sc2packager-ignored.json');
-const MPQ_EDITOR  = path.join(REPO_ROOT, 'MPQEditor.exe');
+const REPO_ROOT    = path.resolve(__dirname, '..', '..');
+const TOOLS_DIR    = path.join(REPO_ROOT, 'tools');
+const CACHE_DIR    = path.join(TOOLS_DIR, '.cache');
+const CONFIG_PATH  = path.join(REPO_ROOT, 'deploy-config.json');
+const CATALOG_PATH = path.join(REPO_ROOT, 'deploy-catalog.json');
+const MPQ_EDITOR   = path.join(REPO_ROOT, 'MPQEditor.exe');
 
 const MANIFEST_DIR = path.join(REPO_ROOT, 'manifests');
+const HISTORY_DIR  = path.join(MANIFEST_DIR, '.history');
 const PAYLOAD_DIR  = path.join(REPO_ROOT, 'payload');
 const BETA_DIR     = path.join(REPO_ROOT, 'betapayload');
+const MELEE_DIR    = path.join(REPO_ROOT, 'meleepayload');
 
 const PUBLIC_MANIFEST = path.join(MANIFEST_DIR, 'update-manifest.json');
 const BETA_MANIFEST   = path.join(MANIFEST_DIR, 'beta-manifest.json');
+const MELEE_MANIFEST  = path.join(MANIFEST_DIR, 'melee-manifest.json');
 const NEWS_FEED       = path.join(MANIFEST_DIR, 'news-feed.json');
 const LAUNCHER_VER    = path.join(MANIFEST_DIR, 'launcher-version.json');
 
@@ -30,24 +33,33 @@ const BUCKET  = 'cf:evo-campaign';
 
 const SCHEMA_VERSION = 1;
 
-// Source folders inside the SC2 install that hold .SC2Map / .SC2Mod dev folders.
-// Ported verbatim from build-sc2files.ps1:195-201.
-const SOURCE_ROOTS = [
-  { rel: 'Maps\\SCEvo\\LegacyLoomings',                    ext: '.SC2Map', mode: 'children' },
-  { rel: 'Maps\\SCEvo\\LegacyRebelYell',                   ext: '.SC2Map', mode: 'children' },
-  { rel: 'Maps\\SCEvo\\EvoCompleteLauncher.SC2Map',        ext: '.SC2Map', mode: 'single'   },
-  { rel: 'Mods\\SC Evolution Complete',                    ext: '.SC2Mod', mode: 'children' },
-  { rel: 'Mods\\SC Evolution Complete\\SCEvo_CampaignMods', ext: '.SC2Mod', mode: 'children' },
+// Roots for a brand-new catalog. The catalog's own "roots" list is what the tool
+// actually scans, so edit roots in deploy-catalog.json (or the Catalog tab).
+const DEFAULT_ROOTS = [
+  { rel: 'Maps\\SCEvo\\LegacyLoomings', kind: 'map' },
+  { rel: 'Maps\\SCEvo\\LegacyRebelYell', kind: 'map' },
+  { rel: 'Maps\\SCEvo\\EvoCompleteLauncher.SC2Map', kind: 'map', single: true },
+  { rel: 'Maps\\SCEvo_MPMaps', kind: 'map', depth: 2 },
+  { rel: 'Mods\\SC Evolution Complete', kind: 'mod' },
+  { rel: 'Mods\\SC Evolution Complete\\SCEvo_CampaignMods', kind: 'mod' },
 ];
+
+// Where each package/channel's built files live. The folder name is also the
+// R2 prefix the launcher downloads from.
+const OUTPUT_DIRS = {
+  campaign: { public: PAYLOAD_DIR, beta: BETA_DIR },
+  melee:    { public: MELEE_DIR },
+};
 
 // Upload order matters: manifests MUST be last so the CDN never advertises
 // bytes that aren't uploaded yet (plan B1).
 const UPLOAD_FOLDERS = [
-  { name: 'Payload',     local: 'payload'     },
-  { name: 'BetaPayload', local: 'betapayload' },
-  { name: 'Assets',      local: 'assets'      },
-  { name: 'Launcher',    local: 'launcher'    },
-  { name: 'Installer',   local: 'installer'   },
+  { name: 'Payload',      local: 'payload',      package: 'campaign' },
+  { name: 'BetaPayload',  local: 'betapayload',  package: 'campaign' },
+  { name: 'MeleePayload', local: 'meleepayload', package: 'melee'    },
+  { name: 'Assets',       local: 'assets',       package: 'campaign' },
+  { name: 'Launcher',     local: 'launcher',     package: 'campaign' },
+  { name: 'Installer',    local: 'installer',    package: 'campaign' },
 ];
 const MANIFEST_FOLDER = { name: 'Manifests', local: 'manifests' };
 
@@ -56,8 +68,9 @@ function readConfig() {
     const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
     const obj = JSON.parse(stripJunk(raw));
     return obj && typeof obj === 'object' ? obj : {};
-  } catch {
-    return {};
+  } catch (err) {
+    if (err.code === 'ENOENT') return {};
+    throw new Error(`deploy-config.json is not valid JSON: ${err.message}`);
   }
 }
 
@@ -77,7 +90,7 @@ function updateConfig(patch) {
 function stripJunk(text) {
   return String(text)
     .replace(/^﻿/, '')
-    .replace(/[​‌‍￾�]/g, '');
+    .replace(/[​‌‍﻿￾�]/g, '');
 }
 
 // Write via a temp file + rename so a crash can never leave a truncated JSON.
@@ -98,9 +111,9 @@ function ensureCacheDir() {
 }
 
 module.exports = {
-  REPO_ROOT, TOOLS_DIR, CACHE_DIR, CONFIG_PATH, VETO_PATH, MPQ_EDITOR,
-  MANIFEST_DIR, PAYLOAD_DIR, BETA_DIR,
-  PUBLIC_MANIFEST, BETA_MANIFEST, NEWS_FEED, LAUNCHER_VER,
-  R2_BASE, BUCKET, SCHEMA_VERSION, SOURCE_ROOTS, UPLOAD_FOLDERS, MANIFEST_FOLDER,
+  REPO_ROOT, TOOLS_DIR, CACHE_DIR, CONFIG_PATH, CATALOG_PATH, MPQ_EDITOR,
+  MANIFEST_DIR, HISTORY_DIR, PAYLOAD_DIR, BETA_DIR, MELEE_DIR, OUTPUT_DIRS,
+  PUBLIC_MANIFEST, BETA_MANIFEST, MELEE_MANIFEST, NEWS_FEED, LAUNCHER_VER,
+  R2_BASE, BUCKET, SCHEMA_VERSION, DEFAULT_ROOTS, UPLOAD_FOLDERS, MANIFEST_FOLDER,
   readConfig, updateConfig, stripJunk, writeJsonAtomic, writeTextAtomic, ensureCacheDir,
 };

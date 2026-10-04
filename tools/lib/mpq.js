@@ -59,7 +59,18 @@ function hashTableSizeFor(fileCount) {
   return size;
 }
 
-/* ── junction handling ───────────────────────────────────────────────────── */
+// The console script for one archive. Paths are relative to REPO_ROOT and must
+// be space-free. Backslashes throughout — MPQEditor is a Windows tool.
+function mpqScript(outRel, linkRel, hashSize) {
+  return [
+    `new ${outRel} ${hashSize}`,
+    `add ${outRel} ${linkRel}\\* /r /c`,
+    `flush ${outRel}`,
+    '',
+  ].join('\r\n');
+}
+
+/* ── junction handling───────────────────────────────────────────────────── */
 
 function makeJunction(linkPath, targetDir) {
   removeLink(linkPath);
@@ -115,8 +126,12 @@ async function buildOne(src, targets, onProgress) {
   const name = path.basename(src.relPath);
   const emit = (phase, detail) => onProgress && onProgress({ file: name, phase, ...detail });
 
-  const linkRel = path.join('build-temp', `_src_${name}`);
-  const outRel  = path.join('build-temp', name);
+  // MPQEditor's script parser splits on spaces, so the temp paths must not
+  // contain any ("Sanctuary III SEL.SC2Map" produced nothing). The real name
+  // only matters for the destinations, which are copied to below.
+  const safe = name.replace(/[^A-Za-z0-9._-]/g, '_');
+  const linkRel = path.join('build-temp', `_src_${safe}`);
+  const outRel  = path.join('build-temp', safe);
   const linkAbs = path.join(REPO_ROOT, linkRel);
   const outAbs  = path.join(REPO_ROOT, outRel);
   const scriptRel = 'Build-SC2Files.mpq2k';
@@ -132,14 +147,7 @@ async function buildOne(src, targets, onProgress) {
     const hashSize = hashTableSizeFor(fileCount);
     emit('packing', { fileCount, hashSize });
 
-    // Backslashes throughout — MPQEditor is a Windows tool.
-    const script = [
-      `new ${outRel} ${hashSize}`,
-      `add ${outRel} ${linkRel}\\* /r /c`,
-      `flush ${outRel}`,
-      '',
-    ].join('\r\n');
-    writeTextAtomic(scriptAbs, script);
+    writeTextAtomic(scriptAbs, mpqScript(outRel, linkRel, hashSize));
 
     const run = await runMpqEditor(scriptRel);
 
@@ -166,9 +174,10 @@ async function buildOne(src, targets, onProgress) {
     const built = { size: fs.statSync(outAbs).size, entries: header.blockTableEntries, fileCount, hashSize };
 
     const copied = [];
+    // targets: payload folder names, or absolute destination paths.
     for (const folder of targets) {
-      const destRoot = folder === 'betapayload' ? BETA_DIR : PAYLOAD_DIR;
-      const dest = path.join(destRoot, src.relPath);
+      const dest = path.isAbsolute(folder) ? folder
+        : path.join(folder === 'betapayload' ? BETA_DIR : PAYLOAD_DIR, src.relPath);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(outAbs, dest);
       copied.push(path.relative(REPO_ROOT, dest));
@@ -212,4 +221,4 @@ async function buildAll(items, onProgress) {
   return results;
 }
 
-module.exports = { buildAll, buildOne, readMpqHeader, hashTableSizeFor, cleanTemp, TEMP_DIR };
+module.exports = { buildAll, buildOne, readMpqHeader, hashTableSizeFor, mpqScript, cleanTemp, TEMP_DIR };
