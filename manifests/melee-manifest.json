@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-04T05:06:27Z",
+  "lastUpdated": "2026-10-04T21:11:00Z",
   "version": "1.21",
   "requires": [
     "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
@@ -15,8 +15,8 @@
         {
           "name": "SCEvo_Multi.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Multi.SC2Mod",
-          "size": 450591,
-          "hash": "94b1906e005e1a00fde17b734660ace64ccce6b898174133822bc35dfb2aa690"
+          "size": 445674,
+          "hash": "c8c09b5af0bc14bd76529e08faa04ac7614c23d9f13282e255fa79605aa80a14"
         }
       ]
     },
@@ -521,5 +521,34 @@
         "hash": "bee63b4faf01d95236597f06325c499e2d8750dfa93e7789d11b82354f738d92"
       }
     }
-  ]
+  ],
+  "decals": {
+    "list": {
+      "path": "decals/decals.json",
+      "size": 43300,
+      "hash": "9c5ebc44822f23da1c74ee223aa103d512c715b1b9ff446b7bbbe87ba5caa88f"
+    },
+    "files": [
+      {
+        "path": "decals/terran.png",
+        "size": 231349,
+        "hash": "344a59a86b8e3b44402361badc9d4550bd1109324fd22739eb8b2aaefb64b48e"
+      },
+      {
+        "path": "decals/terran_bg.png",
+        "size": 210412,
+        "hash": "aba3a1eeb5f962c23269936dc4f3696eb6216f135f76d32c0c21bafb953c2a8e"
+      },
+      {
+        "path": "decals/zerg.png",
+        "size": 360577,
+        "hash": "39e5da12d415c327d9d26be192a71bc67e31156a08aa21902c1d119475d959e0"
+      },
+      {
+        "path": "decals/protoss.png",
+        "size": 389338,
+        "hash": "4d8c635b5c5f80431ddda698ca287018debcba1a024e26bfe3aef9b9d1abfd3c"
+      }
+    ]
+  }
 }

@@ -80,7 +80,7 @@ function save(doc, file = CATALOG_PATH) {
   const ordered = {
     schemaVersion: 1,
     roots: doc.roots,
-    melee: { version: doc.melee.version, requires: doc.melee.requires },
+    melee: { version: doc.melee.version, requires: doc.melee.requires, ...(doc.melee.decalExclude?.length ? { decalExclude: [...doc.melee.decalExclude].sort() } : {}) },
     items: doc.items.map(orderItem),
     ignore: [...doc.ignore].sort((a, b) => a.localeCompare(b)),
   };

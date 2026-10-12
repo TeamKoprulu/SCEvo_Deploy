@@ -8,8 +8,10 @@
 //   run.cmd ignore <source>   /   run.cmd unignore <source>
 //   run.cmd build [--package p] [--only <source>]... [--force] [--dry-run]
 //   run.cmd generate [--package p]
-//   run.cmd deploy [--package p] [--dry-run] [--force] [--update-site]
+//   run.cmd deploy [--package campaign|melee|launcher] [--dry-run] [--force] [--update-site]
 //   run.cmd offline-zip                   zip the public campaign package for offline play (offline/)
+//   run.cmd cdn-check [https://host]       is the custom CDN address ready? (default: cdnBase in deploy-config.json)
+//   run.cmd decals [exclude|include <id>] list the melee decals that look blank, or leave a decal out / back in
 // <source> is the path inside the SC2 install, e.g. "Maps\SCEvo_MPMaps\SEL_1v1\Golden Wall SEL.SC2Map",
 // or just the file name when it's unique. Exits non-zero on failure.
 
@@ -78,6 +80,33 @@ const commands = {
     await adoptExisting(doc, sc2Root(), log);
   },
 
+  async 'cdn-check'(args) {
+    const base = args._[1] || cfg.readConfig().cdnBase;
+    if (!base) throw new Error('Usage: run.cmd cdn-check https://your.cdn.domain (or set cdnBase in deploy-config.json)');
+    const r = await require('./lib/cdncheck').cdnCheck(base);
+    for (const c of r.checks) log(`${c.ok ? 'OK  ' : 'FAIL'} ${c.name}: ${c.detail}${c.hint ? `\n       → ${c.hint}` : ''}`);
+    log(r.ready ? `\n${r.base} is ready. Set it as the CDN address (Settings, or "cdnBase" in deploy-config.json).` : `\n${r.base} is not ready yet.`);
+    if (!r.ready) process.exitCode = 1;
+  },
+
+  async decals(args) {
+    const doc = loadCatalog();
+    const [, action, id] = args._;
+    const list = new Set(doc.melee.decalExclude || []);
+    if (action === 'exclude' || action === 'include') {
+      if (!/^Decal_(Terran|Zerg|Protoss)_\w+$/i.test(id || '')) throw new Error('Usage: run.cmd decals exclude|include Decal_Zerg_0083_01');
+      if (action === 'exclude') list.add(id); else list.delete(id);
+      doc.melee.decalExclude = [...list];
+      catalog.save(doc);
+      log(`${action === 'exclude' ? 'Excluded' : 'Included'} ${id}. Run "build --package melee" to update the decal package.`);
+      return;
+    }
+    const { buildDecals } = require('./lib/decals');
+    const r = buildDecals({ exclude: [...list], dryRun: true, log });
+    log(`Excluded: ${list.size ? [...list].join(', ') : 'none'}`);
+    if (r.blank.length) log(`Look blank: ${r.blank.join(', ')}`);
+  },
+
   async status(args) {
     const doc = loadCatalog();
     const root = sc2Root();
@@ -98,6 +127,9 @@ const commands = {
       }
     }
     log(`\n${doc.ignore.length} ignored.`);
+    const pend = await require('./lib/pending').pendingPackages();
+    log(pend.offline ? '\nCould not reach the CDN to compare manifests.' : '');
+    for (const [pkg, p] of Object.entries(pend.packages)) log(`${pkg}: ${p.changed ? `not deployed yet (${p.details.join(', ')})` : 'same as the live CDN'}`);
   },
 
   async set(args) {
@@ -157,8 +189,10 @@ const commands = {
   },
 
   async deploy(args) {
+    const { DEPLOY_PACKAGES } = require('./lib/deploy');
+    if (args.package && !DEPLOY_PACKAGES.includes(args.package)) throw new Error(`--package must be one of ${DEPLOY_PACKAGES.join(', ')}`);
     const r = await deploy({
-      packages: packagesOf(args), dryRun: !!args.dryRun, force: !!args.force, updateSite: !!args.updateSite, log,
+      packages: args.package ? [args.package] : DEPLOY_PACKAGES, dryRun: !!args.dryRun, force: !!args.force, updateSite: !!args.updateSite, log,
       step: (id, state, detail) => log(`-- ${id}: ${state}${detail ? ` (${detail})` : ''}`),
     });
     if (r.aborted) { log(`Aborted at ${r.stage}.`); process.exitCode = 1; }

@@ -210,8 +210,12 @@
             <div>
               <h4>Packages</h4>
               <div style="margin-top:var(--s2)">
-                <label class="check"><input type="checkbox" id="dpPkgCampaign" checked> Campaign <span class="faint">(payload, betapayload, launcher, news)</span></label>
-                <label class="check"><input type="checkbox" id="dpPkgMelee"> Melee vs AI <span class="faint">(meleepayload, melee-manifest.json)</span></label>
+                <label class="check"><input type="checkbox" id="dpPkgCampaign" checked> Campaign <span class="faint">(payload, betapayload, assets, campaign manifests, news)</span></label>
+                <p class="hint pending" id="dpPendCampaign"></p>
+                <label class="check"><input type="checkbox" id="dpPkgMelee"> Melee vs AI <span class="faint">(meleepayload, melee-manifest.json, decals)</span></label>
+                <p class="hint pending" id="dpPendMelee"></p>
+                <label class="check"><input type="checkbox" id="dpPkgLauncher"> Launcher <span class="faint">(exe, installer, launcher-version.json)</span></label>
+                <p class="hint pending" id="dpPendLauncher"></p>
               </div>
               <p class="hint" id="dpBranchNote"></p>
               <label class="check"><input type="checkbox" id="dpSite"> Update website download links</label>
@@ -301,6 +305,7 @@
           <div class="actions">
             <button class="btn ghost" id="nwReload">Reload</button>
             <button class="btn primary" id="nwSave">Save news-feed.json</button>
+            <button class="btn danger" id="nwPublish" title="Upload only news-feed.json and its news images to the live CDN. Mods, maps and the other manifests are left alone.">Publish news only</button>
           </div>
         </div>
       </div>
@@ -379,6 +384,24 @@
           </label>
           <p class="hint">The scevo.org repo. With <b>Update website download links</b> ticked on the Deploy tab, a campaign deploy points
             <code>assets\js\site-links.js</code> at the launcher it just published. The file is edited in place, uncommitted; you commit and push the site.</p>
+
+          <label>CDN address <span class="hint-inline">custom domain on the R2 bucket</span>
+            <div style="display:flex;gap:var(--s2)"><input id="stCdn" type="text" placeholder="https://scevo.download" style="flex:1">
+            <button class="btn" id="stCdnCheck" type="button">Check</button></div>
+          </label>
+          <p class="hint">Manifests, <code>launcher-version.json</code> and news images point here; launchers learn it from
+            <code>launcher-version.json</code> and keep r2.dev as their fallback. Empty uses r2.dev. Check it before saving.</p>
+          <div id="stCdnResult"></div>
+
+          <label>Decal textures folder <span class="hint-inline">melee decals</span>
+            <input id="stAssets" type="text">
+          </label>
+          <label>SC2 game data folder <span class="hint-inline">melee decals</span>
+            <input id="stGameData" type="text">
+          </label>
+          <p class="hint">Where <b>Build melee</b> reads player decals: the textures from a CascView extraction
+            (<code>…\liberty.sc2mod\base.sc2assets\assets\textures</code>) and the reward list and names from the SC2GameData repo.
+            Empty uses the folder shown in grey.</p>
 
           <label class="check"><input type="checkbox" id="stDebug"> Emit <code>showVersionDebug</code> in launcher-version.json</label>
           <div class="actions"><button class="btn primary" id="stSave">Save settings</button></div>

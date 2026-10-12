@@ -475,6 +475,9 @@ function meleeFiles(manifest) {
     if (map.file) out.push({ label: `${map.name} (${map.file.path})`, ...map.file });
     if (map.thumbnail) out.push({ label: `${map.name} thumbnail`, ...map.thumbnail });
   }
+  const decals = manifest?.decals;
+  if (decals?.list) out.push({ label: 'decal list', ...decals.list });
+  for (const f of (decals?.files ?? [])) out.push({ label: `decals ${f.path}`, ...f });
   return out;
 }
 
@@ -528,6 +531,19 @@ async function postflightMelee(manifest, onProgress) {
   return out;
 }
 
+// The launcher exes launcher-version.json is about to point at, at the size it records.
+async function postflightLauncher(doc, onProgress) {
+  const out = [];
+  const items = [['portable', 'launcher'], ['installer', 'installer']].filter(([k]) => doc?.[k]?.url && doc[k].size);
+  for (const [k, folder] of items) {
+    onProgress && onProgress({ phase: 'head', file: `${folder} exe`, done: out.length, total: items.length });
+    const rel = `${folder}/${doc[k].url.split('/').pop()}`;
+    out.push(...await checkCdnFile(rel, doc[k].size, `Launcher ${k} exe`));
+  }
+  if (items.length && !out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `Launcher exes verified on the CDN (v${doc.version})`));
+  return out;
+}
+
 function summarize(findings) {
   const errors = findings.filter((f) => f.level === ERROR);
   const warnings = findings.filter((f) => f.level === WARN);
@@ -540,7 +556,7 @@ function summarize(findings) {
 }
 
 module.exports = {
-  preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, meleeFiles,
+  preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, postflightLauncher, meleeFiles,
   checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings, checkNewsFeed,
   fetchJson, headFile, summarize,
   LARGE_FILE_BYTES,

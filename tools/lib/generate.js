@@ -14,6 +14,7 @@ const mf = require('./manifest');
 const { hashOf } = require('./hashcache');
 const { destsOf, thumbPathOf, loadState } = require('./build');
 const { readMapMeta, modesFor } = require('./mapmeta');
+const { DECALS_DIR } = require('./decals');
 
 const baseName = (p) => path.basename(p, path.extname(p));
 
@@ -104,6 +105,16 @@ async function meleeDoc(doc, sc2Root, overrides, problems) {
     }
   }
 
+  // Player decals (built by decals.js): the list plus every atlas it names.
+  let decals;
+  const listAbs = path.join(DECALS_DIR(), 'decals.json');
+  if (fs.existsSync(listAbs)) {
+    const entry = async (rel) => { const h = await hashOf(path.join(cfg.OUTPUT_DIRS.melee.public, rel)); return { path: rel, size: h.size, hash: h.hash }; };
+    const list = JSON.parse(fs.readFileSync(listAbs, 'utf8'));
+    const rels = [...new Set(Object.values(list.races || {}).flatMap((r) => [r.atlas, r.background].filter(Boolean)))];
+    decals = { list: await entry('decals/decals.json'), files: await Promise.all(rels.map(entry)) };
+  }
+
   return {
     schemaVersion: cfg.SCHEMA_VERSION,
     lastUpdated: mf.nowIso(),
@@ -111,6 +122,7 @@ async function meleeDoc(doc, sc2Root, overrides, problems) {
     requires: doc.melee.requires,
     modules: mf.serializeModules(groupModules(modules)),
     maps,
+    ...(decals ? { decals } : {}),
   };
 }
 

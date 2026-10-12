@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-04T05:12:20Z",
+  "lastUpdated": "2026-10-12T08:28:12Z",
   "strings": {
     "en": {
       "play": "PLAY",
@@ -293,6 +293,9 @@
       "imageUrl": "https://scevo.org/assets/img/blog/blog-update-1_21.webp",
       "badge": "Update",
       "linkUrl": "https://scevo.org/posts/evo-update-1_21.html",
+      "author": "HyperONE",
+      "authorIcon": "https://scevo.org/assets/img/authoricons/avatar-hyper.webp",
+      "badgeColor": "#ff0025",
       "imageBg": "#2a0a10",
       "imageAccent": "#ff0025"
     },
@@ -305,11 +308,14 @@
       "imageUrl": "https://scevo.org/assets/img/blog/blog-loomings-0_6.webp",
       "badge": "Campaign",
       "linkUrl": "https://scevo.org/posts/evo-campaign-loomings-0_6.html",
+      "author": "Angel \"Kat\" Huerta",
+      "authorIcon": "https://scevo.org/assets/img/authoricons/avatar-kat.webp",
       "highlights": [
         "- Major Launcher Reworks",
         "- CN Region Download support",
         "- Mission 5 available for everyone"
       ],
+      "badgeColor": "#00c5ff",
       "imageBg": "#0a242a",
       "imageAccent": "#00c5ff"
     },
@@ -322,9 +328,12 @@
       "excerpt": "",
       "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/june-july-164489935",
       "badge": "Patreon",
-      "imageUrl": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/assets/news/patreon-164489935-ffe2dba0.png",
+      "author": "Angel \"Kat\" Huerta",
+      "imageUrl": "https://scevo.download/assets/news/patreon-164489935-ffe2dba0.png",
       "imageAccent": "#ff9500",
-      "imageBg": "#2a1b0a"
+      "imageBg": "#2a1b0a",
+      "badgeColor": "#ff9500",
+      "authorIcon": "https://scevo.org/assets/img/authoricons/avatar-kat.webp"
     }
   ],
   "announcement": {
@@ -343,7 +352,8 @@
       "exclude": "used",
       "overrides": {
         "imageAccent": "#ff0025",
-        "imageBg": "#2a0a10"
+        "imageBg": "#2a0a10",
+        "badgeColor": "#ff0025"
       }
     },
     {
@@ -361,7 +371,8 @@
           "- Major Launcher Reworks",
           "- CN Region Download support",
           "- Mission 5 available for everyone"
-        ]
+        ],
+        "badgeColor": "#00c5ff"
       }
     },
     {
@@ -373,7 +384,8 @@
       "exclude": "used",
       "overrides": {
         "imageAccent": "#ff9500",
-        "imageBg": "#2a1b0a"
+        "imageBg": "#2a1b0a",
+        "badgeColor": "#ff9500"
       },
       "patreonId": "164489935",
       "type": "update",
@@ -382,9 +394,11 @@
       "excerpt": "",
       "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/june-july-164489935",
       "badge": "Patreon",
-      "imageUrl": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/assets/news/patreon-164489935-ffe2dba0.png",
+      "author": "Kat",
+      "imageUrl": "https://scevo.download/assets/news/patreon-164489935-ffe2dba0.png",
       "imageAccent": "#ff9500",
-      "imageBg": "#2a1b0a"
+      "imageBg": "#2a1b0a",
+      "badgeColor": "#ff9500"
     }
   ]
 }

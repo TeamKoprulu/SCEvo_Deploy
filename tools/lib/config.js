@@ -76,8 +76,8 @@ const UPLOAD_FOLDERS = [
   { name: 'BetaPayload',  local: 'betapayload',  package: 'campaign' },
   { name: 'MeleePayload', local: 'meleepayload', package: 'melee'    },
   { name: 'Assets',       local: 'assets',       package: 'campaign' },
-  { name: 'Launcher',     local: 'launcher',     package: 'campaign' },
-  { name: 'Installer',    local: 'installer',    package: 'campaign' },
+  { name: 'Launcher',     local: 'launcher',     package: 'launcher' },
+  { name: 'Installer',    local: 'installer',    package: 'launcher' },
 ];
 const MANIFEST_FOLDER = { name: 'Manifests', local: 'manifests' };
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-04T04:43:23Z",
+  "lastUpdated": "2026-10-04T23:50:28Z",
   "versions": {
-    "multiplayer": "1.21",
+    "multiplayer": "1.21.0.1",
     "campaign": "0.6.1"
   },
   "criticalUpdate": {
@@ -133,8 +133,8 @@
         {
           "name": "SCEvo_Assets.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Assets.SC2Mod",
-          "size": 589738566,
-          "hash": "2f94a2255035a2cf7b1afc34835363b2675279440b3be182a28b4ae3b49e9c9d"
+          "size": 589742431,
+          "hash": "5e25d4c3574949092cff6d1592e3994c5e5f223ed7b88a1945451e4f441a01b0"
         }
       ]
     },
@@ -147,8 +147,8 @@
         {
           "name": "SCEvo_Core.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
-          "size": 6580737,
-          "hash": "2fb165679a3d1aa1e86ade66c12653b82b00c5f52fff5e3fdd172ac1a2dcab6d"
+          "size": 6570442,
+          "hash": "232b3316cdc6f3e9a092bbaa8bbee327104c4f47f396e3a06a154a49b9ab190b"
         }
       ]
     },

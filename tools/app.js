@@ -44,6 +44,14 @@ async function patreonPosts(refresh = false) {
 // A patreon slot renders as a custom card, which carries the slot's whole top level; drop the editor-only keys.
 const stripSlotRule = ({ rule, exclude, noImage, ...card }) => card;
 
+// Launchers up to 1.3.1 colour the badge from badgeColor only, so an "Accent
+// (header + badge)" without a Badge colour is written to badgeColor as well.
+// Post and Patreon slots keep both in overrides; Patreon bakes them afterwards.
+function linkBadgeColor(slot) {
+  const t = slot?.kind === 'post' || slot?.kind === 'patreon' ? slot.overrides : slot;
+  if (t?.imageAccent && !t.badgeColor) t.badgeColor = t.imageAccent;
+}
+
 /* ── SSE bus ─────────────────────────────────────────────────────────────── */
 
 const clients = new Set();
@@ -92,8 +100,12 @@ const routes = {
         sc2InstallPath: c.sc2InstallPath ?? '',
         launcherRepoPath: c.launcherRepoPath ?? '',
         siteRepoPath: c.siteRepoPath ?? '',
+        sc2AssetsPath: c.sc2AssetsPath ?? '',
+        sc2GameDataPath: c.sc2GameDataPath ?? '',
+        cdnBase: c.cdnBase ?? '',
         showVersionDebug: c.showVersionDebug === true,
       },
+      decalDefaults: require('./lib/decals').DEFAULT_PATHS,
       paths: {
         repoRoot: cfg.REPO_ROOT,
         sc2Valid: !!(c.sc2InstallPath && fs.existsSync(c.sc2InstallPath)),
@@ -125,7 +137,7 @@ const routes = {
 
   'POST /api/config': async (body) => {
     const patch = {};
-    for (const key of ['sc2InstallPath', 'launcherRepoPath', 'siteRepoPath']) {
+    for (const key of ['sc2InstallPath', 'launcherRepoPath', 'siteRepoPath', 'sc2AssetsPath', 'sc2GameDataPath', 'cdnBase']) {
       if (typeof body[key] === 'string') patch[key] = body[key].trim();
     }
     if (typeof body.showVersionDebug === 'boolean') patch.showVersionDebug = body.showVersionDebug;
@@ -272,11 +284,16 @@ const routes = {
     return r;
   }),
 
-  // body: { packages: ['campaign','melee'], dryRun, force }
+  // body: { packages: ['campaign','melee','launcher'], dryRun, force }
   'POST /api/deploy': async (body) => runJob('deploy', async ({ log, progress, step }) => {
-    const packages = (body.packages || []).filter((p) => catalog.PACKAGES.includes(p));
+    const { DEPLOY_PACKAGES } = require('./lib/deploy');
+    const packages = (body.packages || []).filter((p) => DEPLOY_PACKAGES.includes(p));
     return deploy({ packages, dryRun: !!body.dryRun, force: !!body.force, updateSite: !!body.updateSite, log, progress, step });
   }),
+
+  // news-feed.json and assets/news/ only, for a news change between campaign deploys.
+  'POST /api/deploy-news': async (body) => runJob('deploy', async ({ log, progress, step }) =>
+    require('./lib/deploy').deployNews({ dryRun: !!body.dryRun, force: !!body.force, log, progress, step })),
 
   'GET /api/remote-orphans': async (_b, url) => {
     const branch = ['beta', 'melee'].includes(url.searchParams.get('branch')) ? url.searchParams.get('branch') : 'public';
@@ -345,6 +362,7 @@ const routes = {
     const doc = { ...prev, ...body.news };
     if (prev.announcement && body.news.announcement) doc.announcement = { ...prev.announcement, ...body.news.announcement };
     const warnings = [];
+    if (Array.isArray(doc.feed)) doc.feed.forEach(linkBadgeColor);
     if (Array.isArray(doc.feed) && doc.feed.some((s) => s?.kind === 'patreon')) {
       // Fresh posts on every save, so a new Patreon post shows up without restarting the tool.
       warnings.push(...await patreon.bakePatreonSlots(doc.feed, (await patreonPosts(true)).posts, { rehost: true }));
@@ -377,6 +395,12 @@ const routes = {
     spawn('explorer.exe', [`/select,${target}`], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
     return {};
   },
+
+  // Is a custom CDN address ready to replace r2.dev?
+  'GET /api/cdn-check': async (_b, url) => require('./lib/cdncheck').cdnCheck(url.searchParams.get('base') || cfg.readConfig().cdnBase || ''),
+
+  // Packages whose local manifests differ from the live ones (what a deploy would publish).
+  'GET /api/pending': async () => require('./lib/pending').pendingPackages(),
 
   'POST /api/cache-prune': async () => ({ removed: hashcache.prune(), cache: hashcache.stats() }),
 };

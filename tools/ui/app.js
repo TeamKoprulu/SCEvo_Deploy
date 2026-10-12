@@ -46,7 +46,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 /* ── tabs ────────────────────────────────────────────────────────── */
 
 // Loaders run on tab entry so a tab is never showing data from three actions ago.
-const TAB_LOADERS = { catalog: loadCatalog, manifest: () => loadManifest(), news: () => loadNews(), settings: loadState };
+const TAB_LOADERS = { catalog: loadCatalog, manifest: () => loadManifest(), news: () => loadNews(), settings: loadState, deploy: () => loadPending() };
 
 $$('.tab').forEach((btn) => btn.addEventListener('click', () => {
   $$('.tab').forEach((b) => b.classList.toggle('active', b === btn));
@@ -195,18 +195,47 @@ async function loadState() {
   $('#stSc2').value = STATE.config.sc2InstallPath;
   $('#stLauncher').value = STATE.config.launcherRepoPath;
   $('#stSite').value = STATE.config.siteRepoPath;
+  $('#stCdn').value = STATE.config.cdnBase;
+  $('#stAssets').value = STATE.config.sc2AssetsPath;
+  $('#stAssets').placeholder = STATE.decalDefaults?.sc2AssetsPath || '';
+  $('#stGameData').value = STATE.config.sc2GameDataPath;
+  $('#stGameData').placeholder = STATE.decalDefaults?.sc2GameDataPath || '';
   $('#stDebug').checked = STATE.config.showVersionDebug;
   renderEnv();
   syncDeployControls();
   return STATE;
 }
 
+let CDN_OK = null;   // the address that last passed the check
+async function checkCdn() {
+  const base = $('#stCdn').value.trim();
+  const box = $('#stCdnResult');
+  if (!base) { box.innerHTML = '<p class="hint">Empty: downloads use r2.dev.</p>'; return null; }
+  box.innerHTML = '<p class="hint">Checking…</p>';
+  try {
+    const r = await api('GET', `/api/cdn-check?base=${encodeURIComponent(base)}`);
+    box.innerHTML = '<div class="env">' + r.checks.map((c) => envRow(c.ok ? 'good' : 'bad', c.name, esc(c.detail || ''), c.hint ? esc(c.hint) : '')).join('') + '</div>'
+      + `<div class="banner ${r.ready ? 'ok' : 'warn'}" style="margin-top:var(--s2)"><b>${r.ready ? 'Ready' : 'Not ready yet'}</b>${esc(r.base)}</div>`;
+    if (r.ready) CDN_OK = r.base;
+    return r.ready;
+  } catch (e) { box.innerHTML = `<div class="banner err">${esc(e.message)}</div>`; return false; }
+}
+$('#stCdnCheck').addEventListener('click', () => { checkCdn(); });
+
 $('#stSave').addEventListener('click', async () => {
+  const cdn = $('#stCdn').value.trim().replace(/\/+$/, '');
+  if (cdn && cdn !== (STATE.config.cdnBase || '') && cdn !== CDN_OK) {
+    const ok = await checkCdn();
+    if (!ok && !confirm(`${cdn} didn't pass the CDN check. Manifests deployed from now on would point at it.\n\nSave anyway?`)) return;
+  }
   try {
     await api('POST', '/api/config', {
       sc2InstallPath: $('#stSc2').value,
       launcherRepoPath: $('#stLauncher').value,
       siteRepoPath: $('#stSite').value,
+      sc2AssetsPath: $('#stAssets').value,
+      cdnBase: $('#stCdn').value,
+      sc2GameDataPath: $('#stGameData').value,
       showVersionDebug: $('#stDebug').checked,
     });
     await loadState();
@@ -706,7 +735,7 @@ $('#vfOrphans').addEventListener('click', async () => {
 let DRY = true;
 
 const UPLOAD_ORDER = ['payload', 'betapayload', 'meleepayload', 'assets', 'launcher', 'installer', 'manifests'];
-const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee'].filter(Boolean);
+const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee', $('#dpPkgLauncher').checked && 'launcher'].filter(Boolean);
 
 function syncDeployControls() {
   const pk = deployPackages();
@@ -722,20 +751,49 @@ function syncDeployControls() {
   run.className = DRY ? 'btn primary' : 'btn danger';
   $$('#dpMode .seg-btn').forEach((b) => b.classList.toggle('hot', !DRY && b.dataset.mode === 'live'));
 
-  // Website links follow the launcher, which only ships with the campaign package.
+  // Website links follow the launcher package.
   const siteOk = !!STATE?.paths?.siteValid;
-  const campaign = pk.includes('campaign');
-  $('#dpSite').disabled = !siteOk || !campaign;
+  const launcher = pk.includes('launcher');
+  $('#dpSite').disabled = !siteOk || !launcher;
   $('#dpSiteNote').innerHTML = !siteOk
     ? 'Set the website repo path in Settings first.'
-    : !campaign ? 'Only with the Campaign package (it carries the launcher).'
+    : !launcher ? 'Only with the Launcher package.'
     : `Edits <span class="mono">${esc(STATE.config.siteRepoPath)}\\assets\\js\\site-links.js</span> after the upload; you commit and push the site.`;
 }
 const updateSite = () => !$('#dpSite').disabled && $('#dpSite').checked;
 
+// What each package has that the CDN doesn't. Packages with changes are ticked the first time this loads.
+let PENDING = null;
+let PENDING_TICKED = false;
+async function loadPending() {
+  const line = (id, p) => {
+    const el = $(id);
+    if (!p) { el.textContent = ''; return; }
+    el.innerHTML = p.changed ? `<b>Not deployed yet:</b> ${esc(p.details.join(', '))}` : p.details?.length ? esc(p.details.join(', ')) : 'Same as the live CDN.';
+    el.classList.toggle('warn-text', p.changed);
+  };
+  try {
+    PENDING = await api('GET', '/api/pending');
+    line('#dpPendCampaign', PENDING.packages.campaign);
+    line('#dpPendMelee', PENDING.packages.melee);
+    line('#dpPendLauncher', PENDING.packages.launcher);
+    if (PENDING.offline) $('#dpPendMelee').textContent = 'Could not reach the CDN to compare.';
+    if (!PENDING_TICKED) {
+      PENDING_TICKED = true;
+      const { campaign, melee, launcher } = PENDING.packages;
+      if (campaign.changed || melee.changed || launcher?.changed) {
+        $('#dpPkgCampaign').checked = campaign.changed;
+        $('#dpPkgMelee').checked = melee.changed;
+        $('#dpPkgLauncher').checked = !!launcher?.changed;
+        syncDeployControls();
+      }
+    }
+  } catch (e) { $('#dpPendMelee').textContent = `Could not compare with the CDN: ${e.message}`; }
+}
+
 try { $('#dpSite').checked = localStorage.getItem('scevo.updateSite') === '1'; } catch {}
 $('#dpSite').addEventListener('change', (e) => { try { localStorage.setItem('scevo.updateSite', e.target.checked ? '1' : '0'); } catch {} });
-['#dpPkgCampaign', '#dpPkgMelee'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
+['#dpPkgCampaign', '#dpPkgMelee', '#dpPkgLauncher'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
 $$('#dpMode .seg-btn').forEach((b) => b.addEventListener('click', () => {
   $$('#dpMode .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
   DRY = b.dataset.mode === 'dry';
@@ -854,6 +912,8 @@ $('#dpRun').addEventListener('click', async () => {
 
   $('#dpRun').disabled = true;
   $('#dpLog').textContent = '';
+  const left = Object.entries(PENDING?.packages || {}).filter(([k, p]) => p.changed && !deployPackages().includes(k)).map(([k]) => k);
+  if (left.length) $('#dpLog').textContent = `Note: ${left.join(' and ')} also has changes that this deploy won't publish.\n`;
   $('#dpResult').innerHTML = '';
   resetRail();
   resetXfer();
@@ -1071,11 +1131,29 @@ const NW_LOCAL_FIELDS = ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl'
 const NW_LABEL = {
   title: 'Title', author: 'Author (site name, e.g. Kat)', excerpt: 'Description', highlights: 'Highlights', imageUrl: 'Image URL', linkUrl: 'Link URL',
   badge: 'Badge', badgeColor: 'Badge colour', date: 'Date', type: 'Type', readMoreLabel: '“Read more” text',
-  imageText: 'Header text', imageLabel: 'Header label', imageBg: 'Header background', imageAccent: 'Header accent',
+  imageText: 'Header text', imageLabel: 'Header label', imageBg: 'Header background (set from the accent)', imageAccent: 'Accent (header + badge)',
 };
 // The launcher's defaults (App.jsx NewsImage); the accent follows the channel theme.
 const headerAccent = (s) => (s?.variant === 'beta' ? '#ff6600' : '#00ff88');
 const headerDefault = (k, s) => ({ imageText: 'EVO UPDATE', imageBg: '#0a2a1a', imageAccent: headerAccent(s) }[k] ?? '');
+// Accent presets: the channel colours, then a bright palette that reads with the badge's dark text.
+const NW_ACCENTS = [
+  ['#00ff88', 'Public green'], ['#ff6600', 'Beta orange'], ['#ff0025', 'Red'], ['#00c5ff', 'Sky'], ['#ff9500', 'Amber'],
+  ['#00ffd1', 'Aqua'], ['#fa00ff', 'Magenta'], ['#ff3b6b', 'Rose'], ['#ff5ca8', 'Pink'], ['#c86bff', 'Violet'],
+  ['#9b8cff', 'Lavender'], ['#4d8dff', 'Blue'], ['#00e5ff', 'Cyan'], ['#2bd96b', 'Emerald'], ['#7dff3a', 'Lime'],
+  ['#c6ff00', 'Chartreuse'], ['#ffe14d', 'Yellow'], ['#ffc400', 'Gold'], ['#ff7a45', 'Coral'], ['#ffb38a', 'Peach'],
+  ['#d9a066', 'Bronze'], ['#e8eef5', 'Silver'], ['#8fa3b8', 'Steel'], ['#a0ffe6', 'Ice'],
+];
+// Accents already on cards in this feed, ahead of the presets.
+function feedAccents() {
+  const known = new Set(NW_ACCENTS.map(([c]) => c));
+  const used = (NEWS?.feed ?? []).flatMap((s) => [s.imageAccent, s.overrides?.imageAccent])
+    .filter((c) => /^#[0-9a-f]{6}$/i.test(c ?? '')).map((c) => c.toLowerCase());
+  return [...new Set(used)].filter((c) => !known.has(c));
+}
+// The header background for an accent: the accent dimmed onto near-black (#ff0025 → #2a0a0e).
+const darkShade = (hex) => '#' + [1, 3, 5].map((i) => Math.round(10 + parseInt(hex.slice(i, i + 2), 16) * 32 / 255)
+  .toString(16).padStart(2, '0')).join('');
 // Only plain colour values reach inline styles.
 const cssColor = (v, fallback) => (typeof v === 'string' && /^(#[0-9a-f]{3,8}|[a-z]+|(rgb|hsl)a?\([\d\s.,%]+\))$/i.test(v.trim()) ? v.trim() : fallback);
 
@@ -1103,9 +1181,11 @@ function fieldHtml(k, v, s) {
   if (k === 'imageBg' || k === 'imageAccent') {
     // Picker + text: the text box takes any CSS colour, and empty means the launcher default.
     const hex = /^#[0-9a-f]{6}$/i.test(val) ? val : def;
+    const swatches = k === 'imageAccent' ? `<span class="swatches">${[...feedAccents().map((c) => [c, 'Used in this feed']), ...NW_ACCENTS]
+      .map(([c, name]) => `<button type="button" class="swatch${c === String(val).toLowerCase() ? ' on' : ''}" data-sw="${c}" title="${esc(`${name} ${c}`)}" style="background:${c}"></button>`).join('')}</span>` : '';
     return `<label>${NW_LABEL[k]}<span class="color-field">
       <input type="color" data-c="${k}" value="${esc(hex)}" title="Pick a colour">
-      <input type="text" data-f="${k}" data-ph="${esc(def)}" value="${esc(val)}" placeholder="${esc(def)}"></span></label>`;
+      <input type="text" data-f="${k}" data-ph="${esc(def)}" value="${esc(val)}" placeholder="${esc(def)}"></span>${swatches}</label>`;
   }
   if (k === 'imageText' || k === 'imageLabel') {
     return `<label>${NW_LABEL[k]}<input type="text" data-f="${k}" data-ph="${esc(def)}" value="${esc(val)}" placeholder="${esc(def)}"></label>`;
@@ -1203,9 +1283,17 @@ function renderCardDetail() {
     text.value = pick.value;
     text.dispatchEvent(new Event('change'));
   }));
+  $$('[data-sw]', host).forEach((b) => b.addEventListener('click', (e) => {
+    e.preventDefault(); // inside a <label>, a click would also focus the text box
+    const text = $('[data-f="imageAccent"]', host);
+    text.value = b.dataset.sw;
+    text.dispatchEvent(new Event('change'));
+  }));
   $$('[data-f]', host).forEach((inp) => inp.addEventListener('change', () => {
     const k = inp.dataset.f;
     const t = editTarget(s, true);
+    // A badge colour that follows the accent keeps following it (see linkBadgeColor in tools/app.js).
+    if (k === 'imageAccent' && (!t.badgeColor || t.badgeColor === t.imageAccent)) delete t.badgeColor;
     if (k === 'highlights') {
       const list = inp.value.split('\n').map((x) => x.trim()).filter(Boolean);
       if (list.length) t.highlights = list; else delete t.highlights;
@@ -1213,6 +1301,13 @@ function renderCardDetail() {
     else delete t[k];
     const pick = $(`[data-c="${k}"]`, host);
     if (pick) pick.value = /^#[0-9a-f]{6}$/i.test(inp.value.trim()) ? inp.value.trim() : headerDefault(k, s);
+    // A new accent brings its own darker header background; edit the background after to override it.
+    if (k === 'imageAccent' && /^#[0-9a-f]{6}$/i.test(t.imageAccent ?? '')) {
+      t.imageBg = darkShade(t.imageAccent);
+      $('[data-f="imageBg"]', host).value = t.imageBg;
+      $('[data-c="imageBg"]', host).value = t.imageBg;
+    }
+    if (k === 'imageAccent') $$('[data-sw]', host).forEach((b) => b.classList.toggle('on', b.dataset.sw === String(t.imageAccent ?? '').toLowerCase()));
     cleanSlot(s);
     newsChanged(false);
   }));
@@ -1273,10 +1368,15 @@ function renderPreviewPane() {
   const body = Array.isArray(c.highlights) && c.highlights.length && c.type === 'patchnotes'
     ? `<ul>${c.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>`
     : `<p>${esc(c.excerpt ?? '')}</p>`;
+  const badgeColor = cssColor(c.badgeColor, cssColor(c.imageAccent, headerAccent(s)));
+  // App.jsx NewsByline: date · icon author, in the channel accent.
+  const byline = c.date || c.author ? `<div class="nwbyline" style="--nb-ac:${headerAccent(s)}">
+      ${c.date ? `<span>${esc(c.date)}</span>` : ''}${c.date && c.author ? '<span class="dot">·</span>' : ''}
+      ${c.author ? `<span class="who">${c.authorIcon ? `<img src="${esc(c.authorIcon)}" alt="" onerror="this.remove()">` : ''}${esc(c.author)}</span>` : ''}</div>` : '';
   host.innerHTML = `<div class="nwcard">
     <div class="nwimg">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="">` : textHeader(c, s)}
-      ${c.badge ? `<span class="nwbadge" style="${c.badgeColor ? `border-color:${esc(c.badgeColor)};color:${esc(c.badgeColor)}` : ''}">${esc(c.badge)}</span>` : ''}</div>
-    <div class="nwbody"><b>${esc(c.title ?? '')}</b><span class="faint small">${esc(c.date ?? '')}</span>${body}
+      ${c.badge ? `<span class="nwbadge" style="background:${esc(badgeColor)};border-color:${esc(badgeColor)};color:#080c10">${esc(c.badge)}</span>` : ''}</div>
+    <div class="nwbody"><b style="color:${headerAccent(s)}">${esc(c.title ?? '')}</b>${byline}${body}
       ${c.linkUrl ? `<span class="faint small truncate">${esc(c.linkUrl)}</span>` : ''}</div>
   </div>`;
 }
@@ -1304,7 +1404,8 @@ $('#nwReload').addEventListener('click', () => {
   if (NW_DIRTY && !confirm('You have unsaved news changes. Discard them?')) return;
   loadNews().catch((e) => toast(e.message, 'err'));
 });
-$('#nwSave').addEventListener('click', async () => {
+// Resolves true once news-feed.json is written.
+async function saveNews() {
   try {
     const { cards, ...rest } = NEWS;
     const news = {
@@ -1321,7 +1422,35 @@ $('#nwSave').addEventListener('click', async () => {
     if (r.warnings?.length) toast(r.warnings.join(' '), 'warn');
     else toast(`Wrote ${r.written}.`, 'ok');
     await loadNews();
+    return true;
+  } catch (e) { toast(e.message, 'err'); return false; }
+}
+$('#nwSave').addEventListener('click', saveNews);
+
+// news-feed.json + assets/news/ to the live CDN, without a full campaign deploy.
+// Progress and the log show on the Deploy tab like any deploy.
+$('#nwPublish').addEventListener('click', async () => {
+  if (NW_DIRTY && !confirm('Save your news changes first, then publish them?')) return;
+  if (!confirm('Upload news-feed.json and its news images to the LIVE CDN?\n\nNothing else is uploaded. Launchers show the new news on their next start.')) return;
+  if (NW_DIRTY && !await saveNews()) return;
+  const btn = $('#nwPublish');
+  btn.disabled = true;
+  $('#dpLog').textContent = '';
+  $('#dpResult').innerHTML = '';
+  resetRail();
+  resetXfer();
+  try {
+    const r = await api('POST', '/api/deploy-news', {});
+    if (r.aborted) {
+      const errors = r.preflight.news.findings.filter((f) => f.level === 'error');
+      toast(`News not published: ${errors.map((f) => f.message).join(' ')}`, 'err');
+    } else {
+      const bad = (r.published ?? []).filter((f) => f.level === 'error');
+      toast(bad.length ? `Uploaded, but ${bad[0].message}` : 'News published and verified on the CDN.', bad.length ? 'warn' : 'ok');
+      loadPending();
+    }
   } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; }
 });
 
 /* ── leaving with unsaved work ───────────────────────────────────── */

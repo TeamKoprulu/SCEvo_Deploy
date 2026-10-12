@@ -14,7 +14,7 @@ const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
 const {
   REPO_ROOT, BUCKET, publicBase, LAUNCHER_VER,
-  readConfig, writeTextAtomic,
+  readConfig, writeTextAtomic, stripJunk,
 } = require('./config');
 const { hashFileStream } = require('./hashcache');
 
@@ -207,76 +207,102 @@ function deleteRemote(prefix, relPath) {
 
 /* ── launcher artifacts ──────────────────────────────────────────────────── */
 
-// Copies the built exes out of the launcher repo, skipping the copy when the
-// hash is unchanged (ported from deploy-to-r2.ps1:54-66).
-async function stageLauncherArtifacts() {
+// The launcher-version.json players see now: the live one, else the local copy (offline).
+// The local copy alone can't be trusted: a dry run or an aborted deploy used to rewrite it.
+async function publishedLauncherVersion(timeoutMs = 10000) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${publicBase()}/manifests/launcher-version.json`, { signal: ac.signal, cache: 'no-store' });
+    if (res.ok) return { ...JSON.parse(stripJunk(await res.text())), source: 'live' };
+  } catch { /* offline: fall back to the local copy */ } finally { clearTimeout(timer); }
+  try { return { ...JSON.parse(fs.readFileSync(LAUNCHER_VER, 'utf8')), source: 'local' }; } catch { return null; }
+}
+
+const ARTIFACTS = [
+  { folder: 'launcher',  exe: PORTABLE_EXE },
+  { folder: 'installer', exe: SETUP_EXE },
+];
+
+// Copies the built exes out of the launcher repo, skipping the copy when the hash
+// is unchanged. A dry run only reports what it would copy.
+// Returns { staged, skipped, warnings, files: { launcher, installer } } where files
+// are the exes launcher-version.json describes (the repo build in a dry run).
+async function stageLauncherArtifacts({ dryRun = false, published = null } = {}) {
   const cfg = readConfig();
   const repo = cfg.launcherRepoPath;
-  const out = { staged: [], skipped: [], warnings: [] };
+  const out = { staged: [], skipped: [], warnings: [], files: {} };
+  for (const a of ARTIFACTS) {
+    const dest = path.join(REPO_ROOT, a.folder, a.exe);
+    if (fs.existsSync(dest)) out.files[a.folder] = dest;
+  }
   if (!repo || !fs.existsSync(path.join(repo, 'package.json'))) {
     out.warnings.push(`Launcher repo not configured or invalid: ${repo || '(unset)'}`);
     return out;
   }
-  const pairs = [
-    { src: path.join(repo, 'dist-electron', PORTABLE_EXE), dest: path.join(REPO_ROOT, 'launcher',  PORTABLE_EXE) },
-    { src: path.join(repo, 'dist-electron', SETUP_EXE),    dest: path.join(REPO_ROOT, 'installer', SETUP_EXE)    },
-  ];
-  for (const { src, dest } of pairs) {
+  for (const a of ARTIFACTS) {
+    const src = path.join(repo, 'dist-electron', a.exe);
+    const dest = path.join(REPO_ROOT, a.folder, a.exe);
     if (!fs.existsSync(src)) {
-      out.warnings.push(`Not built: ${path.basename(src)} — run "npm run build" in the launcher repo`);
+      out.warnings.push(`Not built: ${a.exe} — run "npm run build" in the launcher repo`);
       continue;
     }
     const srcHash = await hashFileStream(src);
     const dstHash = fs.existsSync(dest) ? await hashFileStream(dest) : null;
-    if (srcHash === dstHash) { out.skipped.push(path.basename(dest)); continue; }
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(src, dest);
-    out.staged.push(path.basename(dest));
+    if (srcHash === dstHash) { out.skipped.push(a.exe); continue; }
+    if (dryRun) out.files[a.folder] = src;
+    else {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
+      out.files[a.folder] = dest;
+    }
+    out.staged.push(a.exe);
   }
   // Launchers self-update only when the published version differs from their own,
   // so a new exe under the old version number reaches nobody.
-  const published = publishedLauncherVersion();
   let repoVersion = null;
   try { repoVersion = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).version; } catch {}
-  if (out.staged.length && repoVersion && repoVersion === published) {
+  const live = published?.version ?? null;
+  const exeChanged = out.staged.length || (published?.portable?.sha256 && out.files.launcher
+    && published.portable.sha256 !== await hashFileStream(out.files.launcher));
+  if (exeChanged && repoVersion && repoVersion === live) {
     out.warnings.push(`The launcher exe changed but its version is still ${repoVersion}, so players won't be offered it. Bump "version" in the launcher repo's package.json and rebuild.`);
   }
   return out;
 }
 
-function publishedLauncherVersion() {
-  try { return JSON.parse(fs.readFileSync(LAUNCHER_VER, 'utf8')).version ?? null; } catch { return null; }
-}
-
 // Writes launcher-version.json from the launcher repo's package.json version.
 // Built with JSON.stringify — the old script concatenated it by hand, and this
 // is the one file a broken launcher cannot fix by self-updating.
-async function writeLauncherVersion() {
+// files: the exes to describe (from stageLauncherArtifacts). A dry run writes nothing.
+async function writeLauncherVersion({ dryRun = false, published = null, files = {} } = {}) {
   const cfg = readConfig();
   const pkgPath = cfg.launcherRepoPath ? path.join(cfg.launcherRepoPath, 'package.json') : null;
   if (!pkgPath || !fs.existsSync(pkgPath)) {
     return { ok: false, error: `package.json not found (launcherRepoPath: ${cfg.launcherRepoPath || 'unset'})` };
   }
   const version = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
-  const previous = publishedLauncherVersion();
+  const previous = published?.version ?? null;
   const doc = { version };
   if (cfg.showVersionDebug === true) doc.showVersionDebug = true;
   // The launcher refuses Windows 7/8 since 1.3 (Electron 28); recorded for the site and tools.
   doc.minWindows = '10';
+  // Launchers remember this host and download from it first (r2.dev stays their fallback).
+  doc.cdnBase = publicBase();
   // sha256 + size let the launcher's self-updater resume and verify the download.
-  const artifact = async (folder, exe) => {
+  const artifact = async ({ folder, exe }) => {
     const out = { url: `${publicBase()}/${folder}/${encodeURI(exe)}` };
-    const local = path.join(REPO_ROOT, folder, exe);
+    const local = files[folder] ?? path.join(REPO_ROOT, folder, exe);
     if (fs.existsSync(local)) {
       out.size = fs.statSync(local).size;
       out.sha256 = await hashFileStream(local);
     }
     return out;
   };
-  doc.portable  = await artifact('launcher', PORTABLE_EXE);
-  doc.installer = await artifact('installer', SETUP_EXE);
-  writeTextAtomic(LAUNCHER_VER, JSON.stringify(doc, null, 2) + '\n');
-  return { ok: true, version, previous, path: LAUNCHER_VER };
+  doc.portable  = await artifact(ARTIFACTS[0]);
+  doc.installer = await artifact(ARTIFACTS[1]);
+  if (!dryRun) writeTextAtomic(LAUNCHER_VER, JSON.stringify(doc, null, 2) + '\n');
+  return { ok: true, version, previous, previousSource: published?.source ?? null, doc, path: LAUNCHER_VER };
 }
 
 // Manifests must never be served stale from an edge cache; everything else may
@@ -285,5 +311,5 @@ const CACHE_CONTROL = { manifests: 'no-cache', default: 'public, max-age=3600' }
 
 module.exports = {
   CACHE_CONTROL, rcloneAvailable, rcloneRemotes, rcloneProbe, uploadFolder, listRemote, deleteRemote,
-  stageLauncherArtifacts, writeLauncherVersion, PORTABLE_EXE, SETUP_EXE,
+  stageLauncherArtifacts, writeLauncherVersion, publishedLauncherVersion, PORTABLE_EXE, SETUP_EXE,
 };

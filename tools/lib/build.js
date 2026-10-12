@@ -16,6 +16,7 @@ const catalog = require('./catalog');
 const mpq = require('./mpq');
 const { hashOf } = require('./hashcache');
 const { readMapMeta } = require('./mapmeta');
+const { buildDecals, DECALS_DIR } = require('./decals');
 
 const STATE_FILE = path.join(CACHE_DIR, 'build-state.json');
 const BUILT_EXT = /\.(sc2map|sc2mod|evm|png)$/i;
@@ -183,9 +184,21 @@ async function build(opts) {
     if (!dryRun) saveState(state);
   }
 
+  // Player decals (melee package): rebuilt from the game data on every melee build, even a
+  // selection build — it takes about a second and only writes files whose bytes changed.
+  const expected = new Set();
+  if (packages.includes('melee')) {
+    try {
+      const d = buildDecals({ exclude: doc.melee.decalExclude || [], dryRun, log });
+      d.files.forEach((f) => expected.add(f.toLowerCase()));
+    } catch (err) {
+      log(`WARNING: decals not rebuilt: ${err.message}`);
+      for (const f of walkFiles(DECALS_DIR())) expected.add(f.toLowerCase());
+    }
+  }
+
   // Prune: every built file no item claims any more (channel switched off,
   // promoted, item removed). Only for the packages being built.
-  const expected = new Set();
   for (const it of doc.items.filter((i) => packages.includes(i.package))) {
     for (const d of destsOf(it)) expected.add(d.toLowerCase());
     if (it.package === 'melee' && catalog.isMap(it.source) && catalog.channelsOf(it).length) expected.add(thumbPathOf(it).toLowerCase());
