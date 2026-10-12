@@ -9,7 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  REPO_ROOT, PAYLOAD_DIR, BETA_DIR, MANIFEST_DIR, R2_BASE,
+  REPO_ROOT, PAYLOAD_DIR, BETA_DIR, MANIFEST_DIR, ASSETS_DIR, R2_BASE, publicBase, publicBases,
   PUBLIC_MANIFEST, BETA_MANIFEST, readConfig, stripJunk,
 } = require('./config');
 const { hashOf } = require('./hashcache');
@@ -178,6 +178,42 @@ async function checkAgainstDisk(manifest, branch, onProgress) {
 
 /* ── news feed / localisation ────────────────────────────────────────────── */
 
+// The "feed" slots the launcher resolves. knownTags (optional) are the site's tags.
+function checkNewsFeed(news, knownTags = null) {
+  const out = [];
+  const feed = news?.feed;
+  if (feed === undefined) return out;
+  if (!Array.isArray(feed)) return [finding(ERROR, 'news-feed-shape', 'news-feed.json "feed" must be a list')];
+  const ids = new Map();
+  const known = knownTags && new Set(knownTags.map((t) => String(t).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '')));
+  feed.forEach((s, i) => {
+    const where = `feed[${i}]${s?.id ? ` (${s.id})` : ''}`;
+    if (!s || !['post', 'patreon', 'banner', 'custom'].includes(s.kind)) { out.push(finding(ERROR, 'news-feed-kind', `${where}: kind must be post, patreon, banner or custom`)); return; }
+    if (!s.id) out.push(finding(WARN, 'news-feed-id', `${where}: no id`));
+    else if (ids.has(s.id)) out.push(finding(ERROR, 'news-feed-dup', `${where}: id "${s.id}" is used twice`));
+    else ids.set(s.id, i);
+    if (s.kind === 'banner' && !s.imageUrl) out.push(finding(ERROR, 'news-banner-image', `${where}: a banner needs an image URL`));
+    if (s.kind === 'patreon' && !s.title) out.push(finding(WARN, 'news-patreon-unbaked', `${where}: this Patreon card has no post filled in yet. Save it from the News tab.`));
+    // Images the tool re-hosts (Patreon previews) live in assets/ and only reach R2 with a campaign deploy.
+    const assetBase = typeof s.imageUrl === 'string' && publicBases().find((b) => s.imageUrl.startsWith(`${b}/assets/`));
+    const assetRel = assetBase ? s.imageUrl.slice(assetBase.length + '/assets/'.length) : null;
+    if (assetRel && !fs.existsSync(path.join(ASSETS_DIR, ...decodeURI(assetRel).split('/')))) {
+      out.push(finding(ERROR, 'news-image-missing', `${where}: its image assets/${assetRel} is not in the assets folder, so the card would show a broken image`));
+    }
+    if (s.kind === 'post' || s.kind === 'patreon') {
+      const n = s.rule?.index ?? 1;
+      if (!Number.isInteger(n) || n < 1) out.push(finding(ERROR, 'news-feed-index', `${where}: rule.index must be 1 or more`));
+      const tag = s.rule?.tag;
+      if (tag && known && !known.has(tag.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, ''))) {
+        out.push(finding(WARN, 'news-feed-tag', `${where}: no site post has the tag "${tag}"`));
+      }
+    }
+    if (s.variant && !['public', 'beta'].includes(s.variant)) out.push(finding(ERROR, 'news-feed-variant', `${where}: variant must be public or beta`));
+  });
+  if (feed.length && !Array.isArray(news.cards)) out.push(finding(WARN, 'news-no-snapshot', 'news-feed.json has a feed but no "cards" snapshot: launchers older than the feed show no news. Save it from the News tab.'));
+  return out;
+}
+
 // The launcher's t() helper falls back with `||`, so an empty string degrades to
 // English rather than rendering blank. That makes untranslated stubs invisible
 // in testing — this surfaces them instead.
@@ -251,9 +287,9 @@ async function checkDrift(branch) {
   const name = path.basename(localFile);
   const local = readManifest(localFile);
 
-  const live = await fetchJson(`${R2_BASE}/manifests/${name}`);
+  const live = await fetchJson(`${publicBase()}/manifests/${name}`);
   if (!live.ok) {
-    out.push(finding(WARN, 'live-unreachable', `Could not read live ${name} from R2: ${live.error}`));
+    out.push(finding(WARN, 'live-unreachable', `Could not read live ${name} from ${publicBase()}: ${live.error}`));
   } else if (local) {
     if (branch === 'public') {
       for (const key of ['multiplayer', 'campaign']) {
@@ -314,6 +350,53 @@ async function headFile(url, timeoutMs = 20000) {
   }
 }
 
+// Cloudflare's free plan doesn't edge-cache files above 512 MB. They're still
+// served straight from R2, just without the CDN's speed-up.
+const EDGE_CACHE_LIMIT = 512 * 1024 * 1024;
+
+// The launcher resumes interrupted downloads with a Range request. A host that
+// ignores Range forces a restart from zero after every dropped connection.
+async function probeRange(url, size, timeoutMs = 20000) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: { Range: 'bytes=0-0' }, signal: ac.signal, cache: 'no-store' });
+    const range = res.headers.get('content-range') || '';
+    try { await res.body?.cancel(); } catch {}
+    if (res.status !== 206) return { ok: false, detail: `HTTP ${res.status} instead of 206` };
+    const total = Number(/\/(\d+)$/.exec(range)?.[1]);
+    if (size && total !== size) return { ok: false, detail: `Content-Range "${range}" doesn't match size ${size}` };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, detail: err.name === 'AbortError' ? 'timeout' : err.message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Checks one file on every public address. relUrl: "payload/Mods/…" (already encoded).
+async function checkCdnFile(relUrl, size, label) {
+  const out = [];
+  for (const base of publicBases()) {
+    const url = `${base}/${relUrl}`;
+    const r = await headFile(url);
+    if (!r.ok) {
+      out.push(finding(ERROR, 'cdn-missing', `${label} is not reachable on ${base} (${r.error ?? 'HTTP ' + r.status})`, url));
+      continue;
+    }
+    if (r.length !== size) {
+      out.push(finding(ERROR, 'cdn-size', `${label}: ${base} serves ${r.length.toLocaleString()} bytes, manifest says ${size.toLocaleString()}`, url));
+      continue;
+    }
+    const rg = await probeRange(url, size);
+    if (!rg.ok) out.push(finding(WARN, 'cdn-no-range', `${label}: ${base} doesn't support resuming (${rg.detail}) — interrupted downloads will restart from zero`, url));
+    if (size > EDGE_CACHE_LIMIT && base !== R2_BASE) {
+      out.push(finding(OK, 'cdn-no-edge-cache', `${label} is over 512 MB, so Cloudflare serves it from R2 without edge caching (expected on the free plan)`, url));
+    }
+  }
+  return out;
+}
+
 // Confirms every file the manifest describes is actually on the CDN at the right
 // size BEFORE the manifest itself is published (plan B1).
 async function postflight(manifest, branch, onProgress) {
@@ -325,34 +408,30 @@ async function postflight(manifest, branch, onProgress) {
   for (const f of files) {
     // encodeURI leaves "/" alone and turns the spaces in "SC Evolution Complete"
     // into %20, matching what the launcher's URL parsing produces.
-    const url = `${R2_BASE}/${prefix}/${encodeURI(f.path)}`;
     onProgress && onProgress({ phase: 'head', file: f.name ?? f.path, done, total: files.length });
     done++;
-    const r = await headFile(url);
-    if (!r.ok) {
-      out.push(finding(ERROR, 'cdn-missing', `${f.path} is not reachable on the CDN (${r.error ?? 'HTTP ' + r.status})`, url));
-    } else if (r.length !== f.size) {
-      out.push(finding(ERROR, 'cdn-size', `${f.path}: CDN serves ${r.length.toLocaleString()} bytes, manifest says ${f.size.toLocaleString()}`, url));
-    }
+    out.push(...await checkCdnFile(`${prefix}/${encodeURI(f.path)}`, f.size, f.path));
   }
   onProgress && onProgress({ phase: 'done', done, total: files.length });
-  if (!out.length) out.push(finding(OK, 'cdn-ok', `All ${files.length} file(s) verified on the CDN at the correct size`));
+  if (!out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `All ${files.length} file(s) verified on ${publicBases().join(' and ')} at the correct size`));
   return out;
 }
 
 // Confirms the published manifests parse and match what we just wrote.
-async function verifyPublishedManifests() {
+async function verifyPublishedManifests(files) {
   const out = [];
-  for (const file of [PUBLIC_MANIFEST, BETA_MANIFEST]) {
+  for (const file of (files || [PUBLIC_MANIFEST, BETA_MANIFEST])) {
     if (!fs.existsSync(file)) continue;
     const name = path.basename(file);
-    const live = await fetchJson(`${R2_BASE}/manifests/${name}`);
-    if (!live.ok) { out.push(finding(ERROR, 'published-unreachable', `${name}: ${live.error}`)); continue; }
     const local = readManifest(file);
-    if (JSON.stringify(live.data) !== JSON.stringify(local)) {
-      out.push(finding(ERROR, 'published-mismatch', `${name} on the CDN does not match the local file (R2 may still be propagating)`));
-    } else {
-      out.push(finding(OK, 'published-ok', `${name} published and verified`));
+    for (const base of publicBases()) {
+      const live = await fetchJson(`${base}/manifests/${name}?t=${Date.now()}`);
+      if (!live.ok) { out.push(finding(ERROR, 'published-unreachable', `${name} on ${base}: ${live.error}`)); continue; }
+      if (JSON.stringify(live.data) !== JSON.stringify(local)) {
+        out.push(finding(ERROR, 'published-mismatch', `${name} on ${base} does not match the local file (a cache may still be serving the old one)`));
+      } else {
+        out.push(finding(OK, 'published-ok', `${name} published and verified on ${base}`));
+      }
     }
   }
   return out;
@@ -379,9 +458,90 @@ async function preflight(branch, onProgress) {
   // breaks the whole news pane.
   const news = checkJsonHygiene(path.join(MANIFEST_DIR, 'news-feed.json'));
   findings.push(...news.findings.filter((f) => f.code !== 'schema-version'));
-  if (news.parsed) findings.push(...checkNewsStrings(news.parsed));
+  if (news.parsed) findings.push(...checkNewsStrings(news.parsed), ...checkNewsFeed(news.parsed));
 
   return summarize(findings);
+}
+
+/* ── melee package ───────────────────────────────────────────────────────── */
+
+const { MELEE_MANIFEST, MELEE_DIR } = require('./config');
+
+// Every file the melee manifest points at, relative to meleepayload/.
+function meleeFiles(manifest) {
+  const out = [];
+  for (const m of (manifest?.modules ?? [])) for (const f of (m.files ?? [])) out.push({ label: f.path, ...f });
+  for (const map of (manifest?.maps ?? [])) {
+    if (map.file) out.push({ label: `${map.name} (${map.file.path})`, ...map.file });
+    if (map.thumbnail) out.push({ label: `${map.name} thumbnail`, ...map.thumbnail });
+  }
+  const decals = manifest?.decals;
+  if (decals?.list) out.push({ label: 'decal list', ...decals.list });
+  for (const f of (decals?.files ?? [])) out.push({ label: `decals ${f.path}`, ...f });
+  return out;
+}
+
+async function preflightMelee(onProgress) {
+  const findings = [];
+  const hygiene = checkJsonHygiene(MELEE_MANIFEST);
+  findings.push(...hygiene.findings);
+  const doc = hygiene.parsed;
+  if (!doc) return summarize(findings);
+
+  if (!String(doc.version || '').trim()) findings.push(finding(ERROR, 'melee-version', 'melee-manifest.json has no version'));
+  const ids = new Set();
+  for (const map of (doc.maps ?? [])) {
+    if (!/^[0-9a-f]{10}$/.test(String(map.id || ''))) findings.push(finding(ERROR, 'melee-map-id', `${map.name}: map id must be 10 hex characters`));
+    if (ids.has(map.id)) findings.push(finding(ERROR, 'melee-map-dup', `Duplicate map id ${map.id}`));
+    ids.add(map.id);
+    if (!map.players || map.players < 2) findings.push(finding(ERROR, 'melee-map-players', `${map.name}: needs at least 2 start locations`));
+    if (!map.thumbnail) findings.push(finding(WARN, 'melee-map-thumb', `${map.name}: no thumbnail`));
+  }
+  for (const m of (doc.modules ?? [])) for (const f of (m.files ?? [])) {
+    if (!/^Mods\//.test(f.path)) findings.push(finding(ERROR, 'path-root', `"${f.path}" must start with "Mods/"`));
+  }
+  if (!(doc.maps ?? []).length) findings.push(finding(WARN, 'melee-no-maps', 'The melee package has no maps'));
+
+  const files = meleeFiles(doc);
+  let checked = 0;
+  for (const f of files) {
+    onProgress && onProgress({ phase: 'verify', file: f.label, checked, total: files.length });
+    checked++;
+    const abs = path.join(MELEE_DIR, ...String(f.path).split('/'));
+    if (!fs.existsSync(abs)) { findings.push(finding(ERROR, 'file-absent', `${f.label} is in melee-manifest.json but not in meleepayload/`, abs)); continue; }
+    const st = fs.statSync(abs);
+    if (st.size !== f.size) { findings.push(finding(ERROR, 'size-mismatch', `${f.label}: manifest says ${f.size} bytes, file is ${st.size}`)); continue; }
+    const { hash } = await hashOf(abs);
+    if (hash !== f.hash) findings.push(finding(ERROR, 'hash-mismatch', `${f.label}: hash does not match the file on disk`));
+  }
+  onProgress && onProgress({ phase: 'done', checked, total: files.length });
+  return summarize(findings);
+}
+
+async function postflightMelee(manifest, onProgress) {
+  const out = [];
+  const files = meleeFiles(manifest);
+  let done = 0;
+  for (const f of files) {
+    onProgress && onProgress({ phase: 'head', file: f.label, done, total: files.length });
+    done++;
+    out.push(...await checkCdnFile(`meleepayload/${encodeURI(f.path)}`, f.size, f.label));
+  }
+  if (!out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `All ${files.length} melee file(s) verified on the CDN`));
+  return out;
+}
+
+// The launcher exes launcher-version.json is about to point at, at the size it records.
+async function postflightLauncher(doc, onProgress) {
+  const out = [];
+  const items = [['portable', 'launcher'], ['installer', 'installer']].filter(([k]) => doc?.[k]?.url && doc[k].size);
+  for (const [k, folder] of items) {
+    onProgress && onProgress({ phase: 'head', file: `${folder} exe`, done: out.length, total: items.length });
+    const rel = `${folder}/${doc[k].url.split('/').pop()}`;
+    out.push(...await checkCdnFile(rel, doc[k].size, `Launcher ${k} exe`));
+  }
+  if (items.length && !out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `Launcher exes verified on the CDN (v${doc.version})`));
+  return out;
 }
 
 function summarize(findings) {
@@ -396,8 +556,8 @@ function summarize(findings) {
 }
 
 module.exports = {
-  preflight, postflight, verifyPublishedManifests, checkDrift,
-  checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings,
+  preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, postflightLauncher, meleeFiles,
+  checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings, checkNewsFeed,
   fetchJson, headFile, summarize,
   LARGE_FILE_BYTES,
 };

@@ -23,9 +23,18 @@ function readManifest(file) {
 }
 
 // Backs up to .bak.json then writes deterministic 2-space JSON, UTF-8 no BOM.
+// The previous version goes to manifests/.history/ (gitignored, never uploaded),
+// keeping the newest HISTORY_KEEP per manifest.
+const HISTORY_KEEP = 20;
 function writeManifest(file, obj) {
   if (fs.existsSync(file)) {
-    fs.copyFileSync(file, file.replace(/\.json$/i, '.bak.json'));
+    const { HISTORY_DIR } = require('./config');
+    fs.mkdirSync(HISTORY_DIR, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const base = path.basename(file, '.json');
+    fs.copyFileSync(file, path.join(HISTORY_DIR, `${base}.${stamp}.json`));
+    const old = fs.readdirSync(HISTORY_DIR).filter((n) => n.startsWith(`${base}.`)).sort();
+    for (const n of old.slice(0, Math.max(0, old.length - HISTORY_KEEP))) fs.rmSync(path.join(HISTORY_DIR, n), { force: true });
   }
   writeTextAtomic(file, JSON.stringify(obj, null, 2) + '\n');
 }

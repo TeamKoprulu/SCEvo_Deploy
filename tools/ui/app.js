@@ -1,5 +1,14 @@
 'use strict';
-/* SCEvo Deploy Tool — UI */
+/* SCEvo Deploy Tool — UI
+ *
+ * Vanilla on purpose: no build step, no dependencies. Lists are 12-16 rows, so
+ * "rebuild innerHTML then rebind" is the right amount of machinery.
+ *
+ * Two things that used to be implicit and now are not:
+ *   - Deploy has its own branch selector. It used to read the Verify tab's.
+ *   - Deploy steps come from `step` events off the server, not from regex-
+ *     matching log text.
+ */
 
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const $  = (sel, root = document) => root.querySelector(sel);
@@ -22,7 +31,7 @@ function toast(message, kind = '') {
   el.className = `toast ${kind}`;
   el.hidden = false;
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => { el.hidden = true; }, 5200);
+  toast._t = setTimeout(() => { el.hidden = true; }, 5600);
 }
 
 const fmtBytes = (n) => {
@@ -32,193 +41,501 @@ const fmtBytes = (n) => {
   return `${(n / 1024 ** i).toFixed(i ? 1 : 0)} ${u[i]}`;
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-/* ── tabs ────────────────────────────────────────────────────── */
+/* ── tabs ────────────────────────────────────────────────────────── */
+
+// Loaders run on tab entry so a tab is never showing data from three actions ago.
+const TAB_LOADERS = { catalog: loadCatalog, manifest: () => loadManifest(), news: () => loadNews(), settings: loadState, deploy: () => loadPending() };
+
 $$('.tab').forEach((btn) => btn.addEventListener('click', () => {
   $$('.tab').forEach((b) => b.classList.toggle('active', b === btn));
   $$('.panel').forEach((p) => p.classList.toggle('active', p.id === `tab-${btn.dataset.tab}`));
-  const loader = { manifest: loadManifest, package: loadSources, news: loadNews, settings: loadState }[btn.dataset.tab];
-  if (loader) loader();
+  const loader = TAB_LOADERS[btn.dataset.tab];
+  if (loader) Promise.resolve(loader()).catch((e) => toast(e.message, 'err'));
 }));
 
-/* ── event stream ────────────────────────────────────────────── */
+/* ── event stream ────────────────────────────────────────────────── */
+
 const listeners = new Set();
+
 function connectEvents() {
   const es = new EventSource(`/api/events?t=${TOKEN}`);
   es.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch { return; }
-    if (msg.type === 'job-start') setStatus('busy', `${msg.job}…`);
-    if (msg.type === 'job-done')  setStatus('ok', 'ready');
-    if (msg.type === 'job-error') setStatus('err', msg.message);
+    if (msg.type === 'job-start') setJob('busy', `${msg.job}…`);
+    if (msg.type === 'job-done')  { setJob('ok', 'ready'); refreshReady(); }
+    if (msg.type === 'job-error') setJob('err', msg.message);
     listeners.forEach((fn) => fn(msg));
   };
-  es.onerror = () => setStatus('err', 'disconnected');
-  es.onopen = () => setStatus('ok', 'ready');
-}
-function setStatus(kind, text) {
-  $('#statusDot').className = `dot ${kind}`;
-  $('#statusText').textContent = text;
+  es.onerror = () => setJob('err', 'disconnected');
+  es.onopen  = () => setJob('ok', 'ready');
 }
 
-/* ── state / settings ────────────────────────────────────────── */
-
-// `rclone version` and `listremotes` pass even with a revoked key, so the probe
-// is the only row here that proves a deploy will actually work.
-function probeLabel(probe) {
-  if (!probe) return '<span style="color:var(--muted)">not checked (needs rclone + cf: remote)</span>';
-  if (probe.ok) return `reachable — ${probe.prefixes.length} top-level entr${probe.prefixes.length === 1 ? 'y' : 'ies'}`;
-  const heading = {
-    auth: 'ACCESS DENIED — check the R2 API token',
-    network: 'UNREACHABLE',
-    timeout: 'TIMED OUT',
-    'no-bucket': 'BUCKET/REMOTE NOT FOUND',
-    'no-rclone': 'rclone missing',
-  }[probe.status] ?? 'FAILED';
-  return `${esc(heading)}<div class="detail" style="margin-top:4px">${esc(probe.error)}</div>`;
+function setJob(kind, text) {
+  $('#jobDot').className = `dot ${kind}`;
+  $('#jobText').textContent = text;
 }
+
+/* ── readiness strip ─────────────────────────────────────────────── */
 
 let STATE = null;
-async function loadState() {
-  STATE = await api('GET', '/api/state');
-  $('#stSc2').value = STATE.config.sc2InstallPath;
-  $('#stLauncher').value = STATE.config.launcherRepoPath;
-  $('#stDebug').checked = STATE.config.showVersionDebug;
+let PROBE = null;   // null while unknown; the R2 chip says "checking…" until it lands
+
+// `rclone version` and `listremotes` pass even with a revoked key, so the probe
+// is the only signal here that proves a deploy will actually reach Cloudflare.
+function probeHeadline(probe) {
+  if (!probe) return { cls: '', label: 'checking…' };
+  if (probe.ok) return { cls: 'good', label: `R2 reachable · ${plural(probe.prefixes?.length ?? 0, 'prefix', 'prefixes')}` };
+  return { cls: 'bad', label: {
+    auth:        'R2 access denied',
+    network:     'R2 unreachable',
+    timeout:     'R2 timed out',
+    'no-bucket': 'R2 bucket/remote missing',
+    'no-rclone': 'rclone missing',
+  }[probe.status] ?? 'R2 check failed' };
+}
+
+function renderReady() {
+  if (!STATE) return;
   const p = STATE.paths, rc = STATE.rclone;
-  const row = (k, v, good) => `<div class="k">${k}</div><div class="${good === undefined ? '' : good ? 'yes' : 'no'}">${v}</div>`;
-  $('#stEnv').innerHTML =
-    row('Repo root', esc(p.repoRoot)) +
-    row('SC2 install', p.sc2Valid ? 'found' : 'NOT FOUND', p.sc2Valid) +
-    row('Launcher repo', p.launcherValid ? 'found' : 'NOT FOUND', p.launcherValid) +
-    row('MPQEditor.exe', p.mpqEditor ? 'found' : 'NOT FOUND', p.mpqEditor) +
-    row('payload/', p.payloadExists ? 'present' : 'missing', p.payloadExists) +
-    row('betapayload/', p.betaExists ? 'present' : 'missing', p.betaExists) +
-    row('rclone', rc.ok ? esc(rc.version) : esc(rc.error), rc.ok) +
-    row('cf: remote', rc.hasCf ? 'configured' : 'NOT CONFIGURED', rc.hasCf) +
-    row('R2 bucket', probeLabel(rc.probe), rc.probe ? rc.probe.ok : undefined) +
-    row('Hash cache', `${STATE.cache.entries} entries`);
+  const DOT = { good: 'ok', warn: 'busy', bad: 'err' };
+  const chip = (state, label, value, title) =>
+    `<span class="chip ${state === 'good' ? '' : state}" title="${esc(title ?? '')}">
+       <span class="dot ${DOT[state] ?? ''}"></span>
+       ${esc(label)}${value ? ` <b>${esc(value)}</b>` : ''}
+     </span>`;
+
+  const pr = probeHeadline(PROBE);
+  const chips = [
+    chip(pr.cls || 'warn', pr.label, '', PROBE && !PROBE.ok ? PROBE.error : ''),
+    chip(rc.ok ? 'good' : 'bad', 'rclone', rc.ok ? (rc.version || '').replace(/^rclone /, '') : 'missing'),
+    chip(p.sc2Valid ? 'good' : 'bad', 'SC2 install', p.sc2Valid ? 'found' : 'not set'),
+    chip(p.mpqEditor ? 'good' : 'bad', 'MPQEditor', p.mpqEditor ? 'found' : 'missing'),
+    chip(p.payloadExists ? 'good' : 'warn', 'payload/', p.payloadExists ? 'present' : 'missing'),
+    chip(p.betaExists ? 'good' : 'warn', 'betapayload/', p.betaExists ? 'present' : 'missing'),
+  ];
+  $('#ready').innerHTML = chips.join('');
+}
+
+async function refreshReady() {
+  STATE = await api('GET', '/api/state');
+  renderReady();
   return STATE;
 }
+
+// Fire-and-forget: the strip paints from /api/state immediately and the R2 chip
+// upgrades itself when Cloudflare answers. A dead network never blocks the UI.
+async function refreshProbe() {
+  PROBE = null;
+  renderReady();
+  try { PROBE = (await api('GET', '/api/probe')).probe; }
+  catch (e) { PROBE = { ok: false, status: 'failed', error: e.message }; }
+  renderReady();
+  renderEnv();
+}
+
+/* ── SETTINGS ────────────────────────────────────────────────────── */
+
+function envRow(state, key, value, fix) {
+  return `<div class="env-row ${state}">
+    <span class="icon">${state === 'good' ? '●' : state === 'bad' ? '✕' : '!'}</span>
+    <span class="k">${esc(key)}</span>
+    <span class="v">${value}${fix ? `<span class="fix">${fix}</span>` : ''}</span>
+  </div>`;
+}
+
+function renderEnv() {
+  if (!STATE) return;
+  const p = STATE.paths, rc = STATE.rclone, c = STATE.config;
+  const rows = [];
+
+  rows.push(`<h4 style="margin-bottom:var(--s2)">Paths</h4>`);
+  rows.push(envRow('good', 'Repo root', `<span class="mono">${esc(p.repoRoot)}</span>`));
+  rows.push(envRow(p.sc2Valid ? 'good' : 'bad', 'SC2 install',
+    c.sc2InstallPath ? `<span class="mono">${esc(c.sc2InstallPath)}</span>` : '<i>not set</i>',
+    p.sc2Valid ? '' : 'Set it above — source discovery and packaging cannot run without it.'));
+  rows.push(envRow(c.launcherRepoPath ? (p.launcherValid ? 'good' : 'bad') : 'good', 'Launcher repo',
+    c.launcherRepoPath ? `<span class="mono">${esc(c.launcherRepoPath)}</span>` : 'not configured',
+    c.launcherRepoPath
+      ? (p.launcherValid ? '' : 'No package.json there — staging will warn and skip, and launcher-version.json will be left alone.')
+      : 'Correct unless you are shipping a new launcher build. The exes and version file already in this repo upload unchanged.'));
+  rows.push(envRow(c.siteRepoPath ? (p.siteValid ? 'good' : 'bad') : 'good', 'Website repo',
+    c.siteRepoPath ? `<span class="mono">${esc(c.siteRepoPath)}</span>` : 'not configured',
+    c.siteRepoPath
+      ? (p.siteValid ? '' : 'No assets\\js\\site-links.js there — website links cannot be updated.')
+      : 'Set it to let Deploy update the website\'s launcher download links.'));
+  rows.push(envRow(p.payloadExists ? 'good' : 'warn', 'payload/', p.payloadExists ? 'present' : 'missing'));
+  rows.push(envRow(p.betaExists ? 'good' : 'warn', 'betapayload/', p.betaExists ? 'present' : 'missing'));
+
+  rows.push(`<h4 style="margin:var(--s4) 0 var(--s2)">Tooling</h4>`);
+  rows.push(envRow(p.mpqEditor ? 'good' : 'bad', 'MPQEditor.exe', p.mpqEditor ? 'found at repo root' : 'not found',
+    p.mpqEditor ? '' : 'Packaging cannot run. Restore MPQEditor.exe to the repo root.'));
+  rows.push(envRow(rc.ok ? 'good' : 'bad', 'rclone', rc.ok ? esc(rc.version) : esc(rc.error),
+    rc.ok ? '' : 'Install with <span class="mono">winget install Rclone.Rclone</span>.'));
+
+  rows.push(`<h4 style="margin:var(--s4) 0 var(--s2)">Cloudflare</h4>`);
+  rows.push(envRow(rc.hasCf ? 'good' : 'bad', 'cf: remote',
+    rc.hasCf ? `configured${rc.remotes?.length > 1 ? ` (${rc.remotes.length} remotes total)` : ''}` : 'NOT CONFIGURED',
+    rc.hasCf ? '' : 'Create it with <span class="mono">rclone config</span>.'));
+  const pr = probeHeadline(PROBE);
+  rows.push(envRow(PROBE ? (PROBE.ok ? 'good' : 'bad') : 'warn', 'R2 bucket',
+    esc(pr.label),
+    PROBE && !PROBE.ok ? `<span class="mono">${esc(PROBE.error)}</span>` : ''));
+
+  rows.push(`<h4 style="margin:var(--s4) 0 var(--s2)">Cache</h4>`);
+  rows.push(envRow('good', 'Hash cache', `${plural(STATE.cache.entries, 'entry', 'entries')}`,
+    'Skips re-hashing unchanged archives. Pruning only drops entries for files that no longer exist.'));
+
+  $('#stEnv').innerHTML = rows.join('');
+}
+
+async function loadState() {
+  await refreshReady();
+  $('#stSc2').value = STATE.config.sc2InstallPath;
+  $('#stLauncher').value = STATE.config.launcherRepoPath;
+  $('#stSite').value = STATE.config.siteRepoPath;
+  $('#stCdn').value = STATE.config.cdnBase;
+  $('#stAssets').value = STATE.config.sc2AssetsPath;
+  $('#stAssets').placeholder = STATE.decalDefaults?.sc2AssetsPath || '';
+  $('#stGameData').value = STATE.config.sc2GameDataPath;
+  $('#stGameData').placeholder = STATE.decalDefaults?.sc2GameDataPath || '';
+  $('#stDebug').checked = STATE.config.showVersionDebug;
+  renderEnv();
+  syncDeployControls();
+  return STATE;
+}
+
+let CDN_OK = null;   // the address that last passed the check
+async function checkCdn() {
+  const base = $('#stCdn').value.trim();
+  const box = $('#stCdnResult');
+  if (!base) { box.innerHTML = '<p class="hint">Empty: downloads use r2.dev.</p>'; return null; }
+  box.innerHTML = '<p class="hint">Checking…</p>';
+  try {
+    const r = await api('GET', `/api/cdn-check?base=${encodeURIComponent(base)}`);
+    box.innerHTML = '<div class="env">' + r.checks.map((c) => envRow(c.ok ? 'good' : 'bad', c.name, esc(c.detail || ''), c.hint ? esc(c.hint) : '')).join('') + '</div>'
+      + `<div class="banner ${r.ready ? 'ok' : 'warn'}" style="margin-top:var(--s2)"><b>${r.ready ? 'Ready' : 'Not ready yet'}</b>${esc(r.base)}</div>`;
+    if (r.ready) CDN_OK = r.base;
+    return r.ready;
+  } catch (e) { box.innerHTML = `<div class="banner err">${esc(e.message)}</div>`; return false; }
+}
+$('#stCdnCheck').addEventListener('click', () => { checkCdn(); });
+
 $('#stSave').addEventListener('click', async () => {
+  const cdn = $('#stCdn').value.trim().replace(/\/+$/, '');
+  if (cdn && cdn !== (STATE.config.cdnBase || '') && cdn !== CDN_OK) {
+    const ok = await checkCdn();
+    if (!ok && !confirm(`${cdn} didn't pass the CDN check. Manifests deployed from now on would point at it.\n\nSave anyway?`)) return;
+  }
   try {
     await api('POST', '/api/config', {
       sc2InstallPath: $('#stSc2').value,
       launcherRepoPath: $('#stLauncher').value,
+      siteRepoPath: $('#stSite').value,
+      sc2AssetsPath: $('#stAssets').value,
+      cdnBase: $('#stCdn').value,
+      sc2GameDataPath: $('#stGameData').value,
       showVersionDebug: $('#stDebug').checked,
     });
     await loadState();
     toast('Settings saved.', 'ok');
   } catch (e) { toast(e.message, 'err'); }
 });
+
+$('#stRecheck').addEventListener('click', () => { refreshProbe(); toast('Re-checking Cloudflare…'); });
+
 $('#stPrune').addEventListener('click', async () => {
-  const r = await api('POST', '/api/cache-prune');
-  toast(`Pruned ${r.removed} stale entr${r.removed === 1 ? 'y' : 'ies'}.`, 'ok');
-  loadState();
+  try {
+    const r = await api('POST', '/api/cache-prune');
+    toast(`Pruned ${plural(r.removed, 'stale entry', 'stale entries')}.`, 'ok');
+    loadState();
+  } catch (e) { toast(e.message, 'err'); }
 });
 
-/* ── PACKAGE ─────────────────────────────────────────────────── */
-let SOURCES = [];
-async function loadSources() {
-  const data = await api('GET', '/api/sources');
-  SOURCES = data.sources ?? [];
-  const warn = [];
-  if (data.error) warn.push(`<div class="banner err">${esc(data.error)}</div>`);
-  if (data.missingRoots?.length) {
-    warn.push(`<div class="banner warn">Not found in the SC2 install: ${data.missingRoots.map(esc).join(', ')}</div>`);
-  }
-  $('#pkgWarn').innerHTML = warn.join('');
-  renderSources();
+/* ── CATALOG ─────────────────────────────────────────────────────── */
+
+let CAT = null;
+let CT_FILTER = 'campaign';
+// Ticked sources: Build then rebuilds only these, leaving every other built file untouched.
+let CT_SELECTED = new Set();
+
+const CHANNELS = { campaign: ['public', 'beta', 'both', 'off'], melee: ['public', 'off'] };
+const CH_LABEL = { public: 'Public', beta: 'Beta', both: 'Both', off: 'Off' };
+const BUILD_PILL = { built: ['ok', 'built'], changed: ['warn', 'changed'], unbuilt: ['new', 'not built'], off: ['', 'off'] };
+// source -> error from the last build, so a failure stays on its row after the toast is gone.
+let LAST_BUILD_ERRORS = new Map();
+
+function buildPill(r) {
+  const err = LAST_BUILD_ERRORS.get(r.source);
+  if (err) return `<span class="pill err" title="${esc(err)}">build failed</span>`;
+  const [cls, label] = BUILD_PILL[r.build] ?? ['', r.build ?? ''];
+  return label ? `<span class="pill ${cls}">${esc(label)}</span>` : '';
 }
 
-function renderSources() {
-  const tbody = $('#pkgTable tbody');
-  $('#pkgEmpty').hidden = SOURCES.length > 0;
-  tbody.innerHTML = SOURCES.map((s, i) => {
-    const opts = [
-      ['', 'Skip'],
-      ['payload', 'Payload'],
-      ['betapayload', 'Betapayload'],
-      ['both', 'Both'],
-    ].map(([v, l]) => `<option value="${v}"${s._action === v ? ' selected' : ''}>${l}</option>`).join('');
-    return `<tr class="${s.vetoed ? 'vetoed' : ''}" data-i="${i}">
-      <td><span class="mono">${esc(s.relPath)}</span></td>
-      <td class="num">${s.fileCount}</td>
-      <td class="${s.inPayload ? 'yes' : 'no'}">${s.inPayload ? 'yes' : '—'}</td>
-      <td class="${s.inBetapayload ? 'yes' : 'no'}">${s.inBetapayload ? 'yes' : '—'}</td>
-      <td>${s.vetoed ? '<span class="pill missing">vetoed</span>' : `<select class="act">${opts}</select>`}</td>
-      <td><button class="btn sm ${s.vetoed ? '' : 'danger'} veto">${s.vetoed ? 'Un-veto' : 'Veto'}</button></td>
-    </tr>`;
-  }).join('');
+async function loadCatalog() {
+  CAT = await api('GET', '/api/catalog');
+  const warn = [];
+  if (CAT.needsInit) {
+    $('#ctWarn').innerHTML = `<div class="banner warn"><b>No catalog yet</b>Create <code>deploy-catalog.json</code> from what is deployed today. Nothing changes for players.
+      <div class="actions" style="margin-top:var(--s2)"><button class="btn primary" id="ctInit">Create catalog</button></div></div>`;
+    $('#ctInit').addEventListener('click', async () => {
+      try { const r = await api('POST', '/api/catalog-init'); toast(`Catalog created: ${r.items} items, ${r.ignored} ignored.`, 'ok'); loadCatalog(); }
+      catch (e) { toast(e.message, 'err'); }
+    });
+    return;
+  }
+  if (CAT.error) warn.push(`<div class="banner err"><b>Cannot scan sources</b>${esc(CAT.error)}</div>`);
+  if (CAT.missingRoots?.length) warn.push(`<div class="banner warn"><b>Roots not found in the SC2 install</b><span class="mono">${CAT.missingRoots.map(esc).join('<br>')}</span></div>`);
+  $('#ctWarn').innerHTML = warn.join('');
+  renderCatalog();
+}
 
-  $$('#pkgTable tbody tr').forEach((tr) => {
-    const s = SOURCES[+tr.dataset.i];
-    tr.querySelector('.act')?.addEventListener('change', (e) => { s._action = e.target.value; });
-    tr.querySelector('.veto').addEventListener('click', async () => {
-      try {
-        await api('POST', '/api/veto', { relPath: s.relPath, vetoed: !s.vetoed });
-        s.vetoed = !s.vetoed;
-        if (s.vetoed) s._action = '';
-        renderSources();
-        toast(s.vetoed ? `Vetoed ${s.name}` : `Un-vetoed ${s.name}`, 'ok');
-      } catch (e) { toast(e.message, 'err'); }
+async function catalogEdit(body, okMessage) {
+  try {
+    await api('POST', '/api/catalog', body);
+    if (okMessage) toast(okMessage, 'ok');
+    await loadCatalog();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+const isMeleeMap = (r) => r.kind === 'map' && (r.item?.package === 'melee' || (!r.item && /SCEvo_MPMaps/i.test(r.source)));
+
+function chSeg(r) {
+  const pkg = r.item.package;
+  return `<div class="seg ch">${CHANNELS[pkg].map((c) =>
+    `<button class="seg-btn${r.item.channel === c ? ' active' : ''}" data-ch="${c}">${CH_LABEL[c]}</button>`).join('')}</div>`;
+}
+
+function itemRow(r) {
+  const pill = r.status === 'missing' ? '<span class="pill err">source missing</span>' : buildPill(r);
+  const selectable = r.status !== 'missing' && r.build && r.build !== 'off';
+  return `<div class="src" data-source="${esc(r.source)}">
+    ${selectable ? `<input type="checkbox" class="sel" title="Build only the ticked items"${CT_SELECTED.has(r.source) ? ' checked' : ''}>` : '<span class="sel-gap"></span>'}
+    <div class="grow">
+      <div class="name truncate">${esc(r.name)}</div>
+      <div class="facts">${pill}${r.packed ? ' <span class="pill unchanged">packed</span>' : ''}</div>
+    </div>
+    <select class="pkg"><option value="campaign"${r.item.package === 'campaign' ? ' selected' : ''}>Campaign</option><option value="melee"${r.item.package === 'melee' ? ' selected' : ''}>Melee</option></select>
+    ${chSeg(r)}
+    <button class="btn sm ghost ign">Ignore</button>
+  </div>`;
+}
+
+function newRow(r) {
+  return `<div class="src" data-source="${esc(r.source)}">
+    <div class="grow">
+      <div class="name truncate">${esc(r.name)}</div>
+      <div class="facts"><span class="pill new">new</span> <span class="faint small mono">${esc(r.group)}</span>${r.packed ? ' <span class="pill unchanged">packed</span>' : ''}</div>
+    </div>
+    <button class="btn sm" data-add="campaign:public">Campaign</button>
+    <button class="btn sm" data-add="campaign:beta">Campaign beta</button>
+    ${r.kind === 'mod' || isMeleeMap(r) ? '<button class="btn sm" data-add="melee:public">Melee</button>' : ''}
+    <button class="btn sm ghost" data-add="campaign:off">Track, off</button>
+    <button class="btn sm danger ign">Ignore</button>
+  </div>`;
+}
+
+function mapCard(r) {
+  const m = r.meta || {};
+  const on = r.item?.package === 'melee' && r.item.channel === 'public';
+  const thumb = `/api/thumb?source=${encodeURIComponent(r.source)}&t=${TOKEN}`;
+  const warn = [];
+  if (m.error) warn.push(`unreadable: ${m.error}`);
+  else if (m.supported === false) warn.push(`not a melee map (${m.reason})`);
+  if (on && r.missingMods?.length) warn.push(`needs ${r.missingMods.map((p) => p.split('/').pop()).join(', ')}, which isn't shipped`);
+  const pill = on ? buildPill(r) : '';
+  return `<div class="mapcard${on ? ' on' : ''}" data-source="${esc(r.source)}">
+    <img loading="lazy" src="${thumb}" alt="">
+    <div class="mc-body">
+      <div class="name truncate" title="${esc(m.name || r.name)}">${esc(m.name || r.name)}</div>
+      <div class="faint small">${m.players ? `${m.players} players` : '?'}${(r.item?.modes || r.autoModes) ? ` · ${esc(r.item?.modes || r.autoModes)}` : ''}</div>
+      ${on ? `<input type="text" class="modes" value="${esc(r.item.modes ?? '')}" placeholder="Modes: ${esc(r.autoModes ?? '')}" title="Modes shown in the launcher. Empty uses the automatic label.">` : ''}
+      <div class="faint small mono truncate" title="${esc(r.source)}">${esc(r.name)}</div>
+      ${warn.map((w) => `<div class="small" style="color:var(--err)">${esc(w)}</div>`).join('')}
+      <div class="mc-actions">
+        <button class="btn sm ${on ? 'ghost' : 'primary'} inc">${on ? 'Remove from pool' : 'Add to pool'}</button>
+        ${pill}
+        ${!r.item ? '<button class="btn sm ghost ign">Ignore</button>' : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderCatalog() {
+  const rows = CAT.rows ?? [];
+  const fresh = rows.filter((r) => r.status === 'new' && !isMeleeMap(r));
+  $('#ctNewSection').hidden = !fresh.length;
+  $('#ctNewCount').textContent = fresh.length;
+  $('#ctNew').innerHTML = fresh.map(newRow).join('');
+
+  const listed = rows.filter((r) => r.item && r.item.package === CT_FILTER && !(CT_FILTER === 'melee' && r.kind === 'map'));
+  const groups = new Map();
+  for (const r of listed) { if (!groups.has(r.group)) groups.set(r.group, []); groups.get(r.group).push(r); }
+  $('#ctList').innerHTML = listed.length
+    ? [...groups].map(([g, rs]) => `<div class="srcgroup"><h4>${esc(g)}</h4>${rs.map(itemRow).join('')}</div>`).join('')
+    : `<div class="empty">Nothing in the ${CT_FILTER} package yet.</div>`;
+
+  const maps = rows.filter(isMeleeMap).filter((r) => r.status !== 'ignored');
+  $('#ctMapsSection').hidden = CT_FILTER !== 'melee';
+  $('#ctMapCount').textContent = `${maps.filter((r) => r.item?.channel === 'public').length} of ${maps.length}`;
+  $('#ctMaps').innerHTML = maps.length ? maps.map(mapCard).join('') : '<div class="empty">No maps under the melee roots.</div>';
+
+  const ignored = rows.filter((r) => r.status === 'ignored');
+  $('#ctIgnoredCount').textContent = ignored.length;
+  $('#ctIgnored').innerHTML = ignored.map((r) => `<div class="src" data-source="${esc(r.source)}">
+      <div class="grow"><div class="name truncate">${esc(r.name)}</div><div class="facts faint small mono">${esc(r.group)}</div></div>
+      <button class="btn sm ghost unign">Un-ignore</button></div>`).join('') || '<div class="empty">Nothing ignored.</div>';
+
+  // Drop ticks on rows that left this package or were switched off.
+  const selectable = new Set(listed.filter((r) => r.status !== 'missing' && r.build && r.build !== 'off').map((r) => r.source));
+  CT_SELECTED = new Set([...CT_SELECTED].filter((s) => selectable.has(s)));
+  syncBuildBar();
+  bindCatalog();
+}
+
+// Rows that Build would repackage (source edited, or never built).
+const pendingRows = () => (CAT?.rows ?? []).filter((r) => r.item?.package === CT_FILTER && (r.build === 'changed' || r.build === 'unbuilt'));
+
+function syncBuildBar() {
+  const counts = { built: 0, changed: 0, unbuilt: 0 };
+  for (const r of CAT?.rows ?? []) if (r.item?.package === CT_FILTER && counts[r.build] !== undefined) counts[r.build]++;
+  let summary = `${CT_FILTER}: ${counts.built} built, ${counts.changed} changed, ${counts.unbuilt} not built`;
+  if (CT_SELECTED.size) {
+    const left = pendingRows().filter((r) => !CT_SELECTED.has(r.source)).length;
+    if (left) summary += ` · ${plural(left, 'other changed item', 'other changed items')} will not be rebuilt`;
+  }
+  $('#ctSummary').textContent = summary;
+  $('#ctBuild').textContent = CT_SELECTED.size ? `Build ${CT_SELECTED.size} selected` : `Build ${CT_FILTER}`;
+  $('#ctSelectChanged').hidden = !pendingRows().length;
+  $('#ctClearSel').hidden = !CT_SELECTED.size;
+  $('#ctForce').parentElement.title = CT_SELECTED.size ? 'Applies to the ticked items only' : 'Applies to every item in the package';
+}
+
+function bindCatalog() {
+  $$('#tab-catalog [data-source]').forEach((el) => {
+    const source = el.dataset.source;
+    const sel = $('.sel', el);
+    if (sel) sel.addEventListener('change', () => {
+      if (sel.checked) CT_SELECTED.add(source); else CT_SELECTED.delete(source);
+      syncBuildBar();
+    });
+    $$('[data-add]', el).forEach((b) => b.addEventListener('click', () => {
+      const [pkg, channel] = b.dataset.add.split(':');
+      catalogEdit({ source, patch: { package: pkg, channel } }, `${source.split('\\').pop()} → ${pkg} / ${channel}`);
+    }));
+    $$('.ch .seg-btn', el).forEach((b) => b.addEventListener('click', () => catalogEdit({ source, patch: { channel: b.dataset.ch } })));
+    const pkg = $('.pkg', el);
+    if (pkg) pkg.addEventListener('change', () => catalogEdit({ source, patch: { package: pkg.value, channel: pkg.value === 'melee' ? 'public' : 'off' } }));
+    const ign = $('.ign', el);
+    if (ign) ign.addEventListener('click', () => confirm(`Ignore ${source}?\n\nIt won't ship and won't be shown as new again.`) && catalogEdit({ source, ignore: true }, 'Ignored.'));
+    const unign = $('.unign', el);
+    if (unign) unign.addEventListener('click', () => catalogEdit({ source, ignore: false }, 'Un-ignored — it shows as new again.'));
+    const modes = $('input.modes', el);
+    if (modes) modes.addEventListener('change', () => catalogEdit({ source, patch: { modes: modes.value.trim() } }));
+    const inc = $('.inc', el);
+    if (inc) inc.addEventListener('click', () => {
+      const on = el.classList.contains('on');
+      catalogEdit({ source, patch: { package: 'melee', channel: on ? 'off' : 'public' } });
     });
   });
 }
 
-$('#pkgRefresh').addEventListener('click', loadSources);
-$('#pkgSelectChanged').addEventListener('click', () => {
-  SOURCES.forEach((s) => { if (!s.vetoed && s.inPayload) s._action = 'payload'; });
-  renderSources();
+$$('#ctFilter .seg-btn').forEach((b) => b.addEventListener('click', () => {
+  $$('#ctFilter .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+  if (CT_FILTER !== b.dataset.f) CT_SELECTED = new Set();
+  CT_FILTER = b.dataset.f;
+  if (CAT && !CAT.needsInit) renderCatalog();
+}));
+$('#ctRefresh').addEventListener('click', () => loadCatalog().catch((e) => toast(e.message, 'err')));
+$('#ctSelectChanged').addEventListener('click', () => {
+  pendingRows().forEach((r) => CT_SELECTED.add(r.source));
+  renderCatalog();
 });
-$('#pkgSelectNew').addEventListener('click', () => {
-  SOURCES.forEach((s) => { if (!s.vetoed && !s.inPayload && !s.inBetapayload) s._action = 'payload'; });
-  renderSources();
-});
+$('#ctClearSel').addEventListener('click', () => { CT_SELECTED = new Set(); renderCatalog(); });
 
-$('#pkgBuild').addEventListener('click', async () => {
-  const items = SOURCES.filter((s) => !s.vetoed && s._action).map((s) => ({
-    relPath: s.relPath,
-    targets: s._action === 'both' ? ['payload', 'betapayload'] : [s._action],
-  }));
-  if (!items.length) return toast('Nothing selected.', 'err');
-  $('#pkgBuild').disabled = true;
+$('#ctBuild').addEventListener('click', async () => {
+  $('#ctBuild').disabled = true;
+  LAST_BUILD_ERRORS = new Map();
+  const only = CT_SELECTED.size ? [...CT_SELECTED] : null;
   try {
-    const { results } = await api('POST', '/api/package', { items });
-    const bad = results.filter((r) => !r.ok);
-    results.forEach((r) => {
-      if (!r.ok) console.error(r.name, r.error, r.stdout, r.stderr);
-    });
-    toast(bad.length ? `${bad.length} failed: ${bad.map((b) => b.name).join(', ')}` : `Packaged ${results.length} archive(s).`,
-      bad.length ? 'err' : 'ok');
-    await loadSources();
+    const r = await api('POST', '/api/build', { packages: [CT_FILTER], only, force: $('#ctForce').checked });
+    if (only) CT_SELECTED = new Set();
+    const bad = r.results.filter((x) => !x.ok);
+    LAST_BUILD_ERRORS = new Map(bad.map((b) => [b.source, b.error]));
+    const did = r.results.filter((x) => x.ok && x.action !== 'up-to-date').length;
+    const msgs = [`${did} built or copied`, `${r.results.length - did - bad.length} already up to date`];
+    if (r.pruned.length) msgs.push(`${r.pruned.length} removed`);
+    const changed = r.manifests.filter((m) => m.changed).map((m) => m.file);
+    if (changed.length) msgs.push(`wrote ${changed.join(', ')}`);
+    toast(bad.length ? `${bad.length} failed: ${bad.map((b) => `${b.source.split('\\').pop()} — ${b.error}`).join(' · ')}` : msgs.join(' · '), bad.length ? 'err' : 'ok');
+    if (r.problems.length) toast(r.problems.join(' · '), 'err');
+    await loadCatalog();
   } catch (e) { toast(e.message, 'err'); }
-  finally { $('#pkgBuild').disabled = false; }
+  finally { $('#ctBuild').disabled = false; }
 });
 
-/* ── MANIFEST ────────────────────────────────────────────────── */
+const BUILD_PHASE = { start: 'Checking', linking: 'Preparing', packing: 'Packaging', verifying: 'Verifying', deployed: 'Copying', done: 'Done with', error: 'Failed' };
+listeners.add((msg) => {
+  if (msg.job !== 'build') return;
+  const box = $('#ctProgress');
+  if (msg.type === 'job-start') { box.hidden = false; $('.progress-bar', box).style.width = '0%'; return; }
+  if (msg.type === 'job-done' || msg.type === 'job-error') { box.hidden = true; return; }
+  if (msg.type !== 'progress' || !msg.file) return;
+  const pct = msg.totalBytes ? Math.min(100, (msg.doneBytes / msg.totalBytes) * 100) : 0;
+  $('.progress-bar', box).style.width = `${pct.toFixed(1)}%`;
+  const what = `${BUILD_PHASE[msg.phase] ?? msg.phase} ${msg.file}`;
+  const files = msg.phase === 'packing' && msg.fileCount ? ` · ${msg.fileCount} files` : '';
+  $('#ctProgressLabel').textContent = `${what}${msg.total ? ` (${msg.index}/${msg.total})` : ''}${files} · ${Math.floor(pct)}%`;
+});
+
+/* ── MANIFEST ────────────────────────────────────────────────────── */
+
 let BRANCH = 'public';
 let MANIFEST = null;
+let MF_DIRTY = false;
 
-$$('#tab-manifest .seg-btn').forEach((b) => b.addEventListener('click', () => {
-  $$('#tab-manifest .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+function setManifestDirty(on) {
+  MF_DIRTY = on;
+  $('#mfDirtyDot').hidden = !on;
+  $('#mfDirtyBanner').hidden = !on;
+  $('#mfSave').textContent = on ? 'Write manifest •' : 'Write manifest';
+}
+
+function confirmDiscard() {
+  return !MF_DIRTY || confirm('You have unsaved settings. Discard them?');
+}
+
+$$('#mfBranch .seg-btn').forEach((b) => b.addEventListener('click', () => {
+  if (b.dataset.branch === BRANCH) return;
+  if (!confirmDiscard()) return;
+  $$('#mfBranch .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
   BRANCH = b.dataset.branch;
-  loadManifest();
+  loadManifest().catch((e) => toast(e.message, 'err'));
 }));
 
 async function loadManifest() {
   MANIFEST = await api('GET', `/api/manifest?branch=${BRANCH}`);
-  const isBeta = BRANCH === 'beta';
-  $('#mfPublicVersions').hidden = isBeta;
+  if (MANIFEST.needsInit) { $('#mfList').innerHTML = '<div class="empty">Create the catalog on the Catalog tab first.</div>'; return; }
+  const isBeta = BRANCH === 'beta', isMelee = BRANCH === 'melee';
+
+  $('#mfMetaTitle').textContent = isBeta ? 'Beta metadata' : isMelee ? 'Melee package' : 'Versions';
+  $('#mfPublicVersions').hidden = isBeta || isMelee;
   $('#mfBetaMeta').hidden = !isBeta;
+  $('#mfMeleeMeta').hidden = !isMelee;
+  $('#mfCritSection').hidden = isMelee;
   $('#mfCritSevWrap').style.display = isBeta ? 'none' : '';
 
   $('#mfVerCore').value = MANIFEST.versions?.multiplayer ?? '';
   $('#mfVerCampaign').value = MANIFEST.versions?.campaign ?? '';
+  $('#mfMeleeVersion').value = MANIFEST.meleeVersion ?? '';
 
   const cu = MANIFEST.criticalUpdate ?? {};
   $('#mfCritEnabled').checked = !!cu.enabled;
   $('#mfCritMin').value = cu.minVersion ?? '';
   $('#mfCritMsg').value = cu.message ?? '';
   $('#mfCritSev').value = cu.severity ?? 'critical';
+  syncCritPill();
 
   if (isBeta && MANIFEST.betaMeta) {
     const m = MANIFEST.betaMeta;
@@ -230,111 +547,63 @@ async function loadManifest() {
     $('#mfBetaCore').value = m.coreVersion;
     $('#mfBetaCode').value = '';
     $('#mfBetaHash').textContent = m.codeHash ? `current codeHash: ${m.codeHash}` : 'no codeHash set';
+    syncBetaGate();
   }
-  renderModules();
+
+  setManifestDirty(false);
+  renderManifestEntries();
 }
 
-function renderModules() {
-  const host = $('#mfModules');
-  $('#mfCount').textContent = MANIFEST.modules.length;
-  host.innerHTML = MANIFEST.modules.map((m, i) => {
-    const f = m.files[0] ?? {};
-    const urls = f.downloadUrls?.join('\n') ?? f.downloadUrl ?? '';
-    const drift = f.state === 'missing' ? ''
-      : (f.manifestSize != null && f.manifestSize !== f.size)
-        ? `<div class="detail" style="color:var(--warn)">manifest size ${f.manifestSize?.toLocaleString()} → disk ${f.size?.toLocaleString()}</div>` : '';
-    return `<div class="module state-${m.state}" data-i="${i}" draggable="true">
-      <div class="module-head">
-        <span class="drag" title="Drag to reorder">⠿</span>
-        <span class="pill ${m.state}">${m.state}</span>
-        <span class="name">${esc(m.name || m.id)}</span>
-        <span class="module-path">${esc(f.path ?? '')}</span>
-        <span class="module-path">${f.size ? fmtBytes(f.size) : ''}</span>
-        <button class="btn sm toggle">Edit</button>
-      </div>
-      <div class="module-body">
-        ${drift}
-        <div class="field-row">
-          <label>Module ID<input type="text" data-k="id" value="${esc(m.id)}"></label>
-          <label>Name<input type="text" data-k="name" value="${esc(m.name)}"></label>
-          <label>Type<select data-k="type">
-            <option value=""${!m.type ? ' selected' : ''}>(omit)</option>
-            <option value="core"${m.type === 'core' ? ' selected' : ''}>core</option>
-            <option value="campaign"${m.type === 'campaign' ? ' selected' : ''}>campaign</option>
-          </select></label>
-        </div>
-        <label>Description<input type="text" data-k="description" value="${esc(m.description)}"></label>
-        <div class="mono small" style="color:var(--muted)">sha256 ${esc(f.hash ?? '—')}</div>
-        <details class="adv">
-          <summary>Advanced: mirror URLs</summary>
-          <p class="hint">Normally empty — the launcher derives the R2 URL from the path. One URL per line; two or more become <code>downloadUrls</code> and are ping-raced by the client.</p>
-          <textarea rows="2" data-k="urls" placeholder="(none)">${esc(urls)}</textarea>
-        </details>
-        <div class="actions left">
-          <button class="btn sm promote">${BRANCH === 'beta' ? 'Copy to public' : 'Copy to beta'}</button>
-          <button class="btn sm danger remove">Remove module</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-
-  $$('.module', host).forEach((el) => {
-    const i = +el.dataset.i, m = MANIFEST.modules[i];
-    el.querySelector('.toggle').addEventListener('click', () => el.classList.toggle('open'));
-    $$('[data-k]', el).forEach((inp) => inp.addEventListener('change', () => {
-      const k = inp.dataset.k;
-      if (k === 'urls') {
-        const list = inp.value.split('\n').map((s) => s.trim()).filter(Boolean);
-        delete m.files[0].downloadUrl; delete m.files[0].downloadUrls;
-        if (list.length > 1) m.files[0].downloadUrls = list;
-        else if (list.length === 1) m.files[0].downloadUrl = list[0];
-      } else m[k] = inp.value;
-    }));
-    el.querySelector('.remove').addEventListener('click', () => {
-      MANIFEST.modules.splice(i, 1); renderModules();
-    });
-    el.querySelector('.promote').addEventListener('click', async () => {
-      try {
-        await api('POST', '/api/promote', {
-          paths: [m.files[0].path],
-          direction: BRANCH === 'beta' ? 'toPublic' : 'toBeta',
-        });
-        toast(`Copied ${m.files[0].path}`, 'ok');
-      } catch (e) { toast(e.message, 'err'); }
-    });
-
-    el.addEventListener('dragstart', () => { el.classList.add('dragging'); dragIndex = i; });
-    el.addEventListener('dragend', () => el.classList.remove('dragging'));
-    el.addEventListener('dragover', (e) => e.preventDefault());
-    el.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (dragIndex === null || dragIndex === i) return;
-      const [moved] = MANIFEST.modules.splice(dragIndex, 1);
-      MANIFEST.modules.splice(i, 0, moved);
-      dragIndex = null;
-      renderModules();
-    });
-  });
+function syncCritPill() {
+  const on = $('#mfCritEnabled').checked;
+  const pill = $('#mfCritPill');
+  pill.textContent = on ? `on · ≥ ${$('#mfCritMin').value.trim() || '?'}` : 'off';
+  pill.className = `pill ${on ? 'err' : ''}`;
 }
-let dragIndex = null;
+function syncBetaGate() {
+  $('#mfBetaFields').style.opacity = $('#mfBetaEnabled').checked ? '1' : '.5';
+}
 
-$('#mfReload').addEventListener('click', loadManifest);
+['#mfVerCore', '#mfVerCampaign', '#mfCritMin', '#mfCritMsg', '#mfCritSev', '#mfBetaName',
+ '#mfBetaAccent', '#mfBetaMajor', '#mfBetaFull', '#mfBetaCore', '#mfBetaCode', '#mfMeleeVersion']
+  .forEach((sel) => $(sel).addEventListener('input', () => { setManifestDirty(true); syncCritPill(); }));
+$('#mfCritEnabled').addEventListener('change', () => { setManifestDirty(true); syncCritPill(); });
+$('#mfBetaEnabled').addEventListener('change', () => { setManifestDirty(true); syncBetaGate(); });
+
+function renderManifestEntries() {
+  const entries = MANIFEST.entries ?? [];
+  $('#mfCount').textContent = entries.filter((e) => e.state !== 'removed').length;
+  const fresh = $('#mfFresh');
+  fresh.textContent = MANIFEST.upToDate ? 'matches the catalog' : 'out of date — Write manifest or Build';
+  fresh.className = `pill ${MANIFEST.upToDate ? 'ok' : 'warn'}`;
+  $('#mfProblems').innerHTML = (MANIFEST.problems ?? []).length
+    ? `<div class="banner err"><b>Not everything is built</b>${MANIFEST.problems.map(esc).join('<br>')}</div>` : '';
+  $('#mfList').innerHTML = entries.length ? entries.map((e) => `<div class="item">
+      <span class="pill ${e.state === 'removed' ? 'err' : e.state}">${esc(e.state)}</span>
+      <span class="name grow">${esc(e.name)} <span class="faint small mono">${esc(e.path)}</span></span>
+      <span class="meta">${e.players ? `${e.players}P · ` : ''}${e.size ? fmtBytes(e.size) : ''}</span>
+    </div>`).join('') : '<div class="empty">Nothing in this manifest. Switch items on in the Catalog tab and build.</div>';
+}
+
+$('#mfReload').addEventListener('click', () => {
+  if (!confirmDiscard()) return;
+  loadManifest().catch((e) => toast(e.message, 'err'));
+});
+
 $('#mfSave').addEventListener('click', async () => {
   try {
-    const payload = {
-      branch: BRANCH,
-      modules: MANIFEST.modules,
-      dropMissing: $('#mfDropMissing').checked,
-      criticalUpdate: {
+    const payload = { branch: BRANCH };
+    if (BRANCH !== 'melee') {
+      payload.criticalUpdate = {
         enabled: $('#mfCritEnabled').checked,
         minVersion: $('#mfCritMin').value.trim(),
         message: $('#mfCritMsg').value.trim(),
         severity: $('#mfCritSev').value,
-      },
-    };
+      };
+    }
     if (BRANCH === 'public') {
       payload.versions = { multiplayer: $('#mfVerCore').value.trim(), campaign: $('#mfVerCampaign').value.trim() };
-    } else {
+    } else if (BRANCH === 'beta') {
       let codeHash = MANIFEST.betaMeta?.codeHash ?? '';
       const plain = $('#mfBetaCode').value.trim();
       if (plain) codeHash = (await api('POST', '/api/beta-code-hash', { code: plain })).codeHash;
@@ -347,193 +616,855 @@ $('#mfSave').addEventListener('click', async () => {
         coreVersion: $('#mfBetaCore').value.trim(),
         codeHash,
       };
+    } else {
+      payload.meleeVersion = $('#mfMeleeVersion').value.trim();
     }
     const r = await api('POST', '/api/manifest', payload);
-    toast(`Wrote ${r.written} (${r.modules} modules).`, 'ok');
-    loadManifest();
+    setManifestDirty(false);
+    const changed = r.written.filter((w) => w.changed).map((w) => w.file);
+    toast(changed.length ? `Wrote ${changed.join(', ')}.` : 'Nothing changed.', 'ok');
+    if (r.problems.length) toast(r.problems.join(' · '), 'err');
+    await loadManifest();
   } catch (e) { toast(e.message, 'err'); }
 });
 
-/* ── VERIFY ──────────────────────────────────────────────────── */
+/* ── VERIFY ──────────────────────────────────────────────────────── */
+
 let VBRANCH = 'public';
 $$('#vfBranch .seg-btn').forEach((b) => b.addEventListener('click', () => {
   $$('#vfBranch .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
   VBRANCH = b.dataset.branch;
 }));
 
+const LEVELS = [
+  { key: 'error', title: 'Errors',   open: true,  cls: 'err'  },
+  { key: 'warn',  title: 'Warnings', open: false, cls: 'warn' },
+  { key: 'ok',    title: 'Passed',   open: false, cls: 'ok'   },
+];
+
+// Errors expanded, warnings and passes folded away. The old flat list buried
+// three real errors under twenty locale warnings.
 function renderFindings(findings, host) {
-  host.innerHTML = findings.map((f) => `<div class="finding ${f.level}">
-    <div class="code">${esc(f.code)}</div>
-    <div class="msg">${esc(f.message)}${f.detail ? `<div class="detail">${esc(f.detail)}</div>` : ''}</div>
-  </div>`).join('') || '<div class="empty">No findings.</div>';
+  if (!findings.length) { host.innerHTML = '<div class="section"><div class="empty">No findings.</div></div>'; return; }
+  host.innerHTML = LEVELS.map(({ key, title, open, cls }) => {
+    const rows = findings.filter((f) => f.level === key);
+    if (!rows.length) return '';
+    return `<details class="section" ${open ? 'open' : ''}>
+      <summary class="sec-head"><h3>${title}</h3><span class="pill ${cls}">${rows.length}</span></summary>
+      <div class="sec-body flush">${rows.map((f) => `
+        <div class="finding ${esc(f.level)}">
+          <span class="code">${esc(f.code)}</span>
+          <div class="grow">${esc(f.message)}${f.detail ? `<div class="detail">${esc(f.detail)}</div>` : ''}</div>
+        </div>`).join('')}</div>
+    </details>`;
+  }).join('');
 }
 
 $('#vfRun').addEventListener('click', async () => {
   $('#vfRun').disabled = true;
-  $('#vfSummary').innerHTML = '<div class="banner warn">Running checks…</div>';
-  $('#vfFindings').innerHTML = '';
+  $('#vfSummary').innerHTML = '<div class="banner info" id="vfProgress">Running checks…</div>';
+  $('#vfGroups').innerHTML = '';
   try {
     const r = await api('POST', '/api/verify', { branch: VBRANCH });
+    const passed = r.findings.length - r.errors - r.warnings;
     $('#vfSummary').innerHTML =
-      `<div class="banner ${r.canDeploy ? 'ok' : 'err'}">${r.canDeploy
-        ? 'All checks passed — safe to deploy.'
-        : `${r.errors} error(s) must be fixed before deploying.`}</div>
-       <div class="summary">
-         <div class="stat err"><b>${r.errors}</b>errors</div>
-         <div class="stat warn"><b>${r.warnings}</b>warnings</div>
-         <div class="stat ok"><b>${r.findings.length - r.errors - r.warnings}</b>passed</div>
+      `<div class="banner ${r.canDeploy ? 'ok' : 'err'}">
+         <b>${r.canDeploy ? 'All checks passed — safe to deploy.' : `${plural(r.errors, 'error', 'errors')} must be fixed before deploying.`}</b>
+         Checked the ${VBRANCH} manifest against disk, the live CDN, and the launcher repo.
+       </div>
+       <div class="stats">
+         <div class="stat err"><b>${r.errors}</b><span>errors</span></div>
+         <div class="stat warn"><b>${r.warnings}</b><span>warnings</span></div>
+         <div class="stat ok"><b>${passed}</b><span>passed</span></div>
        </div>`;
-    renderFindings(r.findings, $('#vfFindings'));
-  } catch (e) { $('#vfSummary').innerHTML = `<div class="banner err">${esc(e.message)}</div>`; }
-  finally { $('#vfRun').disabled = false; }
+    renderFindings(r.findings, $('#vfGroups'));
+  } catch (e) {
+    $('#vfSummary').innerHTML = `<div class="banner err"><b>Checks could not run</b>${esc(e.message)}</div>`;
+  } finally { $('#vfRun').disabled = false; }
+});
+
+// verify.js already emits per-file progress; surface it instead of a dead spinner.
+listeners.add((msg) => {
+  if (msg.job !== 'verify' || msg.type !== 'progress') return;
+  const el = $('#vfProgress');
+  if (!el) return;
+  if (msg.phase === 'done') el.textContent = 'Collating findings…';
+  else if (msg.file) el.textContent = `Hashing ${msg.file} (${(msg.checked ?? 0) + 1}/${msg.total ?? '?'})…`;
 });
 
 $('#vfOrphans').addEventListener('click', async () => {
   const box = $('#vfOrphanBox');
-  box.innerHTML = '<div class="banner warn">Listing remote objects…</div>';
+  box.innerHTML = '<div class="banner info">Listing remote objects…</div>';
   try {
     const r = await api('GET', `/api/remote-orphans?branch=${VBRANCH}`);
-    if (!r.ok) return void (box.innerHTML = `<div class="banner err">${esc(r.error)}</div>`);
-    if (!r.orphans.length) return void (box.innerHTML = `<div class="banner ok">No orphans — all ${r.total} remote object(s) are referenced by the manifest.</div>`);
-    box.innerHTML = `<div class="banner warn">${r.orphans.length} of ${r.total} remote object(s) are not referenced by the manifest.</div>
-      <div class="table-wrap"><table><thead><tr><th></th><th>Remote path</th><th class="num">Size</th></tr></thead><tbody>
-      ${r.orphans.map((o) => `<tr><td><input type="checkbox" class="orph" value="${esc(o.path)}"></td><td class="mono">${esc(o.path)}</td><td class="num">${fmtBytes(o.size)}</td></tr>`).join('')}
-      </tbody></table></div>
-      <div class="actions left"><button class="btn danger" id="orphDel">Delete selected from R2</button></div>`;
+    if (!r.ok) return void (box.innerHTML = `<div class="banner err"><b>Could not list R2</b>${esc(r.error)}</div>`);
+    if (!r.orphans.length) {
+      return void (box.innerHTML = `<div class="banner ok"><b>No orphans</b>All ${plural(r.total, 'remote object', 'remote objects')} under <span class="mono">${esc(r.prefix)}/</span> are referenced by the manifest.</div>`);
+    }
+    box.innerHTML = `<details class="section" open>
+      <summary class="sec-head"><h3>Remote orphans</h3><span class="pill warn">${r.orphans.length} of ${r.total}</span>
+        <p class="sub">Objects under <span class="mono">${esc(r.prefix)}/</span> that no manifest module references.</p>
+      </summary>
+      <div class="sec-body flush">
+        ${r.orphans.map((o) => `<div class="finding">
+          <input type="checkbox" class="orph" value="${esc(o.path)}">
+          <span class="grow mono small">${esc(o.path)}</span>
+          <span class="faint small nowrap">${fmtBytes(o.size)}</span>
+        </div>`).join('')}
+      </div>
+      <div class="actionbar">
+        <span class="summary">Deleting is permanent and immediate.</span>
+        <div class="actions" style="margin-left:auto"><button class="btn danger" id="orphDel">Delete selected from R2</button></div>
+      </div>
+    </details>`;
     $('#orphDel').addEventListener('click', async () => {
       const paths = $$('.orph:checked').map((c) => c.value);
       if (!paths.length) return toast('Nothing selected.', 'err');
-      if (!confirm(`Permanently delete ${paths.length} object(s) from R2?\n\n${paths.join('\n')}`)) return;
-      await api('POST', '/api/remote-delete', { prefix: VBRANCH === 'beta' ? 'betapayload' : 'payload', paths });
-      toast(`Deleted ${paths.length} object(s).`, 'ok');
-      $('#vfOrphans').click();
+      if (!confirm(`Permanently delete ${plural(paths.length, 'object', 'objects')} from R2?\n\n${paths.join('\n')}`)) return;
+      try {
+        await api('POST', '/api/remote-delete', { prefix: r.prefix, paths });
+        toast(`Deleted ${plural(paths.length, 'object', 'objects')}.`, 'ok');
+        $('#vfOrphans').click();
+      } catch (e) { toast(e.message, 'err'); }
     });
   } catch (e) { box.innerHTML = `<div class="banner err">${esc(e.message)}</div>`; }
 });
 
-/* ── DEPLOY ──────────────────────────────────────────────────── */
-const STEP_FOR_FOLDER = { payload: 'payload', betapayload: 'payload', assets: 'payload', launcher: 'payload', installer: 'payload', manifests: 'manifests' };
-function setStep(name, cls) {
-  const li = $(`#dpSteps li[data-step="${name}"]`);
-  if (li) li.className = cls;
+/* ── DEPLOY ──────────────────────────────────────────────────────── */
+
+let DRY = true;
+
+const UPLOAD_ORDER = ['payload', 'betapayload', 'meleepayload', 'assets', 'launcher', 'installer', 'manifests'];
+const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee', $('#dpPkgLauncher').checked && 'launcher'].filter(Boolean);
+
+function syncDeployControls() {
+  const pk = deployPackages();
+  $('#dpBranchNote').innerHTML = pk.length
+    ? `Manifests are regenerated from the catalog first. Only the chosen packages' folders and manifests are uploaded.`
+    : '<b>Choose at least one package.</b>';
+  $('#dpRun').disabled = !pk.length;
+  $('#dpModeNote').innerHTML = DRY
+    ? 'Nothing is written to R2. rclone reports what it <em>would</em> transfer.'
+    : '<b>Uploads to the live bucket.</b> Users see the new manifests as soon as step 5 finishes.';
+  const run = $('#dpRun');
+  run.textContent = DRY ? 'Start dry run' : 'Start live deploy';
+  run.className = DRY ? 'btn primary' : 'btn danger';
+  $$('#dpMode .seg-btn').forEach((b) => b.classList.toggle('hot', !DRY && b.dataset.mode === 'live'));
+
+  // Website links follow the launcher package.
+  const siteOk = !!STATE?.paths?.siteValid;
+  const launcher = pk.includes('launcher');
+  $('#dpSite').disabled = !siteOk || !launcher;
+  $('#dpSiteNote').innerHTML = !siteOk
+    ? 'Set the website repo path in Settings first.'
+    : !launcher ? 'Only with the Launcher package.'
+    : `Edits <span class="mono">${esc(STATE.config.siteRepoPath)}\\assets\\js\\site-links.js</span> after the upload; you commit and push the site.`;
 }
-function resetSteps() { $$('#dpSteps li').forEach((li) => (li.className = '')); }
+const updateSite = () => !$('#dpSite').disabled && $('#dpSite').checked;
+
+// What each package has that the CDN doesn't. Packages with changes are ticked the first time this loads.
+let PENDING = null;
+let PENDING_TICKED = false;
+async function loadPending() {
+  const line = (id, p) => {
+    const el = $(id);
+    if (!p) { el.textContent = ''; return; }
+    el.innerHTML = p.changed ? `<b>Not deployed yet:</b> ${esc(p.details.join(', '))}` : p.details?.length ? esc(p.details.join(', ')) : 'Same as the live CDN.';
+    el.classList.toggle('warn-text', p.changed);
+  };
+  try {
+    PENDING = await api('GET', '/api/pending');
+    line('#dpPendCampaign', PENDING.packages.campaign);
+    line('#dpPendMelee', PENDING.packages.melee);
+    line('#dpPendLauncher', PENDING.packages.launcher);
+    if (PENDING.offline) $('#dpPendMelee').textContent = 'Could not reach the CDN to compare.';
+    if (!PENDING_TICKED) {
+      PENDING_TICKED = true;
+      const { campaign, melee, launcher } = PENDING.packages;
+      if (campaign.changed || melee.changed || launcher?.changed) {
+        $('#dpPkgCampaign').checked = campaign.changed;
+        $('#dpPkgMelee').checked = melee.changed;
+        $('#dpPkgLauncher').checked = !!launcher?.changed;
+        syncDeployControls();
+      }
+    }
+  } catch (e) { $('#dpPendMelee').textContent = `Could not compare with the CDN: ${e.message}`; }
+}
+
+try { $('#dpSite').checked = localStorage.getItem('scevo.updateSite') === '1'; } catch {}
+$('#dpSite').addEventListener('change', (e) => { try { localStorage.setItem('scevo.updateSite', e.target.checked ? '1' : '0'); } catch {} });
+['#dpPkgCampaign', '#dpPkgMelee', '#dpPkgLauncher'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
+$$('#dpMode .seg-btn').forEach((b) => b.addEventListener('click', () => {
+  $$('#dpMode .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+  DRY = b.dataset.mode === 'dry';
+  syncDeployControls();
+}));
+$('#dpForce').addEventListener('change', (e) => { $('#dpForceWarn').hidden = !e.target.checked; });
+
+function resetRail() {
+  $$('#dpRail li').forEach((li, i) => {
+    li.className = '';
+    li.querySelector('.marker').textContent = String(i + 1);
+    li.querySelector('.note').textContent = '';
+  });
+}
+
+function setStep(id, state, detail) {
+  const li = $(`#dpRail li[data-step="${id}"]`);
+  if (!li) return;
+  li.className = state;
+  const marker = li.querySelector('.marker');
+  marker.textContent = state === 'done' ? '✓' : state === 'failed' ? '✕' : state === 'skipped' ? '–'
+    : String([...$$('#dpRail li')].indexOf(li) + 1);
+  if (detail != null) li.querySelector('.note').textContent = detail;
+}
+
+function resetXfer() {
+  $('#dpXfer').innerHTML = UPLOAD_ORDER.map((f) => `<div class="xfer-row idle" data-folder="${f}">
+    <div class="xfer-top"><span class="folder">${f}/</span><span class="nums">waiting</span></div>
+    <div class="progress"><div class="progress-bar"></div></div>
+    <div class="xfer-files"></div>
+  </div>`).join('');
+  $('#dpTotals').textContent = 'idle';
+}
+
+const LOG_LEVEL = /^(error|critical|warning|notice|info|debug):/i;
+
+function appendLog(message) {
+  const log = $('#dpLog');
+  // Only auto-scroll when already parked at the bottom, so reading history
+  // mid-deploy isn't yanked away every second.
+  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  const m = LOG_LEVEL.exec(message);
+  const cls = m ? ` class="l-${m[1].toLowerCase()}"` : '';
+  log.insertAdjacentHTML('beforeend', `<span${cls}>${esc(message)}</span>\n`);
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
 
 listeners.add((msg) => {
-  if (msg.job !== 'deploy' && msg.job !== 'verify') return;
-  if (msg.type === 'log') {
-    const log = $('#dpLog');
-    log.textContent += msg.message + '\n';
-    log.scrollTop = log.scrollHeight;
-    if (/^Uploading manifests/.test(msg.message)) { setStep('postflight', 'done'); setStep('manifests', 'active'); }
-    else if (/^Verifying uploaded/.test(msg.message)) { setStep('payload', 'done'); setStep('postflight', 'active'); }
-    else if (/^Uploading /.test(msg.message)) { setStep('stage', 'done'); setStep('payload', 'active'); }
-    else if (/^Staged |unchanged, not re-copied|launcher-version\.json/.test(msg.message)) { setStep('preflight', 'done'); setStep('stage', 'active'); }
-    else if (/^Confirming published/.test(msg.message)) { setStep('manifests', 'done'); setStep('confirm', 'active'); }
-  }
+  if (msg.job !== 'deploy') return;
+
+  if (msg.type === 'log') appendLog(msg.message);
+
+  if (msg.type === 'step') setStep(msg.step, msg.state, msg.detail);
+
   if (msg.type === 'progress' && msg.folder) {
-    $('#dpProgressWrap').hidden = false;
+    const row = $(`#dpXfer .xfer-row[data-folder="${msg.folder}"]`);
+    if (!row) return;
+    row.classList.remove('idle');
     const pct = msg.totalBytes ? (msg.bytes / msg.totalBytes) * 100 : 0;
-    $('#dpBar').style.width = `${pct.toFixed(1)}%`;
-    $('#dpFolder').textContent = `${msg.folder} — ${fmtBytes(msg.bytes)} / ${fmtBytes(msg.totalBytes)} (${msg.transfers}/${msg.totalTransfers} files)`;
-    $('#dpRate').textContent = `${fmtBytes(msg.speed)}/s${msg.eta ? ` · ETA ${msg.eta}s` : ''}`;
-    $('#dpFiles').innerHTML = (msg.transferring ?? []).map((t) => `<div>${esc(t.name)} — ${t.percentage}% (${fmtBytes(t.speed)}/s)</div>`).join('');
+    row.querySelector('.progress-bar').style.width = `${pct.toFixed(1)}%`;
+    row.classList.toggle('done', msg.totalBytes > 0 && msg.bytes >= msg.totalBytes);
+    row.querySelector('.nums').textContent =
+      `${fmtBytes(msg.bytes)} / ${fmtBytes(msg.totalBytes)} · ${msg.transfers}/${msg.totalTransfers} files` +
+      (msg.speed ? ` · ${fmtBytes(msg.speed)}/s` : '') + (msg.eta ? ` · ETA ${msg.eta}s` : '');
+    row.querySelector('.xfer-files').innerHTML = (msg.transferring ?? [])
+      .map((t) => `<div>${esc(t.name)} — ${t.percentage}% (${fmtBytes(t.speed)}/s)</div>`).join('');
+    $('#dpTotals').textContent = `${msg.folder} · ${fmtBytes(msg.speed)}/s`;
   }
 });
 
+$('#dpCopyLog').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#dpLog').textContent); toast('Log copied.', 'ok'); }
+  catch { toast('Clipboard blocked — select the text instead.', 'err'); }
+});
+$('#dpClearLog').addEventListener('click', () => { $('#dpLog').textContent = ''; });
+
+/* ── offline package ── */
+
+let OF_LAST = null; // repo-relative path of the last zip built
+listeners.add((msg) => {
+  if (msg.job !== 'offline-zip' || msg.type !== 'progress' || !msg.totalBytes) return;
+  const pct = (msg.doneBytes / msg.totalBytes) * 100;
+  $('#ofProgress .progress-bar').style.width = `${pct.toFixed(1)}%`;
+  $('#ofLabel').textContent = `Adding ${msg.name.split('/').pop()} (${msg.index}/${msg.total}) · ${Math.floor(pct)}%`;
+});
+$('#ofBuild').addEventListener('click', async () => {
+  $('#ofBuild').disabled = true;
+  $('#ofBody').hidden = false;
+  $('#ofProgress').hidden = false;
+  $('#ofDone').hidden = true;
+  $('#ofProgress .progress-bar').style.width = '0%';
+  $('#ofLabel').textContent = 'Checking the payload against the manifest…';
+  try {
+    const r = await api('POST', '/api/offline-zip');
+    OF_LAST = r.rel;
+    $('#ofProgress').hidden = true;
+    $('#ofLabel').innerHTML = `<span class="mono">${esc(r.rel)}</span> · ${fmtBytes(r.bytes)} · ${plural(r.entries, 'entry', 'entries')}`;
+    $('#ofDone').hidden = false;
+    toast('Offline package written.', 'ok');
+  } catch (e) {
+    $('#ofProgress').hidden = true;
+    $('#ofLabel').innerHTML = `<span style="color:var(--err)">${esc(e.message)}</span>`;
+    toast(e.message, 'err');
+  } finally { $('#ofBuild').disabled = false; }
+});
+$('#ofOpen').addEventListener('click', () => OF_LAST && api('POST', '/api/open-folder', { path: OF_LAST }).catch((e) => toast(e.message, 'err')));
+
 $('#dpRun').addEventListener('click', async () => {
-  const dryRun = $('#dpDry').checked;
-  if (!dryRun && !confirm('This will upload to the live R2 bucket. Continue?')) return;
+  const force = $('#dpForce').checked;
+  if (!DRY && !confirm(
+    `Upload to the LIVE R2 bucket?\n\n` +
+    `Packages: ${deployPackages().join(' + ')}\n` +
+    (updateSite() ? `Website download links will be pointed at this launcher (uncommitted).\n` : '') +
+    (force ? `\nWARNING: check failures will be ignored.\n` : '') +
+    `\nUsers see the new manifests as soon as the upload finishes.`)) return;
+
   $('#dpRun').disabled = true;
   $('#dpLog').textContent = '';
+  const left = Object.entries(PENDING?.packages || {}).filter(([k, p]) => p.changed && !deployPackages().includes(k)).map(([k]) => k);
+  if (left.length) $('#dpLog').textContent = `Note: ${left.join(' and ')} also has changes that this deploy won't publish.\n`;
   $('#dpResult').innerHTML = '';
-  resetSteps(); setStep('preflight', 'active');
+  resetRail();
+  resetXfer();
+
   try {
-    const r = await api('POST', '/api/deploy', { dryRun, force: $('#dpForce').checked, branch: VBRANCH });
+    const r = await api('POST', '/api/deploy', { dryRun: DRY, force, packages: deployPackages(), updateSite: updateSite() });
     if (r.aborted) {
-      setStep(r.stage, 'failed');
-      const findings = r.stage === 'preflight' ? r.preflight.findings : r.postflight;
-      $('#dpResult').innerHTML = `<div class="banner err">Aborted at ${r.stage}. Nothing was published.</div><div class="findings"></div>`;
-      renderFindings(findings.filter((f) => f.level === 'error'), $('#dpResult .findings'));
+      const findings = r.stage === 'preflight' ? Object.values(r.preflight).flatMap((p) => p.findings)
+        : r.stage === 'generate' ? (r.problems ?? []).map((p) => ({ level: 'error', code: 'unbuilt', message: p }))
+        : (r.postflight ?? []);
+      $('#dpResult').innerHTML =
+        `<div class="banner err"><b>Aborted at ${esc(r.stage)} — nothing was published.</b>` +
+        (r.stage === 'postflight'
+          ? 'Payload files were uploaded, but the manifests were not, so the CDN still describes the previous release.'
+          : 'No files were uploaded.') +
+        `</div><div id="dpFindings"></div>`;
+      renderFindings(findings.filter((f) => f.level === 'error'), $('#dpFindings'));
     } else {
-      $$('#dpSteps li').forEach((li) => (li.className = 'done'));
-      $('#dpResult').innerHTML = `<div class="banner ok">${r.dryRun ? 'Dry run complete — nothing was uploaded.' : 'Deploy complete and verified.'}</div>`;
+      $('#dpResult').innerHTML = `<div class="banner ok"><b>${r.dryRun
+        ? 'Dry run complete — nothing was uploaded.'
+        : 'Deploy complete and verified.'}</b>${r.launcherVersion?.ok
+          ? `launcher-version.json published at v${esc(r.launcherVersion.version)}.`
+          : 'launcher-version.json was left as it is (no launcher repo configured).'}</div>`;
     }
   } catch (e) {
-    $('#dpResult').innerHTML = `<div class="banner err">${esc(e.message)}</div>`;
+    $('#dpResult').innerHTML = `<div class="banner err"><b>Deploy failed</b>${esc(e.message)}</div>`;
   } finally { $('#dpRun').disabled = false; }
 });
 
-/* ── NEWS ────────────────────────────────────────────────────── */
+/* ── NEWS ────────────────────────────────────────────────────────── */
+
+// news-feed.json "feed" is an ordered list of slots:
+//   post    a site post picked by rule (tag + nth newest), fields overridable
+//   banner  an image-only card
+//   custom  a hand-written card (the old "cards" format)
+// Saving also writes "cards", the English snapshot older launchers read.
 let NEWS = null;
+let NW_SEL = 0;
+let NW_DIRTY = false;
+let NW_LOC = '';          // '' = all languages (base), else a launcher language
+let NW_PREVIEW = new Map(); // feed index → resolved card in the preview language
+let NW_SITE = { posts: [], tags: [], error: null };
+let NW_PATREON = { posts: [], error: null, loaded: false };
+const NW_LANGS = ['en', 'es', 'zh', 'ko', 'ru'];
+const NW_KIND_LABEL = { post: 'site post', patreon: 'patreon', banner: 'banner', custom: 'custom' };
+// Slots whose fields are filled from a post; edits there are overrides.
+const isFed = (s) => s?.kind === 'post' || s?.kind === 'patreon';
+
+function setNewsDirty(on) {
+  NW_DIRTY = on;
+  $('#nwDirtyDot').hidden = !on;
+  $('#nwDirtyBanner').hidden = !on;
+  $('#nwSave').textContent = on ? 'Save news-feed.json •' : 'Save news-feed.json';
+}
+
 async function loadNews() {
   const r = await api('GET', '/api/news');
   NEWS = r.news ?? { schemaVersion: 1, strings: {}, cards: [], announcement: { enabled: false, message: '', type: 'info' } };
   NEWS.announcement ??= { enabled: false, message: '', type: 'info' };
   NEWS.cards ??= [];
+  // First edit of an old file: its cards become custom slots.
+  NEWS.feed ??= NEWS.cards.map((c) => ({ kind: 'custom', ...c }));
   $('#nwAnnEnabled').checked = !!NEWS.announcement.enabled;
   $('#nwAnnType').value = NEWS.announcement.type ?? 'info';
   $('#nwAnnMsg').value = NEWS.announcement.message ?? '';
-  renderCards();
+  syncAnnPill();
+  NW_SEL = Math.min(NW_SEL, Math.max(0, NEWS.feed.length - 1));
+  setNewsDirty(false);
+  renderLocales();
+  renderCardList();
+  renderCardDetail();
+  if (!NW_PATREON.loaded) loadPatreonPosts(false);
+  if (!NW_SITE.posts.length) loadSitePosts(false);
+  else refreshPreview();
 }
-function renderCards() {
-  $('#nwCards').innerHTML = NEWS.cards.map((c, i) => `<div class="module" data-i="${i}">
-    <div class="module-head">
-      <span class="name">${esc(c.title ?? c.id ?? 'untitled')}</span>
-      <span class="module-path">${esc(c.date ?? '')}</span>
-      <button class="btn sm toggle">Edit</button>
-    </div>
-    <div class="module-body">
-      <div class="field-row">
-        <label>ID<input type="text" data-k="id" value="${esc(c.id ?? '')}"></label>
-        <label>Title<input type="text" data-k="title" value="${esc(c.title ?? '')}"></label>
-        <label>Date<input type="text" data-k="date" value="${esc(c.date ?? '')}"></label>
-        <label>Type<select data-k="type">
-          <option value="update"${c.type === 'update' ? ' selected' : ''}>update</option>
-          <option value="patchnotes"${c.type === 'patchnotes' ? ' selected' : ''}>patchnotes</option>
-        </select></label>
-      </div>
-      <label>Excerpt<textarea rows="3" data-k="excerpt">${esc(c.excerpt ?? '')}</textarea></label>
-      <div class="field-row">
-        <label>Link URL<input type="text" data-k="linkUrl" value="${esc(c.linkUrl ?? '')}"></label>
-        <label>Image URL<input type="text" data-k="imageUrl" value="${esc(c.imageUrl ?? '')}"></label>
-      </div>
-      <label>Highlights <span class="hint-inline">one per line</span><textarea rows="3" data-k="highlights">${esc((c.highlights ?? []).join('\n'))}</textarea></label>
-      <div class="actions left"><button class="btn sm danger remove">Remove card</button></div>
-    </div>
-  </div>`).join('') || '<div class="empty">No cards.</div>';
 
-  $$('#nwCards .module').forEach((el) => {
-    const i = +el.dataset.i, c = NEWS.cards[i];
-    el.querySelector('.toggle').addEventListener('click', () => el.classList.toggle('open'));
-    $$('[data-k]', el).forEach((inp) => inp.addEventListener('change', () => {
-      const k = inp.dataset.k;
-      if (k === 'highlights') {
-        const list = inp.value.split('\n').map((s) => s.trim()).filter(Boolean);
-        if (list.length) c.highlights = list; else delete c.highlights;
-      } else if (!inp.value.trim() && ['imageUrl', 'linkUrl'].includes(k)) delete c[k];
-      else c[k] = inp.value;
-    }));
-    el.querySelector('.remove').addEventListener('click', () => { NEWS.cards.splice(i, 1); renderCards(); });
+async function loadPatreonPosts(refresh) {
+  $('#nwPatreonState').textContent = 'Fetching Patreon posts…';
+  try {
+    const r = await api('GET', `/api/patreon-posts${refresh ? '?refresh=1' : ''}`);
+    NW_PATREON = { posts: r.posts, error: null, loaded: true };
+    $('#nwPatreonState').textContent = r.posts.length ? `${plural(r.posts.length, 'Patreon post', 'Patreon posts')} · newest ${r.posts[0].date.slice(0, 10)}` : `Patreon page "${r.vanity}" has no posts`;
+  } catch (e) {
+    NW_PATREON = { posts: [], error: e.message, loaded: true };
+    $('#nwPatreonState').textContent = `Patreon unreachable: ${e.message}`;
+  }
+  renderCardDetail();
+  refreshPreview();
+}
+
+async function loadSitePosts(refresh) {
+  $('#nwSiteState').textContent = 'Fetching scevo.org posts…';
+  try {
+    const r = await api('GET', `/api/site-posts${refresh ? '?refresh=1' : ''}`);
+    NW_SITE = { posts: r.posts, tags: r.tags, error: null };
+    $('#nwSiteState').textContent = r.posts.length ? `${plural(r.posts.length, 'site post', 'site posts')} · newest ${r.posts[0].date}` : 'scevo.org returned no posts';
+  } catch (e) {
+    NW_SITE = { posts: [], tags: [], error: e.message };
+    $('#nwSiteState').textContent = `scevo.org unreachable: ${e.message}`;
+  }
+  renderCardDetail();
+  refreshPreview();
+}
+
+function syncAnnPill() {
+  const on = $('#nwAnnEnabled').checked;
+  const pill = $('#nwAnnPill');
+  pill.textContent = on ? ($('#nwAnnType').value || 'on') : 'off';
+  pill.className = `pill ${on ? ({ critical: 'err', warning: 'warn' }[$('#nwAnnType').value] ?? 'acc') : ''}`;
+}
+['#nwAnnMsg', '#nwAnnType'].forEach((s) => $(s).addEventListener('input', () => { setNewsDirty(true); syncAnnPill(); }));
+$('#nwAnnEnabled').addEventListener('change', () => { setNewsDirty(true); syncAnnPill(); });
+
+// Read-only, but visible: verify.js reports locale gaps and there was previously
+// nowhere in the UI to see what it was talking about.
+function renderLocales() {
+  const strings = NEWS.strings ?? {};
+  const locales = Object.keys(strings);
+  if (!locales.length) {
+    $('#nwLocales').innerHTML = '<div class="empty">No strings block — every locale falls back to the launcher\'s built-in English.</div>';
+    return;
+  }
+  const widest = Math.max(...locales.map((l) => Object.keys(strings[l] ?? {}).length));
+  $('#nwLocales').innerHTML = locales.map((l) => {
+    const keys = Object.keys(strings[l] ?? {});
+    const empty = keys.filter((k) => strings[l][k] === '').length;
+    const missing = widest - keys.length;
+    const state = empty || missing ? 'warn' : 'good';
+    const notes = [empty ? `${empty} empty` : '', missing > 0 ? `${missing} fewer keys than the fullest locale` : ''].filter(Boolean);
+    return envRow(state, l, `${plural(keys.length, 'key', 'keys')}`, notes.join(' · '));
+  }).join('');
+}
+
+const previewLang = () => NW_LOC || 'en';
+let nwPreviewTimer = null;
+let nwPreviewSeq = 0;
+function refreshPreview() {
+  clearTimeout(nwPreviewTimer);
+  nwPreviewTimer = setTimeout(async () => {
+    const seq = ++nwPreviewSeq;
+    try {
+      const r = await api('POST', '/api/news-preview', { feed: NEWS.feed, lang: previewLang() });
+      if (seq !== nwPreviewSeq) return;
+      NW_PREVIEW = new Map(r.cards.map((c) => [c.slot, c]));
+    } catch (e) {
+      if (seq !== nwPreviewSeq) return;
+      NW_PREVIEW = new Map();
+    }
+    renderCardList();
+    renderPreviewPane();
+    fillPlaceholders();
+  }, 250);
+}
+
+function slotLabel(s) {
+  if (s.kind === 'post') {
+    const n = Number(s.rule?.index) || 1;
+    return `${s.rule?.tag ? `Latest “${s.rule.tag}”` : 'Latest post'}${n > 1 ? ` #${n}` : ''}${s.exclude === 'used' ? ' · skip shown' : ''}`;
+  }
+  if (s.kind === 'patreon') {
+    const n = Number(s.rule?.index) || 1;
+    return `Latest Patreon post${n > 1 ? ` #${n}` : ''}${s.exclude === 'used' ? ' · skip shown' : ''}`;
+  }
+  if (s.kind === 'banner') return s.title || s.imageUrl?.split('/').pop() || 'Image banner';
+  return s.title || s.id || 'untitled';
+}
+
+function renderCardList() {
+  const host = $('#nwList');
+  const feed = NEWS.feed;
+  $('#nwCount').textContent = feed.length;
+  if (!feed.length) { host.innerHTML = '<div class="empty">No cards. Add a site post, a banner or a custom card.</div>'; return; }
+  host.innerHTML = feed.map((s, i) => {
+    const shown = NW_PREVIEW.get(i);
+    const meta = s.kind === 'post' ? (shown ? shown.title : (NW_SITE.posts.length ? 'no matching post' : ''))
+      : s.kind === 'patreon' ? (shown?.title ?? '') : (s.date ?? '');
+    return `<div class="item ${i === NW_SEL ? 'sel' : ''}${s.enabled === false ? ' off' : ''}" data-i="${i}" draggable="true">
+      <span class="drag" title="Drag to reorder">⠿</span>
+      <span class="pill ${isFed(s) ? 'acc' : s.kind === 'banner' ? 'warn' : ''}">${NW_KIND_LABEL[s.kind] ?? 'custom'}</span>
+      ${s.variant ? `<span class="pill">${esc(s.variant)}</span>` : ''}
+      <span class="grow"><span class="name truncate" style="display:block">${esc(slotLabel(s))}</span>
+        ${meta ? `<span class="meta truncate" style="display:block">${isFed(s) ? '→ ' : ''}${esc(meta)}</span>` : ''}</span>
+    </div>`;
+  }).join('');
+
+  $$('.item', host).forEach((el) => {
+    const i = +el.dataset.i;
+    el.addEventListener('click', () => { NW_SEL = i; renderCardList(); renderCardDetail(); });
+    el.addEventListener('dragstart', () => { el.classList.add('dragging'); nwDrag = i; });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging'); $$('.item', host).forEach((x) => x.classList.remove('drop-target')); });
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-target'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (nwDrag === null || nwDrag === i) return;
+      const [moved] = feed.splice(nwDrag, 1);
+      feed.splice(i, 0, moved);
+      NW_SEL = i; nwDrag = null;
+      newsChanged(true);
+    });
   });
 }
-$('#nwReload').addEventListener('click', loadNews);
-$('#nwAddCard').addEventListener('click', () => {
-  NEWS.cards.unshift({ id: `news-${Date.now()}`, title: 'New card', date: '', type: 'update', excerpt: '' });
-  renderCards();
+let nwDrag = null;
+
+// Fields per kind. In a language tab only the translatable ones show.
+// The launcher's text header, drawn when a card has no image.
+const NW_HEADER_FIELDS = ['imageText', 'imageLabel', 'imageBg', 'imageAccent'];
+const NW_FIELDS = {
+  post:    ['title', 'author', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
+  patreon: ['title', 'author', 'date', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', ...NW_HEADER_FIELDS],
+  banner:  ['imageUrl', 'linkUrl', 'title'],
+  custom:  ['title', 'author', 'date', 'type', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'badgeColor', 'readMoreLabel', ...NW_HEADER_FIELDS],
+};
+const NW_LOCAL_FIELDS = ['title', 'excerpt', 'highlights', 'imageUrl', 'linkUrl', 'badge', 'readMoreLabel', 'imageText', 'imageLabel'];
+const NW_LABEL = {
+  title: 'Title', author: 'Author (site name, e.g. Kat)', excerpt: 'Description', highlights: 'Highlights', imageUrl: 'Image URL', linkUrl: 'Link URL',
+  badge: 'Badge', badgeColor: 'Badge colour', date: 'Date', type: 'Type', readMoreLabel: '“Read more” text',
+  imageText: 'Header text', imageLabel: 'Header label', imageBg: 'Header background (set from the accent)', imageAccent: 'Accent (header + badge)',
+};
+// The launcher's defaults (App.jsx NewsImage); the accent follows the channel theme.
+const headerAccent = (s) => (s?.variant === 'beta' ? '#ff6600' : '#00ff88');
+const headerDefault = (k, s) => ({ imageText: 'EVO UPDATE', imageBg: '#0a2a1a', imageAccent: headerAccent(s) }[k] ?? '');
+// Accent presets: the channel colours, then a bright palette that reads with the badge's dark text.
+const NW_ACCENTS = [
+  ['#00ff88', 'Public green'], ['#ff6600', 'Beta orange'], ['#ff0025', 'Red'], ['#00c5ff', 'Sky'], ['#ff9500', 'Amber'],
+  ['#00ffd1', 'Aqua'], ['#fa00ff', 'Magenta'], ['#ff3b6b', 'Rose'], ['#ff5ca8', 'Pink'], ['#c86bff', 'Violet'],
+  ['#9b8cff', 'Lavender'], ['#4d8dff', 'Blue'], ['#00e5ff', 'Cyan'], ['#2bd96b', 'Emerald'], ['#7dff3a', 'Lime'],
+  ['#c6ff00', 'Chartreuse'], ['#ffe14d', 'Yellow'], ['#ffc400', 'Gold'], ['#ff7a45', 'Coral'], ['#ffb38a', 'Peach'],
+  ['#d9a066', 'Bronze'], ['#e8eef5', 'Silver'], ['#8fa3b8', 'Steel'], ['#a0ffe6', 'Ice'],
+];
+// Accents already on cards in this feed, ahead of the presets.
+function feedAccents() {
+  const known = new Set(NW_ACCENTS.map(([c]) => c));
+  const used = (NEWS?.feed ?? []).flatMap((s) => [s.imageAccent, s.overrides?.imageAccent])
+    .filter((c) => /^#[0-9a-f]{6}$/i.test(c ?? '')).map((c) => c.toLowerCase());
+  return [...new Set(used)].filter((c) => !known.has(c));
+}
+// The header background for an accent: the accent dimmed onto near-black (#ff0025 → #2a0a0e).
+const darkShade = (hex) => '#' + [1, 3, 5].map((i) => Math.round(10 + parseInt(hex.slice(i, i + 2), 16) * 32 / 255)
+  .toString(16).padStart(2, '0')).join('');
+// Only plain colour values reach inline styles.
+const cssColor = (v, fallback) => (typeof v === 'string' && /^(#[0-9a-f]{3,8}|[a-z]+|(rgb|hsl)a?\([\d\s.,%]+\))$/i.test(v.trim()) ? v.trim() : fallback);
+
+// The object a field edit writes to: the slot (or its overrides) for all languages, else locales[lang].
+function editTarget(s, create) {
+  if (NW_LOC) {
+    if (create) { s.locales ??= {}; s.locales[NW_LOC] ??= {}; }
+    return s.locales?.[NW_LOC] ?? {};
+  }
+  if (isFed(s)) { if (create) s.overrides ??= {}; return s.overrides ?? {}; }
+  return s;
+}
+
+function cleanSlot(s) {
+  if (s.overrides && !Object.keys(s.overrides).length) delete s.overrides;
+  if (s.locales) {
+    for (const l of Object.keys(s.locales)) if (!Object.keys(s.locales[l] ?? {}).length) delete s.locales[l];
+    if (!Object.keys(s.locales).length) delete s.locales;
+  }
+}
+
+function fieldHtml(k, v, s) {
+  const val = k === 'highlights' ? (v ?? []).join('\n') : (v ?? '');
+  const def = headerDefault(k, s);
+  if (k === 'imageBg' || k === 'imageAccent') {
+    // Picker + text: the text box takes any CSS colour, and empty means the launcher default.
+    const hex = /^#[0-9a-f]{6}$/i.test(val) ? val : def;
+    const swatches = k === 'imageAccent' ? `<span class="swatches">${[...feedAccents().map((c) => [c, 'Used in this feed']), ...NW_ACCENTS]
+      .map(([c, name]) => `<button type="button" class="swatch${c === String(val).toLowerCase() ? ' on' : ''}" data-sw="${c}" title="${esc(`${name} ${c}`)}" style="background:${c}"></button>`).join('')}</span>` : '';
+    return `<label>${NW_LABEL[k]}<span class="color-field">
+      <input type="color" data-c="${k}" value="${esc(hex)}" title="Pick a colour">
+      <input type="text" data-f="${k}" data-ph="${esc(def)}" value="${esc(val)}" placeholder="${esc(def)}"></span>${swatches}</label>`;
+  }
+  if (k === 'imageText' || k === 'imageLabel') {
+    return `<label>${NW_LABEL[k]}<input type="text" data-f="${k}" data-ph="${esc(def)}" value="${esc(val)}" placeholder="${esc(def)}"></label>`;
+  }
+  if (k === 'type') {
+    return `<label style="max-width:170px">${NW_LABEL[k]}<select data-f="type">
+      ${['update', 'patchnotes'].map((t) => `<option value="${t}"${(v ?? 'update') === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`;
+  }
+  if (k === 'excerpt' || k === 'highlights') {
+    return `<label>${NW_LABEL[k]}${k === 'highlights' ? ' <span class="hint-inline">one per line; makes a patch-notes card</span>' : ''}
+      <textarea rows="3" data-f="${k}">${esc(val)}</textarea></label>`;
+  }
+  return `<label>${NW_LABEL[k]}<input type="text" data-f="${k}" value="${esc(val)}"></label>`;
+}
+
+function renderCardDetail() {
+  const host = $('#nwDetail');
+  const s = NEWS?.feed?.[NW_SEL];
+  if (!s) { host.innerHTML = '<div class="detail-empty">Select a card to edit it, or add one.</div>'; return; }
+  const target = editTarget(s, false);
+  const fields = NW_FIELDS[s.kind] ?? NW_FIELDS.custom;
+  const shownFields = NW_LOC ? fields.filter((k) => NW_LOCAL_FIELDS.includes(k)) : fields;
+  const tags = [...new Set([...(NW_SITE.tags ?? []), ...(s.rule?.tag ? [s.rule.tag] : [])])];
+
+  host.innerHTML = `
+    <div class="field-row">
+      <label>ID<input type="text" data-s="id" value="${esc(s.id ?? '')}"></label>
+      <label style="max-width:170px">Shown on<select data-s="variant">
+        ${[['', 'both channels'], ['public', 'public only'], ['beta', 'beta only']].map(([v, l]) =>
+          `<option value="${v}"${(s.variant ?? '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="check" style="flex:none;align-self:end"><input type="checkbox" data-s="enabled"${s.enabled === false ? '' : ' checked'}> Shown</label>
+    </div>
+    ${s.kind === 'post' ? `
+    <div class="field-row">
+      <label>Post with tag<select data-r="tag">
+        <option value="">any tag (latest posts)</option>
+        ${tags.map((t) => `<option${s.rule?.tag === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+      <label style="max-width:120px">Which<input type="number" min="1" data-r="index" value="${Number(s.rule?.index) || 1}"></label>
+      <label class="check" style="flex:none;align-self:end" title="Skip posts that an earlier card already shows">
+        <input type="checkbox" data-x="exclude"${s.exclude === 'used' ? ' checked' : ''}> Skip posts shown above</label>
+    </div>
+    <p class="hint">“Which” 1 is the newest matching post, 2 the one before, and so on.${NW_SITE.error ? ` <b>scevo.org unreachable:</b> ${esc(NW_SITE.error)}` : ''}</p>` : ''}
+    ${s.kind === 'patreon' ? `
+    <div class="field-row">
+      <label style="max-width:120px">Which<input type="number" min="1" data-r="index" value="${Number(s.rule?.index) || 1}"></label>
+      <label class="check" style="flex:none;align-self:end" title="Skip posts that an earlier Patreon card already shows">
+        <input type="checkbox" data-x="exclude"${s.exclude === 'used' ? ' checked' : ''}> Skip posts shown above</label>
+      <label class="check" style="flex:none;align-self:end" title="Ignore Patreon's preview image and draw the text header">
+        <input type="checkbox" data-x="noImage"${s.noImage ? ' checked' : ''}> Hide image (use text header)</label>
+    </div>
+    <p class="hint">“Which” 1 is the newest Patreon post, 2 the one before, and so on. The post is filled in and its image copied to <code>assets/news/</code> when you save, so publish it with a campaign deploy.
+      Locked posts show Patreon's preview image, which is blurred unless the post has a public preview.${NW_PATREON.error ? ` <b>Patreon unreachable:</b> ${esc(NW_PATREON.error)}` : ''}</p>` : ''}
+    ${s.kind === 'banner' ? '<p class="hint">The image fills the whole card; no text is shown. Title is only the hover text.</p>' : ''}
+
+    <div class="sec-head" style="padding:var(--s3) 0 var(--s2);background:none;border:0">
+      <h3>${isFed(s) ? 'Overrides' : 'Content'}</h3>
+      <div class="seg" id="nwLocSeg">
+        ${['', ...NW_LANGS].map((l) => `<button class="seg-btn${NW_LOC === l ? ' active' : ''}" data-l="${l}">${l || 'All languages'}${l && s.locales?.[l] ? ' •' : ''}</button>`).join('')}
+      </div>
+    </div>
+    <p class="hint">${NW_LOC
+      ? `Only for the launcher in <b>${NW_LOC}</b>. Empty fields use ${s.kind === 'post' ? 'the site post (in that language when translated)' : 'the All languages value'}.`
+      : s.kind === 'post' ? 'Empty fields are filled from the site post. Grey text is what it shows now.'
+      : s.kind === 'patreon' ? 'Empty fields are filled from the Patreon post. Grey text is what it shows now.' : ''}</p>
+    <div class="nw-fields">${shownFields.map((k) => fieldHtml(k, target[k], s)).join('')}</div>
+    ${s.kind !== 'banner' ? '<p class="hint">The header text, label and colours are drawn in place of the image when the card has none.</p>' : ''}
+
+    <div class="sec-head" style="padding:var(--s3) 0 var(--s2);background:none;border:0"><h3>Preview <span class="faint small">(${previewLang()})</span></h3></div>
+    <div id="nwPreview"></div>
+
+    <div class="actions" style="margin-top:var(--s4)">
+      <button class="btn danger" id="nwRemove">Remove card</button>
+    </div>`;
+
+  $$('[data-s]', host).forEach((inp) => inp.addEventListener('change', () => {
+    const k = inp.dataset.s;
+    if (k === 'enabled') { if (inp.checked) delete s.enabled; else s.enabled = false; }
+    else if (inp.value.trim()) s[k] = inp.value.trim(); else delete s[k];
+    newsChanged(false);
+  }));
+  $$('[data-r]', host).forEach((inp) => inp.addEventListener('change', () => {
+    s.rule ??= {};
+    if (inp.dataset.r === 'index') s.rule.index = Math.max(1, Number(inp.value) || 1);
+    else if (inp.value) s.rule.tag = inp.value; else delete s.rule.tag;
+    newsChanged(false);
+  }));
+  $$('[data-x]', host).forEach((inp) => inp.addEventListener('change', () => {
+    const k = inp.dataset.x;
+    if (inp.checked) s[k] = k === 'exclude' ? 'used' : true; else delete s[k];
+    newsChanged(false);
+  }));
+  // The picker writes into its text box, which saves like any other field.
+  $$('[data-c]', host).forEach((pick) => pick.addEventListener('input', () => {
+    const text = $(`[data-f="${pick.dataset.c}"]`, host);
+    text.value = pick.value;
+    text.dispatchEvent(new Event('change'));
+  }));
+  $$('[data-sw]', host).forEach((b) => b.addEventListener('click', (e) => {
+    e.preventDefault(); // inside a <label>, a click would also focus the text box
+    const text = $('[data-f="imageAccent"]', host);
+    text.value = b.dataset.sw;
+    text.dispatchEvent(new Event('change'));
+  }));
+  $$('[data-f]', host).forEach((inp) => inp.addEventListener('change', () => {
+    const k = inp.dataset.f;
+    const t = editTarget(s, true);
+    // A badge colour that follows the accent keeps following it (see linkBadgeColor in tools/app.js).
+    if (k === 'imageAccent' && (!t.badgeColor || t.badgeColor === t.imageAccent)) delete t.badgeColor;
+    if (k === 'highlights') {
+      const list = inp.value.split('\n').map((x) => x.trim()).filter(Boolean);
+      if (list.length) t.highlights = list; else delete t.highlights;
+    } else if (inp.value.trim()) t[k] = k === 'excerpt' ? inp.value : inp.value.trim();
+    else delete t[k];
+    const pick = $(`[data-c="${k}"]`, host);
+    if (pick) pick.value = /^#[0-9a-f]{6}$/i.test(inp.value.trim()) ? inp.value.trim() : headerDefault(k, s);
+    // A new accent brings its own darker header background; edit the background after to override it.
+    if (k === 'imageAccent' && /^#[0-9a-f]{6}$/i.test(t.imageAccent ?? '')) {
+      t.imageBg = darkShade(t.imageAccent);
+      $('[data-f="imageBg"]', host).value = t.imageBg;
+      $('[data-c="imageBg"]', host).value = t.imageBg;
+    }
+    if (k === 'imageAccent') $$('[data-sw]', host).forEach((b) => b.classList.toggle('on', b.dataset.sw === String(t.imageAccent ?? '').toLowerCase()));
+    cleanSlot(s);
+    newsChanged(false);
+  }));
+  $$('#nwLocSeg .seg-btn', host).forEach((b) => b.addEventListener('click', () => {
+    NW_LOC = b.dataset.l;
+    renderCardDetail();
+    refreshPreview();
+  }));
+  $('#nwRemove').addEventListener('click', () => {
+    if (!confirm(`Remove "${slotLabel(s)}"?`)) return;
+    NEWS.feed.splice(NW_SEL, 1);
+    NW_SEL = Math.max(0, NW_SEL - 1);
+    newsChanged(true);
+  });
+  renderPreviewPane();
+  fillPlaceholders();
+}
+
+// Grey placeholder = what the card shows without this field (post slots).
+function fillPlaceholders() {
+  const s = NEWS?.feed?.[NW_SEL];
+  if (!isFed(s)) return;
+  const c = NW_PREVIEW.get(NW_SEL) ?? {};
+  $$('#nwDetail [data-f]').forEach((inp) => {
+    if (inp.tagName === 'SELECT') return;
+    const v = c[inp.dataset.f];
+    inp.placeholder = Array.isArray(v) ? v.join('\n') : (v ?? inp.dataset.ph ?? '');
+  });
+}
+
+// The launcher's no-image header (App.jsx NewsImage), for the preview.
+function textHeader(c, s) {
+  const bg = cssColor(c.imageBg, '#0a2a1a');
+  const ac = cssColor(c.imageAccent, headerAccent(s));
+  return `<div class="nwhead" style="--nh-bg:${bg};--nh-ac:${ac}">
+    <div class="nh-grid"></div><div class="nh-glow"></div>
+    <div class="nh-text"><div class="nh-sc">StarCraft</div><div class="nh-evo">Evolution Complete</div>
+      <div class="nh-box">${esc(`${c.imageText || 'EVO UPDATE'} ${c.imageLabel || ''}`.trim())}</div></div>
+  </div>`;
+}
+
+function renderPreviewPane() {
+  const host = $('#nwPreview');
+  if (!host) return;
+  const s = NEWS.feed[NW_SEL];
+  const c = NW_PREVIEW.get(NW_SEL);
+  if (!c) {
+    host.innerHTML = `<div class="empty small">${s?.enabled === false ? 'Hidden.' : s?.kind === 'post'
+      ? (NW_SITE.posts.length ? 'No site post matches this rule; the card is left out.' : 'Waiting for scevo.org…')
+      : s?.kind === 'patreon' ? (NW_PATREON.loaded ? 'Patreon has no post at this position.' : 'Waiting for Patreon…')
+      : s?.kind === 'banner' ? 'Set an image URL.' : 'Nothing to show.'}</div>`;
+    return;
+  }
+  if (c.type === 'banner') {
+    host.innerHTML = `<div class="nwcard banner"><img src="${esc(c.imageUrl)}" alt=""></div>`;
+    return;
+  }
+  const body = Array.isArray(c.highlights) && c.highlights.length && c.type === 'patchnotes'
+    ? `<ul>${c.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>`
+    : `<p>${esc(c.excerpt ?? '')}</p>`;
+  const badgeColor = cssColor(c.badgeColor, cssColor(c.imageAccent, headerAccent(s)));
+  // App.jsx NewsByline: date · icon author, in the channel accent.
+  const byline = c.date || c.author ? `<div class="nwbyline" style="--nb-ac:${headerAccent(s)}">
+      ${c.date ? `<span>${esc(c.date)}</span>` : ''}${c.date && c.author ? '<span class="dot">·</span>' : ''}
+      ${c.author ? `<span class="who">${c.authorIcon ? `<img src="${esc(c.authorIcon)}" alt="" onerror="this.remove()">` : ''}${esc(c.author)}</span>` : ''}</div>` : '';
+  host.innerHTML = `<div class="nwcard">
+    <div class="nwimg">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="">` : textHeader(c, s)}
+      ${c.badge ? `<span class="nwbadge" style="background:${esc(badgeColor)};border-color:${esc(badgeColor)};color:#080c10">${esc(c.badge)}</span>` : ''}</div>
+    <div class="nwbody"><b style="color:${headerAccent(s)}">${esc(c.title ?? '')}</b>${byline}${body}
+      ${c.linkUrl ? `<span class="faint small truncate">${esc(c.linkUrl)}</span>` : ''}</div>
+  </div>`;
+}
+
+function newsChanged(listOnly) {
+  setNewsDirty(true);
+  renderCardList();
+  if (listOnly) renderCardDetail();
+  refreshPreview();
+}
+
+function addSlot(slot) {
+  NEWS.feed.unshift(slot);
+  NW_SEL = 0;
+  NW_LOC = '';
+  newsChanged(true);
+}
+$('#nwAddPost').addEventListener('click', () => addSlot({ id: `post-${Date.now()}`, kind: 'post', rule: { index: 1 }, exclude: 'used' }));
+$('#nwAddPatreon').addEventListener('click', () => addSlot({ id: `patreon-${Date.now()}`, kind: 'patreon', rule: { index: 1 }, exclude: 'used' }));
+$('#nwAddBanner').addEventListener('click', () => addSlot({ id: `banner-${Date.now()}`, kind: 'banner' }));
+$('#nwAddCustom').addEventListener('click', () => addSlot({ id: `news-${Date.now()}`, kind: 'custom', title: 'New card', date: '', type: 'update', excerpt: '' }));
+$('#nwRefreshSite').addEventListener('click', () => { loadSitePosts(true); loadPatreonPosts(true); });
+
+$('#nwReload').addEventListener('click', () => {
+  if (NW_DIRTY && !confirm('You have unsaved news changes. Discard them?')) return;
+  loadNews().catch((e) => toast(e.message, 'err'));
 });
-$('#nwSave').addEventListener('click', async () => {
+// Resolves true once news-feed.json is written.
+async function saveNews() {
   try {
-    NEWS.announcement = {
-      enabled: $('#nwAnnEnabled').checked,
-      message: $('#nwAnnMsg').value,
-      type: $('#nwAnnType').value,
+    const { cards, ...rest } = NEWS;
+    const news = {
+      ...rest,
+      announcement: {
+        ...NEWS.announcement,
+        enabled: $('#nwAnnEnabled').checked,
+        message: $('#nwAnnMsg').value,
+        type: $('#nwAnnType').value,
+      },
     };
-    const r = await api('POST', '/api/news', { news: NEWS });
-    toast(`Wrote ${r.written}.`, 'ok');
+    const r = await api('POST', '/api/news', { news });
+    setNewsDirty(false);
+    if (r.warnings?.length) toast(r.warnings.join(' '), 'warn');
+    else toast(`Wrote ${r.written}.`, 'ok');
+    await loadNews();
+    return true;
+  } catch (e) { toast(e.message, 'err'); return false; }
+}
+$('#nwSave').addEventListener('click', saveNews);
+
+// news-feed.json + assets/news/ to the live CDN, without a full campaign deploy.
+// Progress and the log show on the Deploy tab like any deploy.
+$('#nwPublish').addEventListener('click', async () => {
+  if (NW_DIRTY && !confirm('Save your news changes first, then publish them?')) return;
+  if (!confirm('Upload news-feed.json and its news images to the LIVE CDN?\n\nNothing else is uploaded. Launchers show the new news on their next start.')) return;
+  if (NW_DIRTY && !await saveNews()) return;
+  const btn = $('#nwPublish');
+  btn.disabled = true;
+  $('#dpLog').textContent = '';
+  $('#dpResult').innerHTML = '';
+  resetRail();
+  resetXfer();
+  try {
+    const r = await api('POST', '/api/deploy-news', {});
+    if (r.aborted) {
+      const errors = r.preflight.news.findings.filter((f) => f.level === 'error');
+      toast(`News not published: ${errors.map((f) => f.message).join(' ')}`, 'err');
+    } else {
+      const bad = (r.published ?? []).filter((f) => f.level === 'error');
+      toast(bad.length ? `Uploaded, but ${bad[0].message}` : 'News published and verified on the CDN.', bad.length ? 'warn' : 'ok');
+      loadPending();
+    }
   } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; }
 });
 
-/* ── boot ────────────────────────────────────────────────────── */
+/* ── leaving with unsaved work ───────────────────────────────────── */
+
+window.addEventListener('beforeunload', (e) => {
+  if (MF_DIRTY || NW_DIRTY) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ── boot ────────────────────────────────────────────────────────── */
+
+resetXfer();
+syncDeployControls();
 connectEvents();
-loadState().then(loadSources).catch((e) => toast(e.message, 'err'));
+refreshProbe();
+loadState()
+  .then(loadCatalog)
+  .catch((e) => toast(e.message, 'err'));
