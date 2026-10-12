@@ -2,18 +2,24 @@
 
 Packages SC Evo content from the SC2 install and publishes it to Cloudflare R2 for the launcher.
 
-Two packages ship from here:
+Three packages ship from here, each deployable on its own:
 
 | Package | Manifest | Payload folder (= R2 prefix) | Installed by the launcher |
 |---|---|---|---|
-| **Campaign** | `update-manifest.json` (public), `beta-manifest.json` (beta) | `payload/`, `betapayload/` | under the SC2 folder |
+| **Campaign** | `update-manifest.json` (public), `beta-manifest.json` (beta), `news-feed.json` | `payload/`, `betapayload/`, `assets/` | under the SC2 folder |
 | **Melee vs AI** | `melee-manifest.json` | `meleepayload/` | mods under the SC2 folder; maps in `%APPDATA%\sc-evo-launcher\melee\` |
+| **Launcher** | `launcher-version.json` | `launcher/`, `installer/` (copied from the launcher repo's `dist-electron/` at deploy time) | the launcher's self-updater |
 
 ## Setup (once per machine)
 
 1. Node 18+, [rclone](https://rclone.org) with a remote named `cf` that can write the `evo-campaign` bucket (`rclone config`).
 2. Copy `deploy-config.example.json` to `deploy-config.json` and set `sc2InstallPath` (and `launcherRepoPath` when shipping a new launcher build).
 3. `run.cmd init` creates `deploy-catalog.json` from what is deployed today, if it doesn't exist yet.
+4. **CDN address:** `cdnBase` (Settings → CDN address) is currently `https://scevo.download`, a custom domain on the bucket.
+   - It goes into the manifests, `launcher-version.json` (launchers learn it from there) and news images.
+   - r2.dev stays the fallback, and postflight checks both.
+   - Before changing it, check the new address: **Check** button, or `run.cmd cdn-check https://…`.
+   - Setup steps: the launcher repo's `docs/cdn-custom-domain.md`.
 
 ## Everyday use
 
@@ -25,7 +31,8 @@ Typical release:
 1. **Catalog tab** (or `run.cmd status`): decide on anything listed as *new*, and set each item's channel.
 2. **Catalog tab → Build campaign / Build melee** (or `run.cmd build --package campaign|melee`): only changed sources are repackaged, and the manifests are regenerated. To ship only some files, tick them first (or **Select changed**) and click **Build N selected** (or `--only <source>`); every other built file stays byte-identical, so players re-download only what you ticked.
 3. **Manifest tab:** set versions, the critical-update notice or the beta settings, then **Write manifest**.
-4. **Deploy tab** (`run.cmd deploy --package … [--dry-run]`): dry run first, then live.
+4. **Deploy tab** (`run.cmd deploy --package … [--dry-run]`): dry run first, then live. The tab compares each package with the live CDN, shows what isn't deployed yet (e.g. "decals added", "launcher 1.3.0 → 1.3.1") and ticks those packages. `run.cmd status` prints the same summary.
+   - **Launcher only:** bump `version` in the launcher repo's `package.json`, build it, then deploy just the **Launcher** package (`run.cmd deploy --package launcher`). A rebuilt exe under the same version is flagged, because players are only offered a new version number.
    - **Update website download links** (`--update-site`, campaign only): after the upload, points the website's launcher downloads (`assets\js\site-links.js` in the **Website repo path** from Settings) at the R2 copies, with `?v=<launcher version>`. The file is edited in place and left uncommitted, whatever else is uncommitted there; commit and push the site to publish it.
 
 ## The catalog: `deploy-catalog.json`
@@ -69,6 +76,18 @@ run.cmd promote "Loomings3Legacy.SC2Map" public
 - **Previews before download:** the launcher shows each pool map's name, players, modes and minimap from `melee-manifest.json` and `thumbs/`, so they appear once the melee package is deployed.
 - **On players' PCs:** downloaded maps live in `%APPDATA%\sc-evo-launcher\melee\`; each game is played from a modified copy in `%TEMP%\SCEvoLauncher\<game>`. Nothing goes into SC2's Maps folder.
 
+**Player decals** (the launcher's decal picker):
+- **Build melee rebuilds them every time,** into `meleepayload/decals/`:
+  - one 64px atlas per race (`terran.png`, `zerg.png`, `protoss.png`), plus the Terran outline plates (`terran_bg.png`)
+  - the list `decals.json` (id, race, name, hidden, colored)
+- **They ship with the melee package,** in the manifest's `decals` section.
+- **Sources** (Settings, or the defaults):
+  - the textures from a CascView extraction: `D:\Casc Viewer\SC2\mods\liberty.sc2mod\base.sc2assets\assets\textures`
+  - the reward list and English names from `D:\SCBW\SC2GameData`
+  - re-extract both after a game patch that adds decals
+- **Blank-looking decals** are reported by the build. `run.cmd decals` lists them, and `run.cmd decals exclude Decal_Zerg_0083_01` leaves one out (stored in the catalog under `melee.decalExclude`). `include` puts it back.
+- **The textures stay untinted.** The launcher colours them with the player colour the way the game does.
+
 ## News: `manifests/news-feed.json`
 
 Edit it on the **News** tab. The launcher shows the cards in `feed`, in order:
@@ -81,7 +100,10 @@ Edit it on the **News** tab. The launcher shows the cards in `feed`, in order:
 | **Custom card** | A card you write yourself. |
 
 - **Patreon cards are filled in when you save**, not live. Patreon's image links expire after a few weeks, so the preview image is copied to `assets/news/` and the card points at its R2 copy. **Deploy the campaign package** after saving, so the image is uploaded (Verify reports a card whose image is missing from `assets/`).
-- **Text header:** a card without an image shows the launcher's text header. Set its **Header text**, **Header label**, **Header background** and **Header accent** on any site post, Patreon or custom card.
+- **Publish news only** uploads `news-feed.json` and `assets/news/` to the live CDN after the news checks pass, with nothing else. Use it for news changes between deploys, such as a banner swap or an announcement. It saves unsaved changes first, and its log shows on the Deploy tab.
+- **Accent presets:** the swatches under **Accent (header + badge)** list the accents already used in the feed, then 24 presets. Picking an accent also sets **Header background** to a darker shade of it; edit the background afterwards to override it.
+- **Card accent:** **Accent (header + badge)** colours the badge and the text header's glow and grid when there is no image. **Badge colour** overrides just the badge. Leave **Badge colour** empty to have the badge follow the accent; Save writes the accent into `badgeColor`, which is the only field the launcher reads for the badge.
+- **Text header:** a card without an image shows the launcher's text header. Set its **Header text**, **Header label**, **Header background** and **Accent (header + badge)** on any site post, Patreon or custom card.
 - **The launcher fills site posts live.** A new post on the site shows up without a deploy; it's in the player's language when the site has a translation (`posts/<slug>.<locale>.md`), otherwise English.
 - **Overrides:** any field you fill replaces what the site post shows. **All languages** applies everywhere; a language tab applies only to the launcher in that language. The preview shows the result for the selected language.
 - **Shown on** limits a card to the public or beta channel.
@@ -121,6 +143,7 @@ For players who can't use the launcher: **Deploy tab → Build offline .zip** (o
 | `tools/lib/generate.js` | the three manifests from the catalog |
 | `tools/lib/mapmeta.js`, `tools/lib/sc2map/` | melee map metadata (`sc2map/` is copied from the launcher's reader; copy it again when the launcher's changes) |
 | `tools/lib/deploy.js`, `r2.js`, `verify.js` | deploy sequence, rclone, checks |
+| `tools/lib/decals.js`, `tools/lib/img/` | player decal atlases for the melee package (DXT5 decode, PNG encode) |
 | `tools/lib/news.js` | news feed resolution (copied from the launcher's `electron/news/posts.js`; copy it again when that changes) |
 | `tools/lib/patreon.js` | Patreon posts for news cards, filled in and image re-hosted on save |
 | `tools/test/` | `node --test "tools/test/*.test.js"` |

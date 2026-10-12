@@ -1,9 +1,15 @@
 {
-  "version": "1.3.0",
+  "version": "1.3.2",
+  "minWindows": "10",
+  "cdnBase": "https://scevo.download",
   "portable": {
-    "url": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/launcher/SC%20Evo%20Launcher.exe"
+    "url": "https://scevo.download/launcher/SC%20Evo%20Launcher.exe",
+    "size": 79561567,
+    "sha256": "729c5b31764b5c643eb8808e24829ac72eeb42d72aa11490b77b536d88b14e7e"
   },
   "installer": {
-    "url": "https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev/installer/SC%20Evo%20Launcher%20Setup.exe"
+    "url": "https://scevo.download/installer/SC%20Evo%20Launcher%20Setup.exe",
+    "size": 79981911,
+    "sha256": "bc87abedbd6eb987eda9f2c0aa8687f8904e253c5496325b0f88b7e47fb2a518"
   }
 }
