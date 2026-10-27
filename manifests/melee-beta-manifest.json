@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "lastUpdated": "2026-10-17T04:33:05Z",
+  "betaEnabled": true,
+  "betaName": "Melee AI Test",
+  "version": "1.21.0.1",
+  "codeHash": "4163ea458a461f45d2d68a05e212ac0a9a0c306aff9c77ea23002e6411e414ce",
+  "theme": {
+    "accentColor": "#9e41fb",
+    "accentColorDim": "#9e41fb44",
+    "particleColor": "158, 65, 251",
+    "bgGlow": "#9e41fb15",
+    "badgeText": "BETA",
+    "badgeColor": "#9e41fb"
+  },
+  "modules": [
+    {
+      "id": "beta-scevo-core",
+      "name": "SCEvo_Core",
+      "description": "SCEvo_Core (melee beta)",
+      "files": [
+        {
+          "name": "SCEvo_Core.SC2Mod",
+          "path": "Mods/SC Evolution Complete Beta/SCEvo_Core.SC2Mod",
+          "size": 6811682,
+          "hash": "67f89fd9153f070619a6762c4d8cc812da0e96025cfc26c1e37b9f469663d996"
+        }
+      ]
+    },
+    {
+      "id": "beta-scevo-legacy",
+      "name": "SCEvo_Legacy",
+      "description": "SCEvo_Legacy (melee beta)",
+      "files": [
+        {
+          "name": "SCEvo_Legacy.SC2Mod",
+          "path": "Mods/SC Evolution Complete Beta/SCEvo_Legacy.SC2Mod",
+          "size": 475980,
+          "hash": "a90c58d599a3a8eb7f66a2ae2ff64c314e8df834f92766ff00c9e0ffa97eaac6"
+        }
+      ]
+    },
+    {
+      "id": "beta-scevo-multi",
+      "name": "SCEvo_Multi",
+      "description": "SCEvo_Multi (melee beta)",
+      "files": [
+        {
+          "name": "SCEvo_Multi.SC2Mod",
+          "path": "Mods/SC Evolution Complete Beta/SCEvo_Multi.SC2Mod",
+          "size": 445715,
+          "hash": "479449dc01c31796d5178089b00f28d5485f12563aeb60d676079b76e7d4fa69"
+        }
+      ]
+    }
+  ]
+}

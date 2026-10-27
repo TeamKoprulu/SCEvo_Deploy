@@ -1,9 +1,17 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-04T23:50:28Z",
+  "lastUpdated": "2026-10-17T04:29:08Z",
   "versions": {
     "multiplayer": "1.21.0.1",
     "campaign": "0.6.1"
+  },
+  "theme": {
+    "accentColor": "#ababab",
+    "accentColorDim": "#ababab44",
+    "particleColor": "171, 171, 171",
+    "bgGlow": "#ababab15",
+    "badgeText": null,
+    "badgeColor": null
   },
   "criticalUpdate": {
     "enabled": false,
@@ -147,8 +155,8 @@
         {
           "name": "SCEvo_Core.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
-          "size": 6570442,
-          "hash": "232b3316cdc6f3e9a092bbaa8bbee327104c4f47f396e3a06a154a49b9ab190b"
+          "size": 6811682,
+          "hash": "67f89fd9153f070619a6762c4d8cc812da0e96025cfc26c1e37b9f469663d996"
         }
       ]
     },
@@ -161,8 +169,8 @@
         {
           "name": "SCEvo_Legacy.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Legacy.SC2Mod",
-          "size": 472562,
-          "hash": "0639085afea1e1c9becce1bf342f11d056ce152b60d38a01a11f6d4234ca2d62"
+          "size": 475988,
+          "hash": "500afedf83711750eaa093fbfa3190df32e68ae88adf966c964f70c42516d2ee"
         }
       ]
     },

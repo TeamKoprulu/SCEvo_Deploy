@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-04T21:11:00Z",
+  "lastUpdated": "2026-10-17T04:28:38Z",
   "version": "1.21",
   "requires": [
     "Mods/SC Evolution Complete/SCEvo_Core.SC2Mod",
@@ -15,8 +15,8 @@
         {
           "name": "SCEvo_Multi.SC2Mod",
           "path": "Mods/SC Evolution Complete/SCEvo_Multi.SC2Mod",
-          "size": 445674,
-          "hash": "c8c09b5af0bc14bd76529e08faa04ac7614c23d9f13282e255fa79605aa80a14"
+          "size": 445724,
+          "hash": "e368fd74094def76c27eeb4d2a194d76c8f3c6fe4df1f1a5d577474dab3c19d1"
         }
       ]
     },
