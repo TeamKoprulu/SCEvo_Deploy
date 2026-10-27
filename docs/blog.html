@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog Posts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html">Overview</a>
+  <a href="checks.html">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html">Asset splitting</a>
+  <a href="mods.html">Mod packaging</a>
+  <a href="cdn.html">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html" class="active">Blog posts</a>
+  <a href="website.html">Website push</a>
+</nav>
+<main>
+<h1>Blog posts</h1>
+<p class="lead">A post is a markdown file in <code>EvoSite/posts/</code>. It stays unreleased until you add it to the post lists. The same scripts then create its page, short URL, sitemap entry, search entry and link preview.</p>
+
+<div class="callout"><span class="label">The launcher reads the site</span>
+<p>Released posts show in the launcher's news on their own (site post cards are filled live from <code>postList.json</code>), in the player's language when a translation exists. No deploy is needed unless you change the news feed itself.</p>
+</div>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Write the .md</strong>Create <code>posts/&lt;post-id&gt;.md</code>, e.g. <code>posts/evo-update-1_22.md</code>. The id is the file name without <code>.md</code>.
+<pre><code>---
+title: "Extension Update 1.22 patch notes"
+short_title: "1.22"
+author: "Kat"
+date: "2026-11-15"
+blog-image: "/assets/img/blog/blog-update-1_22.webp"
+tags: "Update, Extension, Bugfixes"
+url: "update-1_22"
+description: "One line for search results and link previews."
+---
+
+# Update 1.22
+***
+Post body in markdown…</code></pre>
+  <p>Required: <code>title</code>, <code>author</code>, <code>date</code> (<code>YYYY-MM-DD</code>), <code>blog-image</code>, <code>tags</code>. <code>url</code> gives a short address: <code>update-1_22</code> becomes <code>scevo.org/update-1-22</code> (letters, numbers and dashes; underscores become dashes).</p></li>
+  <li><strong>Add the images</strong>Card image in <code>assets/img/blog/</code>, in-post images in <code>assets/img/blogassets/</code>, videos in <code>assets/video/</code>. Reference them from the site root (<code>/assets/…</code>). For videos, also run <code>node scripts/build-video-posters.mjs</code>.</li>
+  <li><strong>Hero and thumbnail (optional)</strong>Open <code>tools/hero-editor.html</code> through a local server to place a hero background and model. It writes the <code>cinematic-*</code> and <code>thumb-*</code> frontmatter. <code>tools/showcase-editor.html</code> builds <code>{{showcase}}</code> panels. <code>posts/styleguide.md</code> shows the other blocks (<code>{{image-gallery}}</code>, …).</li>
+  <li><strong>Preview locally</strong>
+<pre><code>cd D:\SCBW\EvoSite
+npx serve</code></pre>
+  An unreleased post opens at <code>/posts/&lt;post-id&gt;.html</code> once its page exists (step 6 creates it; it can also be copied from another post).</li>
+  <li><strong>Check</strong>
+<pre><code>cd D:\SCBW\SCEvo_Deploy
+.\run.cmd check blog evo-update-1_22</code></pre>
+  Missing frontmatter, images or videos that don't exist (in the post and its translations), page, lists, short URL, sitemap, link preview.</li>
+  <li><strong>Release</strong>
+<pre><code>cd D:\SCBW\EvoSite
+<span class="c"># lists, page, head, _redirects, serve.json</span>
+node scripts/build-postlist.mjs add evo-update-1_22
+node scripts/build-sitemap.mjs
+node scripts/build-search-index.mjs
+<span class="c"># posts with a hero background</span>
+node scripts/build-og-images.mjs evo-update-1_22</code></pre>
+  </li>
+  <li><strong>Check again and publish</strong><code>.\run.cmd check blog evo-update-1_22</code> should pass. Then <a href="website.html">push the site</a>.</li>
+</ol>
+
+<h2>Editing a released post</h2>
+<ul>
+  <li>Edit the .md, then <code>node scripts/build-postlist.mjs</code> (no arguments) to refresh every listed post's entry and page head from its frontmatter.</li>
+  <li>Changed the title or text? Also <code>build-search-index.mjs</code>, and <code>build-og-images.mjs &lt;id&gt;</code> if the preview shows the title.</li>
+  <li>To unlist a post (the page stays): <code>node scripts/build-postlist.mjs remove &lt;post-id&gt;</code>.</li>
+</ul>
+
+<h2>Translations</h2>
+<ul>
+  <li><code>posts/&lt;post-id&gt;.&lt;locale&gt;.md</code> with locale <code>esES</code>, <code>koKR</code>, <code>zhCN</code>, <code>itIT</code> or <code>ruRU</code>.</li>
+  <li>A translation inherits every frontmatter field it leaves out from the English post. Only write what's translated (<code>title</code>, <code>short_title</code>, <code>description</code>, …). <code>node scripts/clean-translations.mjs</code> trims copied fields.</li>
+  <li>Tags stay English: they are filter keys, and the pages translate them.</li>
+  <li><code>build-postlist.mjs</code> writes the per-language lists (<code>postList.&lt;locale&gt;.json</code>).</li>
+</ul>
+
+<h2>Descriptions</h2>
+<p>The one-line description in search results and embeds lives in three places that must agree. Edit them together in <code>docs/meta-descriptions.md</code>:</p>
+<pre><code><span class="c"># (re)build the doc from the pages</span>
+node scripts/meta-descriptions.mjs --init
+<span class="c"># write it into the pages and postList.json</span>
+node scripts/meta-descriptions.mjs --apply</code></pre>
+
+<div class="pager"><a href="launcher.html">← Launcher release</a><a href="website.html">Website push →</a></div>
+</main>
+</div>
+</body>
+</html>

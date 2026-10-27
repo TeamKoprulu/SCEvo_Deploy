@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SCEvo Deploy Tool</title>
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="mock.css">
 </head>
 <body>
   <header class="topbar">
@@ -50,8 +51,10 @@
               <button class="seg-btn" data-f="melee">Melee</button>
             </div>
             <button class="btn ghost" id="ctRefresh">Rescan</button>
+            <button class="btn" id="ctBuildMeleeBeta" title="Copies the mods tagged Melee beta into betameleepayload/ with their dependencies pointed at Mods\SC Evolution Complete Beta">Build melee beta</button>
           </div>
         </div>
+        <div id="ctMeleeBetaProblems"></div>
         <div class="sec-body flush" id="ctList"></div>
         <div class="build-progress" id="ctProgress" hidden>
           <div class="small" id="ctProgressLabel">Starting…</div>
@@ -99,6 +102,7 @@
               <button class="seg-btn active" data-branch="public">Public</button>
               <button class="seg-btn" data-branch="beta">Beta</button>
               <button class="seg-btn" data-branch="melee">Melee</button>
+              <button class="seg-btn" data-branch="meleebeta">Melee beta</button>
             </div>
             <button class="btn ghost" id="mfReload">Reload</button>
             <button class="btn primary" id="mfSave">Write manifest</button>
@@ -117,6 +121,19 @@
                 <label>Core (multiplayer)<input id="mfVerCore" type="text" placeholder="1.20.3"></label>
                 <label>Campaign<input id="mfVerCampaign" type="text" placeholder="0.6.1"></label>
               </div>
+              <div class="field-row">
+                <label>Launcher colour <span class="hint-inline">the current episode's palette; blank = site default</span><span class="color-field"><input type="color" id="mfPubAccentPick" aria-label="Pick a colour"><input id="mfPubAccent" type="text" placeholder="#54b893 (site default)"></span></label>
+                <label>Episode shown<select id="mfPubEpisode"></select></label>
+              </div>
+              <div class="theme-preview" id="mfPubPreview"></div>
+              <p class="hint">Launcher 1.4+ derives its whole palette from this one colour. Older launchers keep their built-in public colours.</p>
+              <div class="bg-field" id="mfPubBg">
+                <span class="bg-thumb"><img alt="" hidden><i>Episode art</i></span>
+                <span class="bg-info"><b>Hero background</b><span class="bg-name faint small">the episode's own background</span></span>
+                <input type="file" accept=".webp,.png,.jpg,.jpeg" hidden>
+                <button class="btn" type="button" data-act="pick">Choose image…</button>
+                <button class="btn" type="button" data-act="clear">Remove</button>
+              </div>
             </div>
             <div id="mfMeleeMeta" hidden>
               <div class="field-row">
@@ -124,14 +141,36 @@
               </div>
               <p class="hint">The launcher shows "update available" when this changes.</p>
             </div>
+            <div id="mfMeleeBetaMeta" hidden>
+              <label class="check"><input type="checkbox" id="mfMbEnabled"> Melee beta enabled</label>
+              <p class="hint">Players unlock it with the code in the launcher's Melee tab. When off, the manifest carries no mods and the launcher hides the beta.</p>
+              <div class="field-row">
+                <label>Beta name<input id="mfMbName" type="text" placeholder="Melee closed beta"></label>
+                <label>Beta version<input id="mfMbVersion" type="text" placeholder="1.0.0"></label>
+                <label>Accent colour<span class="color-field"><input type="color" id="mfMbAccentPick" aria-label="Pick a colour"><input id="mfMbAccent" type="text" placeholder="#ff6600"></span></label>
+              </div>
+              <label>Access code <span class="hint-inline">plaintext, hashed locally; blank keeps the current one, a new code locks out the old one</span>
+                <input id="mfMbCode" type="text" placeholder="leave blank to keep existing">
+              </label>
+              <div class="mono small faint" id="mfMbHash"></div>
+            </div>
             <div id="mfBetaMeta" hidden>
               <label class="check"><input type="checkbox" id="mfBetaEnabled"> Beta enabled</label>
               <p class="hint">When off, the manifest is written in the stripped shape production serves — no modules, no criticalUpdate. The fields below are kept but ignored.</p>
               <div id="mfBetaFields">
                 <div class="field-row">
                   <label>Beta name<input id="mfBetaName" type="text"></label>
-                  <label>Accent colour<input id="mfBetaAccent" type="text" placeholder="#ff6600"></label>
+                  <label>Accent colour<span class="color-field"><input type="color" id="mfBetaAccentPick" aria-label="Pick a colour"><input id="mfBetaAccent" type="text" placeholder="#ff6600"></span></label>
+                  <label>Episode shown<select id="mfBetaEpisode"></select></label>
                 </div>
+                <div class="theme-preview" id="mfBetaPreview"></div>
+                <div class="bg-field" id="mfBetaBg">
+                <span class="bg-thumb"><img alt="" hidden><i>Episode art</i></span>
+                <span class="bg-info"><b>Hero background</b><span class="bg-name faint small">the episode's own background</span></span>
+                <input type="file" accept=".webp,.png,.jpg,.jpeg" hidden>
+                <button class="btn" type="button" data-act="pick">Choose image…</button>
+                <button class="btn" type="button" data-act="clear">Remove</button>
+              </div>
                 <div class="field-row">
                   <label>Major version<input id="mfBetaMajor" type="text"></label>
                   <label>Full version<input id="mfBetaFull" type="text"></label>
@@ -162,6 +201,14 @@
         </div>
       </div>
 
+      <div class="section" id="mfMockSection">
+        <div class="sec-head mock-head"><h3>Launcher preview</h3>
+          <span class="faint small">A look-alike of launcher 1.4 drawn from the settings above (unsaved edits included). Nothing in it works; the news is the current news feed.</span>
+          <button class="btn ghost sm" id="mfMockNews" title="Fetch the news feed again">Refresh news</button>
+        </div>
+        <div class="sec-body"><div id="mfMock"></div></div>
+      </div>
+
       <div id="mfProblems"></div>
       <div class="section">
         <div class="sec-head">
@@ -185,6 +232,7 @@
               <button class="seg-btn active" data-branch="public">Public</button>
               <button class="seg-btn" data-branch="beta">Beta</button>
               <button class="seg-btn" data-branch="melee">Melee</button>
+              <button class="seg-btn" data-branch="meleebeta">Melee beta</button>
             </div>
             <button class="btn ghost" id="vfOrphans">Check remote orphans</button>
             <button class="btn primary" id="vfRun">Run checks</button>
@@ -214,6 +262,8 @@
                 <p class="hint pending" id="dpPendCampaign"></p>
                 <label class="check"><input type="checkbox" id="dpPkgMelee"> Melee vs AI <span class="faint">(meleepayload, melee-manifest.json, decals)</span></label>
                 <p class="hint pending" id="dpPendMelee"></p>
+                <label class="check"><input type="checkbox" id="dpPkgMeleeBeta"> Melee beta <span class="faint">(betameleepayload, melee-beta-manifest.json)</span></label>
+                <p class="hint pending" id="dpPendMeleeBeta"></p>
                 <label class="check"><input type="checkbox" id="dpPkgLauncher"> Launcher <span class="faint">(exe, installer, launcher-version.json)</span></label>
                 <p class="hint pending" id="dpPendLauncher"></p>
               </div>
@@ -422,6 +472,7 @@
   </main>
 
   <div class="toast" id="toast" hidden></div>
+  <script src="mock.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asset Splitting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html">Overview</a>
+  <a href="checks.html">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html" class="active">Asset splitting</a>
+  <a href="mods.html">Mod packaging</a>
+  <a href="cdn.html">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html">Blog posts</a>
+  <a href="website.html">Website push</a>
+</nav>
+<main>
+<h1>Asset splitting</h1>
+<p class="lead">On Battle.net, the art in <code>SCEvo_Assets.SC2Mod</code> doesn't go up as one mod. It goes out as five smaller split mods. <code>Prepare-Upload.ps1</code> keeps those five in step with the dev mod and tells you which mods and maps changed since the last release.</p>
+
+<table>
+  <tr><th>Repo</th><td><code>D:\SCBW\SCEvo_AssetUploads</code> (GitHub <code>TeamKoprulu/SCEvo_AssetUploads</code>)</td></tr>
+  <tr><th>Split mods</th><td><code>Online Mods\</code>: <code>SCEvo_ProtossAssets</code>, <code>SCEvo_TerranAssets</code>, <code>SCEvo_ZergAssets</code>, <code>SCEvo_OnlineAssets</code>, <code>SCEvo_LocalizedAssets</code> (all <code>.SC2Mod</code>)</td></tr>
+  <tr><th>Source</th><td><code>D:\SCBW\SCEvoDev\SC Evo Complete\SCEvo_Assets.SC2Mod</code></td></tr>
+  <tr><th>Routing decisions</th><td><code>asset-routing.json</code></td></tr>
+</table>
+
+<div class="callout warn"><span class="label">Never upload SCEvo_Assets directly</span>
+<p>Its contents reach Battle.net only through the five split mods. <code>SCEvo_MultiArtAssets</code> is the exception: it is uploaded straight from the dev repo. The <code>_KR</code> mods and <code>Multi\</code> are ignored by the script.</p>
+</div>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Commit the dev work</strong>In SCEvoDev. The report counts uncommitted changes as changed too, and the check warns about them.</li>
+  <li><strong>Dry run</strong>
+<pre><code>cd D:\SCBW\SCEvo_AssetUploads
+powershell -ExecutionPolicy Bypass -File .\Prepare-Upload.ps1
+<span class="c"># save the report:  -ReportPath report.md</span></code></pre>
+  </li>
+  <li><strong>Resolve anything it can't place</strong>
+  <p>Section 2 ends with a JSON snippet for <strong>unresolved</strong> new files and for files that sit in <strong>more than one split mod</strong>. Paste it into <code>routes</code> in <code>asset-routing.json</code> and replace each <code>"?"</code> with <code>Protoss</code>, <code>Terran</code>, <code>Zerg</code>, <code>Online</code> or <code>Localized</code>. Decisions are kept for later patches.</p></li>
+  <li><strong>Apply</strong>
+<pre><code>powershell -ExecutionPolicy Bypass -File .\Prepare-Upload.ps1 -Apply</code></pre>
+  New and changed files are copied, files gone from dev are deleted, duplicates with a routing decision are reduced to one copy. Only the five split mods are touched.</li>
+  <li><strong>Check again</strong>
+<pre><code>cd D:\SCBW\SCEvo_Deploy
+.\run.cmd check assets</code></pre>
+  It should report the split mods in sync and nothing unresolved. Review <code>git status</code> in SCEvo_AssetUploads and commit.</li>
+  <li><strong>Publish to Battle.net</strong>From the SC2 Editor, publish every mod in the report's upload list: section 1 (mods and maps changed since the last tag) plus each split mod marked <em>needs upload</em>. The check prints the same list as <span class="badge b-info">INFO</span>.</li>
+  <li><strong>Tag the release</strong>Tag SCEvoDev <code>Update-&lt;version&gt;</code>, with the version the patch notes post uses (whoever writes the post picks it). The next report compares from the newest <code>Update-*</code> tag.</li>
+</ol>
+
+<h2>Reading the report</h2>
+<h3>Section 1: mods needing upload</h3>
+<p>Every <code>.SC2Mod</code> / <code>.SC2Map</code> in SCEvoDev with commits since the last <code>Update-*</code> tag (or <code>-Since &lt;ref&gt;</code>), plus uncommitted changes. <code>SCEvo_Assets</code> is listed with a note that it goes out through the split mods.</p>
+<h3>Section 2: split asset mods</h3>
+<pre><code>new: 20   changed: 27   stale: 58   duplicates: 0   unresolved: 1</code></pre>
+<table>
+  <tr><th>Line</th><th>Meaning</th></tr>
+  <tr><td><code>NEW</code></td><td>In dev, in no split mod yet. Placed automatically, in this order: locale folder, race folder, a folder that already exists in one split mod, the models that use a texture (or the textures a model uses), the unit or building name. The rule used is shown in brackets.</td></tr>
+  <tr><td><code>CHANGED</code></td><td>Different in dev; overwritten where it already is.</td></tr>
+  <tr><td><code>DELETE</code></td><td>No longer in dev; removed.</td></tr>
+  <tr><td>Unresolved / duplicates</td><td>Never guessed: decide them in <code>asset-routing.json</code>.</td></tr>
+</table>
+<p>Per-mod metadata (DocumentInfo, ComponentList, version files, GameStrings) isn't asset content: each split mod keeps its own copy.</p>
+
+<h2>Options</h2>
+<table>
+  <tr><th>Option</th><th>Default</th></tr>
+  <tr><td><code>-Since &lt;git ref&gt;</code></td><td>Newest <code>Update-*</code> tag in SCEvoDev</td></tr>
+  <tr><td><code>-DevRoot &lt;path&gt;</code></td><td><code>D:\SCBW\SCEvoDev</code></td></tr>
+  <tr><td><code>-ReportPath &lt;file&gt;</code></td><td>Console only</td></tr>
+  <tr><td><code>-Apply</code></td><td>Off (dry run)</td></tr>
+</table>
+
+<div class="pager"><a href="checks.html">← Pre-push checks</a><a href="mods.html">Mod packaging →</a></div>
+</main>
+</div>
+</body>
+</html>

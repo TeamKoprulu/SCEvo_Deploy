@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-push Checks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html">Overview</a>
+  <a href="checks.html" class="active">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html">Asset splitting</a>
+  <a href="mods.html">Mod packaging</a>
+  <a href="cdn.html">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html">Blog posts</a>
+  <a href="website.html">Website push</a>
+</nav>
+<main>
+<h1>Pre-push checks</h1>
+<p class="lead">One command per front, run from the deploy repo before you push. The checks only read: nothing is built, written or uploaded.</p>
+
+<pre><code>cd D:\SCBW\SCEvo_Deploy
+<span class="c"># one post (or no id: every released post)</span>
+.\run.cmd check blog evo-update-1_22
+.\run.cmd check site
+.\run.cmd check launcher
+.\run.cmd check assets
+.\run.cmd check mods
+.\run.cmd check cdn
+<span class="c"># assets, mods, cdn, launcher, site</span>
+.\run.cmd check all
+<span class="c"># skip test suites and payload hashing</span>
+.\run.cmd check cdn --quick
+<span class="c"># every missing model / texture, not just new ones</span>
+.\run.cmd check assets --all</code></pre>
+
+<p>Each line is one of:</p>
+<table>
+  <tr><th>Result</th><th>Meaning</th></tr>
+  <tr><td><span class="badge b-pass">PASS</span></td><td>Fine.</td></tr>
+  <tr><td><span class="badge b-warn">WARN</span></td><td>Pushable, but look at it first (uncommitted work, things not rebuilt).</td></tr>
+  <tr><td><span class="badge b-fail">FAIL</span></td><td>Don't push. The line says what to run or fix. The command exits with code 1.</td></tr>
+  <tr><td><span class="badge b-info">INFO</span></td><td>Context, e.g. what isn't deployed yet.</td></tr>
+</table>
+<p>The last line sums it up: <strong>READY</strong>, <strong>READY WITH WARNINGS</strong> or <strong>NOT READY</strong>.</p>
+
+<div class="callout"><span class="label">Repo paths</span>
+<p>The checks find the other repos from <code>deploy-config.json</code>: <code>launcherRepoPath</code>, <code>siteRepoPath</code>, <code>assetUploadsPath</code>, <code>devRepoPath</code> and <code>campaignRepoPath</code>. Without the last four they use the folders next to this repo (<code>..\EvoSite</code>, <code>..\SCEvo_AssetUploads</code>, <code>..\SCEvoDev</code>, <code>..\SCBW_Campaign</code>). The code is <code>tools/check.js</code>.</p>
+</div>
+
+<h2>blog [post-id]</h2>
+<p>With an id, checks that one post (released or not). Without one, every post in <code>postList.json</code>, then lists posts on disk that aren't released.</p>
+<table>
+  <tr><th>Check</th><th>Fails when</th><th>Fix</th></tr>
+  <tr><td>Source</td><td><code>posts/&lt;id&gt;.md</code> missing, no frontmatter, or no title / author / date / blog-image / tags; date not <code>YYYY-MM-DD</code></td><td>Edit the .md</td></tr>
+  <tr><td>Images and videos</td><td><code>blog-image</code> or any <code>/assets/…</code> path in the post or its translations doesn't exist</td><td>Add the file or fix the path</td></tr>
+  <tr><td>Page</td><td><code>posts/&lt;id&gt;.html</code> missing or without <code>data-post-id="&lt;id&gt;"</code></td><td><code>node scripts/build-postlist.mjs add &lt;id&gt;</code></td></tr>
+  <tr><td>Lists</td><td><code>postList.json</code> title / date / image differ from the .md</td><td><code>node scripts/build-postlist.mjs</code></td></tr>
+  <tr><td>Short URL</td><td>The post has <code>url:</code> but <code>_redirects</code> has no rule for it</td><td><code>node scripts/build-postlist.mjs</code></td></tr>
+  <tr><td>Sitemap</td><td>Released post not in <code>sitemap.xml</code></td><td><code>node scripts/build-sitemap.mjs</code></td></tr>
+  <tr><td>Link preview</td><td><code>og:image</code> points at a file that doesn't exist (warns when there is no og:image)</td><td><code>node scripts/build-og-images.mjs</code></td></tr>
+</table>
+<p>Not released yet is <span class="badge b-warn">WARN</span> for a single post and <span class="badge b-info">INFO</span> in the full list.</p>
+
+<h2>site</h2>
+<table>
+  <tr><th>Check</th><th>Flags</th></tr>
+  <tr><td>Git</td><td><span class="badge b-warn">WARN</span> uncommitted files; <span class="badge b-info">INFO</span> the current branch (live once merged into <code>main</code>), unpushed commits</td></tr>
+  <tr><td>Data files</td><td><span class="badge b-fail">FAIL</span> any <code>assets/data/*.json</code> that doesn't parse</td></tr>
+  <tr><td>Broken links</td><td><span class="badge b-fail">FAIL</span> any <code>/assets/…</code> path in a root, <code>posts/</code> or <code>ladder/</code> page that doesn't exist (HTML comments are skipped)</td></tr>
+  <tr><td>Download page</td><td><span class="badge b-warn">WARN</span> <code>assets/data/launcher-version.json</code> or <code>site-links.js</code> not on the version in <code>manifests/launcher-version.json</code></td></tr>
+  <tr><td>Blog</td><td>Everything in <strong>blog</strong> above, for every released post</td></tr>
+</table>
+
+<h2>launcher</h2>
+<table>
+  <tr><th>Check</th><th>Flags</th></tr>
+  <tr><td>Git</td><td><span class="badge b-warn">WARN</span> uncommitted files (the build may not match what's committed)</td></tr>
+  <tr><td>Version</td><td><span class="badge b-fail">FAIL</span> <code>package.json</code> older than the live <code>launcher-version.json</code>; <span class="badge b-info">INFO</span> same version (nothing new to publish)</td></tr>
+  <tr><td>Build output</td><td><span class="badge b-fail">FAIL</span> <code>dist-electron</code> not built at this version, or an exe missing</td></tr>
+  <tr><td>Devtest build</td><td><span class="badge b-fail">FAIL</span> the built app is a <code>build:devtest</code> (DevTools on, debug toolbar and match analysis in it)</td></tr>
+  <tr><td>Windows 7</td><td><span class="badge b-warn">WARN</span> <code>dist-electron-win7</code> is from another version (it won't be published; the live Win7 version stays)</td></tr>
+  <tr><td>Rebuilt, same version</td><td><span class="badge b-warn">WARN</span> exe differs from the live one but the version didn't change (players won't get it)</td></tr>
+  <tr><td>Tests</td><td><span class="badge b-fail">FAIL</span> <code>npm test</code> fails (skipped with <code>--quick</code>)</td></tr>
+</table>
+
+<h2>assets</h2>
+<p>Runs <code>Prepare-Upload.ps1</code> as a dry run in SCEvo_AssetUploads and reads its summary line.</p>
+<table>
+  <tr><th>Check</th><th>Flags</th></tr>
+  <tr><td>Unresolved files</td><td><span class="badge b-fail">FAIL</span> new asset files the script can't place in a split mod. Add them to <code>routes</code> in <code>asset-routing.json</code></td></tr>
+  <tr><td>Duplicates</td><td><span class="badge b-warn">WARN</span> a file in more than one split mod</td></tr>
+  <tr><td>Out of date</td><td><span class="badge b-warn">WARN</span> new / changed / stale files: run <code>Prepare-Upload.ps1 -Apply</code></td></tr>
+  <tr><td>Upload list</td><td><span class="badge b-info">INFO</span> the mods and maps to publish to Battle.net</td></tr>
+  <tr><td>Dev repo</td><td><span class="badge b-warn">WARN</span> uncommitted changes in SCEvoDev</td></tr>
+</table>
+
+<h3>Models and textures</h3>
+<p>Then it follows every model and texture reference in the dev mods and MP maps (SCEvoDev) and the campaign mods (<code>SCBW_Campaign\SCEvo_CampaignMods</code>):</p>
+<ul>
+  <li><strong>Game data → model:</strong> each <code>CModel</code>, its path built from its parent template the way the editor does (<code>Race</code> and other tokens, <code>VariationCount</code> → <code>_00</code>, <code>_01</code>, …).</li>
+  <li><strong>Game data → texture:</strong> every other quoted <code>.m3</code> / <code>.dds</code> / <code>.tga</code> path (icons, wireframes, terrain, lighting).</li>
+  <li><strong>Model → texture:</strong> the texture paths stored in each <code>.m3</code>.</li>
+</ul>
+<p>A file counts as there when vanilla SC2 has it (the CascView extraction: the folder above <code>mods\liberty.sc2mod</code> from the decal texture setting), any Evo mod has it (usually SCEvo_Assets or SCEvo_CampaignAssets), or, for a map, the map itself. Templates come from SC2GameData.</p>
+<p>Only <strong>new work</strong> is judged: references added or changed since the newest <code>Update-*</code> tag in SCEvoDev and the newest tag in SCBW_Campaign (plus uncommitted work), and anything pointing at a file deleted since then, in either repo. Older problems are only counted; <code>--all</code> lists them all.</p>
+<table>
+  <tr><th>Check</th><th>Flags</th></tr>
+  <tr><td>Missing file</td><td><span class="badge b-fail">FAIL</span> a model game data loads, or a texture a new or changed model uses, exists nowhere; or any reference to a file deleted since the release (e.g. assets moved out of one mod and never added to the other)</td></tr>
+  <tr><td>Drive-letter path</td><td><span class="badge b-fail">FAIL</span> a model points at a texture on a drive (<code>F:\Modding\…\File.dds</code>). Re-export it with MoPaQ paths, so it reads <code>Assets\Textures\File.dds</code>. Listed once per model</td></tr>
+  <tr><td>Wrong path</td><td><span class="badge b-warn">WARN</span> the path doesn't exist but a texture with that file name does (a subfolder or a doubled <code>Assets/Textures/</code> in the export). Fix the path in the model or the game data</td></tr>
+  <tr><td>Unknown game data texture</td><td><span class="badge b-warn">WARN</span> not in Evo or the extracted vanilla files. Vanilla campaign and coop UI art isn't in the core + liberty extraction: extract that part with CascView under the same SC2 folder and it counts</td></tr>
+  <tr><td>Older problems</td><td><span class="badge b-info">INFO</span> how many missing references predate the release tags</td></tr>
+</table>
+
+<h2>mods</h2>
+<table>
+  <tr><th>Check</th><th>Flags</th></tr>
+  <tr><td>Tools</td><td><span class="badge b-fail">FAIL</span> <code>MPQEditor.exe</code> missing, <code>sc2InstallPath</code> not set, or a catalog scan root missing</td></tr>
+  <tr><td>Sources</td><td><span class="badge b-fail">FAIL</span> a shipped item's source is gone from the SC2 install; <span class="badge b-warn">WARN</span> new sources nobody has decided on</td></tr>
+  <tr><td>Builds</td><td><span class="badge b-warn">WARN</span> sources changed since the last Build (status <code>changed</code> / <code>unbuilt</code>)</td></tr>
+</table>
+
+<h2>cdn</h2>
+<table>
+  <tr><th>Check</th><th>Flags</th></tr>
+  <tr><td>R2</td><td><span class="badge b-fail">FAIL</span> rclone missing, or the <code>cf</code> remote can't reach the bucket</td></tr>
+  <tr><td>CDN address</td><td><span class="badge b-fail">FAIL</span> the custom address (<code>cdnBase</code>) fails <code>cdn-check</code></td></tr>
+  <tr><td>Preflight</td><td>The deploy's own preflight of all four manifests: JSON hygiene, structure, files on disk by size and hash, locale strings, drift from the live manifest. Its errors are <span class="badge b-fail">FAIL</span>, warnings <span class="badge b-warn">WARN</span>. <code>--quick</code> checks structure only</td></tr>
+  <tr><td>Pending</td><td><span class="badge b-info">INFO</span> which packages differ from the live CDN</td></tr>
+  <tr><td>Tool tests</td><td><span class="badge b-fail">FAIL</span> the deploy tool's tests or smoke test fail</td></tr>
+</table>
+
+<h2>Other checks you already have</h2>
+<table>
+  <tr><th>Command</th><th>Where</th><th>What</th></tr>
+  <tr><td><code>.\run.cmd status</code></td><td>SCEvo_Deploy</td><td>Catalog state per item, and what isn't on the CDN yet</td></tr>
+  <tr><td><code>.\run.cmd deploy --package … --dry-run</code></td><td>SCEvo_Deploy</td><td>The whole deploy without uploading: regenerate, preflight, rclone dry run</td></tr>
+  <tr><td><code>.\run.cmd cdn-check [https://host]</code></td><td>SCEvo_Deploy</td><td>Is a custom CDN address ready</td></tr>
+  <tr><td>Verify tab</td><td>SCEvo_Deploy GUI</td><td>Remote orphans: files on R2 no manifest uses</td></tr>
+  <tr><td><code>npm test</code></td><td>sc-evo-launcher</td><td>Launcher unit tests</td></tr>
+  <tr><td><code>Prepare-Upload.ps1</code></td><td>SCEvo_AssetUploads</td><td>Full asset report, with <code>-ReportPath report.md</code> to save it</td></tr>
+</table>
+
+<div class="pager"><a href="index.html">← Overview</a><a href="assets.html">Asset splitting →</a></div>
+</main>
+</div>
+</body>
+</html>

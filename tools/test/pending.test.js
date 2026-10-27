@@ -78,7 +78,7 @@ test('launcher: repo not set is not pending', async () => {
 test('the launcher ships as its own deploy package', () => {
   const { MANIFESTS, DEPLOY_PACKAGES } = require('../lib/deploy');
   const cfg = require('../lib/config');
-  assert.deepEqual(DEPLOY_PACKAGES, ['campaign', 'melee', 'launcher']);
+  assert.deepEqual(DEPLOY_PACKAGES, ['campaign', 'melee', 'meleebeta', 'launcher']);
   assert.deepEqual(MANIFESTS.launcher, ['launcher-version.json']);
   assert.ok(!MANIFESTS.campaign.includes('launcher-version.json'));
   assert.deepEqual(cfg.UPLOAD_FOLDERS.filter((f) => f.package === 'launcher').map((f) => f.local), ['launcher', 'installer']);

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mod Packaging</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html">Overview</a>
+  <a href="checks.html">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html">Asset splitting</a>
+  <a href="mods.html" class="active">Mod packaging</a>
+  <a href="cdn.html">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html">Blog posts</a>
+  <a href="website.html">Website push</a>
+</nav>
+<main>
+<h1>Mod packaging</h1>
+<p class="lead">The deploy tool packages mods and maps from the SC2 install into the payload folders and writes the manifests the launcher reads. What ships is decided in one committed file: <code>deploy-catalog.json</code>.</p>
+
+<pre><code>cd D:\SCBW\SCEvo_Deploy
+<span class="c"># the GUI in your browser</span>
+.\run.cmd
+<span class="c"># the command line</span>
+.\run.cmd help</code></pre>
+
+<h2>The packages</h2>
+<table>
+  <tr><th>Package</th><th>Manifest</th><th>Payload folder (= R2 prefix)</th></tr>
+  <tr><td><strong>Campaign</strong></td><td><code>update-manifest.json</code> (public), <code>beta-manifest.json</code>, <code>news-feed.json</code></td><td><code>payload/</code>, <code>betapayload/</code>, <code>assets/</code></td></tr>
+  <tr><td><strong>Melee vs AI</strong></td><td><code>melee-manifest.json</code></td><td><code>meleepayload/</code> (maps, thumbs, decals)</td></tr>
+  <tr><td><strong>Melee beta</strong></td><td><code>melee-beta-manifest.json</code></td><td><code>betameleepayload/</code></td></tr>
+  <tr><td><strong>Launcher</strong></td><td><code>launcher-version.json</code></td><td><code>launcher/</code>, <code>installer/</code>: see <a href="launcher.html">Launcher release</a></td></tr>
+</table>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Check</strong>
+<pre><code>.\run.cmd check mods</code></pre>
+  New sources nobody decided on, shipped sources that disappeared, and what changed since the last build.</li>
+  <li><strong>Decide on new sources</strong>Catalog tab, or:
+<pre><code>.\run.cmd set "&lt;source&gt;" --package campaign --channel public
+.\run.cmd ignore "&lt;source&gt;"</code></pre>
+  <code>&lt;source&gt;</code> is the path inside the SC2 install, or just the file name when it's unique.</li>
+  <li><strong>Build</strong>Catalog tab → <strong>Build campaign</strong> / <strong>Build melee</strong>, or:
+<pre><code>.\run.cmd build --package campaign
+.\run.cmd build --package melee
+<span class="c"># just this file</span>
+.\run.cmd build --package campaign --only "Loomings3Legacy.SC2Map"
+.\run.cmd build --package campaign --dry-run</code></pre>
+  Only changed sources are repackaged; every other built file stays byte-identical, so players re-download only what changed. Folder sources are packed with MPQEditor; packed <code>.SC2Map</code> / <code>.SC2Mod</code> files are copied as they are.</li>
+  <li><strong>Versions</strong>Manifest tab: set the versions, the critical-update notice or the beta settings, then <strong>Write manifest</strong>.</li>
+  <li><strong>Push</strong>On to <a href="cdn.html">Cloudflare push</a>.</li>
+</ol>
+
+<h2>Channels</h2>
+<table>
+  <tr><th>Package</th><th>Channels</th></tr>
+  <tr><td>Campaign items</td><td><code>public</code>, <code>beta</code>, <code>both</code>, <code>off</code></td></tr>
+  <tr><td>Melee items</td><td><code>public</code>, <code>off</code></td></tr>
+</table>
+<p>Moving a file between public and beta: change the channel and Build. The file moves to the right payload folder and both manifests are regenerated.</p>
+<pre><code>.\run.cmd promote "Loomings3Legacy.SC2Map" public</code></pre>
+
+<h2>Melee maps</h2>
+<ul>
+  <li><strong>Pool:</strong> Add to pool / Remove from pool on the map cards, or <code>.\run.cmd set "&lt;map&gt;" --package melee --channel public|off</code>.</li>
+  <li><strong>Opaque names:</strong> each map gets a random 10-character <code>mapId</code> once and ships as <code>meleepayload/maps/&lt;mapId&gt;.evm</code> with <code>thumbs/&lt;mapId&gt;.png</code>.</li>
+  <li><strong>Metadata</strong> (name, players, modes, size, tileset, required mods) is read from the map. Modes come from the short description (<code>1v1</code>, <code>2v2</code>, <code>FFA</code>) or the start locations; type in the card's Modes box to override.</li>
+  <li><strong>Missing mods:</strong> the build warns when a map needs a mod that ships in neither package.</li>
+</ul>
+
+<h2>Player decals</h2>
+<ul>
+  <li>Rebuilt by every melee build into <code>meleepayload/decals/</code>: one 64 px atlas per race, the Terran outline plates and <code>decals.json</code>.</li>
+  <li>Sources: a CascView extraction (<code>D:\Casc Viewer\SC2\mods\liberty.sc2mod\base.sc2assets\assets\textures</code>) and <code>D:\SCBW\SC2GameData</code>. Re-extract both after a game patch that adds decals.</li>
+  <li>Blank-looking decals: <code>.\run.cmd decals</code> lists them, <code>.\run.cmd decals exclude Decal_Zerg_0083_01</code> leaves one out, <code>include</code> puts it back.</li>
+</ul>
+
+<h2>Melee beta (closed test)</h2>
+<ol class="steps">
+  <li><strong>Tag the mods</strong><strong>Melee beta</strong> on the mod's card, or <code>.\run.cmd beta-tag "&lt;source&gt;"</code> (<code>off</code> to untag). Tag the whole chain: tag Core and you tag Multi and Legacy with it. The Catalog and the build warn otherwise.</li>
+  <li><strong>Build</strong><code>.\run.cmd build --package meleebeta</code>. Tagged mods go to <code>betameleepayload/Mods/SC Evolution Complete Beta/</code> with their dependencies rewritten to the beta folder.</li>
+  <li><strong>Settings</strong>Manifest tab → Melee beta, or:
+<pre><code>.\run.cmd melee-beta --on --name "Balance test" --code CODE --version 1.0 --accent "#ff6600"</code></pre>
+  A new code locks out players who entered the old one.</li>
+  <li><strong>Deploy</strong><code>.\run.cmd deploy --package meleebeta</code>.</li>
+</ol>
+
+<h2>Offline package</h2>
+<p>For players who can't use the launcher: Deploy tab → <strong>Build offline .zip</strong>, or <code>.\run.cmd offline-zip</code>. It contains only what is <em>published</em> in the live <code>update-manifest.json</code> (checked by hash), so deploy first. Writes <code>offline\SCEvo_Offline_Campaign-&lt;campaign&gt;_Evo-&lt;version&gt;.zip</code>; nothing is uploaded.</p>
+
+<h2>What a build guarantees</h2>
+<ul>
+  <li>Payload folders mirror the catalog: files no item claims are removed.</li>
+  <li>Manifests are always regenerated, and only rewritten when their content changes. The previous version goes to <code>manifests/.history/</code> (not committed, never uploaded).</li>
+</ul>
+
+<div class="pager"><a href="assets.html">← Asset splitting</a><a href="cdn.html">Cloudflare push →</a></div>
+</main>
+</div>
+</body>
+</html>

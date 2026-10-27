@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launcher Release</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html">Overview</a>
+  <a href="checks.html">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html">Asset splitting</a>
+  <a href="mods.html">Mod packaging</a>
+  <a href="cdn.html">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html" class="active">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html">Blog posts</a>
+  <a href="website.html">Website push</a>
+</nav>
+<main>
+<h1>Launcher release</h1>
+<p class="lead">Players get a new launcher through its self-updater, which only offers a higher version number than the one they have. The deploy tool copies the built exes from the launcher repo and publishes them with <code>launcher-version.json</code>.</p>
+
+<table>
+  <tr><th>Repo</th><td><code>D:\EvoLauncher\sc-evo-launcher</code> (<code>launcherRepoPath</code> in <code>deploy-config.json</code>)</td></tr>
+  <tr><th>Builds</th><td><code>dist-electron\SC Evo Launcher.exe</code> (portable), <code>dist-electron\SC Evo Launcher Setup.exe</code> (installer); Windows 7/8: <code>dist-electron-win7\</code></td></tr>
+  <tr><th>Published</th><td>R2 <code>launcher/</code>, <code>installer/</code>, <code>manifests/launcher-version.json</code></td></tr>
+</table>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Commit</strong>Build from whichever branch holds the release, with everything committed, so the exe matches what's in git.</li>
+  <li><strong>Bump the version</strong>
+<pre><code>cd D:\EvoLauncher\sc-evo-launcher
+<span class="c"># package.json + package-lock.json</span>
+npm version 1.4.0 --no-git-tag-version</code></pre>
+  A rebuilt exe under the same version never reaches players. The check warns about it.</li>
+  <li><strong>Test and build</strong>
+<pre><code>npm test
+<span class="c"># Windows 10/11: portable + installer</span>
+npm run build
+<span class="c"># Windows 7/8 (Electron 22), optional</span>
+npm run build:win7</code></pre>
+  </li>
+  <li><strong>Check</strong>
+<pre><code>cd D:\SCBW\SCEvo_Deploy
+.\run.cmd check launcher</code></pre>
+  Version above the live one, build at this version, not a devtest build, Windows 7 build fresh, tests pass.</li>
+  <li><strong>Dry run, then deploy</strong>
+<pre><code>.\run.cmd deploy --package launcher --dry-run
+.\run.cmd deploy --package launcher --update-site</code></pre>
+  <code>--update-site</code> (Deploy tab: <em>Update website download links</em>) writes the new links into the site's <code>assets/js/site-links.js</code> and copies <code>launcher-version.json</code> to <code>assets/data/</code>. It needs the <strong>Website repo path</strong> in Settings (<code>siteRepoPath</code>).</li>
+  <li><strong>Publish the site</strong>Commit and push those two site files: <a href="website.html">Website push</a>. Without <code>--update-site</code>, run <code>node scripts/sync-launcher-info.mjs</code> in EvoSite instead.</li>
+  <li><strong>Patch notes</strong>Draft them in the launcher repo's <code>docs/patchnotes-&lt;version&gt;.md</code>, then post them: <a href="blog.html">Blog posts</a>.</li>
+</ol>
+
+<div class="callout danger"><span class="label">Never publish a devtest build</span>
+<p><code>npm run build:devtest</code> turns on DevTools and the debug toolbar, and with it Debug Mode and everything locked behind it (the match analysis: build orders, graphs, insights, replay sharing). Hand devtest exes to testers directly. <code>.\run.cmd check launcher</code> fails on one.</p>
+</div>
+
+<h2>Windows 7/8 build</h2>
+<ul>
+  <li>Same code, packaged with Electron 22.3.27 (the last that runs on Windows 7/8). Its <code>package.json</code> gets <code>"channel": "win7"</code>, so it only updates from the <code>win7</code> section of <code>launcher-version.json</code>.</li>
+  <li>It is published only when built at the current version. A stale one is skipped and the live Windows 7 version stays.</li>
+  <li>Main-process code must also run on Node 16: no global <code>fetch</code>, <code>AbortSignal.timeout</code> or <code>Array.prototype.findLast</code>. Network calls go through <code>electron/net.js</code>.</li>
+</ul>
+
+<h2>Launcher assets on the CDN</h2>
+<p>Some launcher art is streamed rather than bundled, so it can change without a release:</p>
+<table>
+  <tr><th>What</th><th>Built by</th><th>Lives in</th></tr>
+  <tr><td>Match report unit icons</td><td><code>node scripts/build-replay-units.js</code> (from <code>SCEvo_Assets.SC2Mod</code> textures, then retail)</td><td><code>SCEvo_Deploy\assets\replay-icons\</code> → R2 <code>assets/replay-icons/</code></td></tr>
+  <tr><td>News images</td><td>The deploy tool's News tab</td><td><code>assets/news/</code></td></tr>
+</table>
+<p>They go up with a campaign deploy, or by hand: <a href="cdn.html#manual-upload">Cloudflare push → Uploading a folder by hand</a>.</p>
+
+<div class="pager"><a href="cdn.html">← Cloudflare push</a><a href="blog.html">Blog posts →</a></div>
+</main>
+</div>
+</body>
+</html>

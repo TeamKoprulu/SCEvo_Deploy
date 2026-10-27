@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Website Push</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html">Overview</a>
+  <a href="checks.html">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html">Asset splitting</a>
+  <a href="mods.html">Mod packaging</a>
+  <a href="cdn.html">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html">Blog posts</a>
+  <a href="website.html" class="active">Website push</a>
+</nav>
+<main>
+<h1>Website push</h1>
+<p class="lead">scevo.org is a static site: no build step on the server. The scripts in <code>EvoSite/scripts/</code> write their results into the repo, you commit them, and Netlify serves what's on <code>main</code>.</p>
+
+<table>
+  <tr><th>Repo</th><td><code>D:\SCBW\EvoSite</code> (GitHub <code>Ailoso/EvoSite</code>)</td></tr>
+  <tr><th>Branches</th><td>Work happens on whichever branch is relevant at the time; Netlify publishes <code>main</code></td></tr>
+  <tr><th>Hosting</th><td>Netlify: <code>_redirects</code> (short URLs, written by <code>build-postlist.mjs</code>) and <code>_headers</code> (caching)</td></tr>
+  <tr><th>Local preview</th><td><code>npx serve</code> in the repo; <code>serve.json</code> mirrors the short URLs</td></tr>
+</table>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Work on a branch</strong>Whichever branch is relevant for the change. Nothing is live until it reaches <code>main</code>.</li>
+  <li><strong>Run the scripts your change needs</strong>See the table below. Most write files you then commit.</li>
+  <li><strong>Preview</strong>
+<pre><code>cd D:\SCBW\EvoSite
+npx serve</code></pre>
+  </li>
+  <li><strong>Check</strong>
+<pre><code>cd D:\SCBW\SCEvo_Deploy
+.\run.cmd check site</code></pre>
+  Uncommitted files, data files that don't parse, broken <code>/assets</code> links on every page, the download page's launcher version, and every released post.</li>
+  <li><strong>Merge and push</strong>Merge into <code>main</code> and push. Netlify publishes it.</li>
+  <li><strong>Look at it live</strong>Open the changed pages on scevo.org. For a new post, paste its link in Discord to see the preview.</li>
+</ol>
+
+<h2>Which script after which change</h2>
+<table>
+  <tr><th>You changed</th><th>Run</th></tr>
+  <tr><td>A post's frontmatter, or released a post</td><td><code>node scripts/build-postlist.mjs</code> (<code>add &lt;id&gt;</code> to release)</td></tr>
+  <tr><td>Added or removed a page or post</td><td><code>node scripts/build-sitemap.mjs</code>, <code>node scripts/normalize-head.mjs</code></td></tr>
+  <tr><td>Post or page text</td><td><code>node scripts/build-search-index.mjs</code></td></tr>
+  <tr><td>A hero background, or a page's thumbnail</td><td><code>node scripts/build-og-images.mjs [post-id | page-name]</code></td></tr>
+  <tr><td><code>templates/header.html</code>, <code>footer.html</code>, <code>mobile-menu.html</code></td><td><code>node scripts/inline-templates.mjs</code> (copies them into every page)</td></tr>
+  <tr><td>The page shell (stylesheets, scripts, loader)</td><td><code>node scripts/apply-page-shell.mjs</code></td></tr>
+  <tr><td>Page descriptions</td><td>Edit <code>docs/meta-descriptions.md</code>, then <code>node scripts/meta-descriptions.mjs --apply</code></td></tr>
+  <tr><td>Videos in <code>assets/video/</code></td><td><code>node scripts/build-video-posters.mjs</code></td></tr>
+  <tr><td>A launcher release (if not deployed with <code>--update-site</code>)</td><td><code>node scripts/sync-launcher-info.mjs</code></td></tr>
+  <tr><td>The site icon</td><td><code>node scripts/build-icons.mjs</code></td></tr>
+</table>
+
+<h2>Files other tools write</h2>
+<table>
+  <tr><th>File</th><th>Written by</th></tr>
+  <tr><td><code>assets/js/site-links.js</code> (launcher download links)</td><td>Launcher deploy with <code>--update-site</code></td></tr>
+  <tr><td><code>assets/data/launcher-version.json</code> (Download page)</td><td>Launcher deploy with <code>--update-site</code>, or <code>sync-launcher-info.mjs</code></td></tr>
+  <tr><td><code>_redirects</code> post rules, <code>serve.json</code></td><td><code>build-postlist.mjs</code>: edit the post's <code>url:</code> instead</td></tr>
+</table>
+<p>The deploy tool edits these in place and never commits; commit and push them yourself.</p>
+
+<h2>Notes</h2>
+<ul>
+  <li><code>docs/</code> in EvoSite has the site's own notes: search index, performance work, translations still needed, meta descriptions.</li>
+  <li>The launcher's episode art comes from the site: after changing an episode, run <code>npm run sync:episodes</code> in the launcher repo and rebuild it.</li>
+</ul>
+
+<div class="pager"><a href="blog.html">← Blog posts</a><span></span></div>
+</main>
+</div>
+</body>
+</html>

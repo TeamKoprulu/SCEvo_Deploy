@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloudflare Push</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html">Overview</a>
+  <a href="checks.html">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html">Asset splitting</a>
+  <a href="mods.html">Mod packaging</a>
+  <a href="cdn.html" class="active">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html">Blog posts</a>
+  <a href="website.html">Website push</a>
+</nav>
+<main>
+<h1>Cloudflare push</h1>
+<p class="lead">Everything the launcher downloads lives in one Cloudflare R2 bucket. The deploy tool uploads it in a fixed order, so the CDN never advertises a file before the file itself is there.</p>
+
+<table>
+  <tr><th>Bucket</th><td><code>evo-campaign</code>, through the rclone remote <code>cf</code> (<code>cf:evo-campaign</code>)</td></tr>
+  <tr><th>Served from</th><td><code>https://scevo.download</code> (custom domain, <code>cdnBase</code> in <code>deploy-config.json</code>); fallback <code>https://pub-8a599b66a5cf440ab429113861fd1c21.r2.dev</code></td></tr>
+  <tr><th>Layout</th><td><code>payload/</code>, <code>betapayload/</code>, <code>meleepayload/</code>, <code>betameleepayload/</code>, <code>assets/</code>, <code>launcher/</code>, <code>installer/</code>, <code>manifests/</code>: the same folder names as in this repo</td></tr>
+</table>
+
+<h2>Setup (once per machine)</h2>
+<ul>
+  <li>Node 18+ and <a href="https://rclone.org">rclone</a> (<code>winget install Rclone.Rclone</code>).</li>
+  <li><code>rclone config</code>: a remote named <code>cf</code> with an R2 API token that can read and write the bucket (Cloudflare dashboard → R2 → Manage API Tokens).</li>
+  <li>Copy <code>deploy-config.example.json</code> to <code>deploy-config.json</code> and set the paths (or use the Settings tab).</li>
+</ul>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Check</strong>
+<pre><code>.\run.cmd check cdn</code></pre>
+  R2 credentials, the CDN address, the full preflight of every manifest, and what isn't deployed yet.</li>
+  <li><strong>Dry run</strong>Deploy tab with <em>Dry run</em> ticked, or:
+<pre><code>.\run.cmd deploy --package campaign --dry-run
+.\run.cmd deploy --package melee --dry-run</code></pre>
+  The Deploy tab compares each package with the live CDN and ticks the ones with changes. <code>.\run.cmd status</code> prints the same summary.</li>
+  <li><strong>Deploy</strong>
+<pre><code>.\run.cmd deploy --package campaign
+.\run.cmd deploy --package melee
+.\run.cmd deploy --package meleebeta</code></pre>
+  Several packages can go in one deploy (tick them together in the GUI).</li>
+  <li><strong>Confirm</strong>The deploy reads the manifests back from the CDN. Open the launcher and check the update shows.</li>
+</ol>
+
+<h2>What a deploy does</h2>
+<ol>
+  <li>Checks rclone and the R2 credentials.</li>
+  <li>Regenerates the chosen packages' manifests from the catalog.</li>
+  <li><strong>Preflight:</strong> each manifest against the files on disk (size and hash), JSON hygiene, structure, locale strings, version rollback against the live manifest. Errors stop the deploy.</li>
+  <li>Launcher package only: stages the exes from the launcher repo and writes <code>launcher-version.json</code>.</li>
+  <li>Uploads the payload folders (<code>rclone copy --checksum</code>; <code>copy</code>, never <code>sync</code>, so nothing remote is deleted).</li>
+  <li><strong>Postflight:</strong> HEAD-checks every file on every CDN address. Missing or wrong-size files stop the deploy before any manifest goes up.</li>
+  <li>Uploads the manifests last (<code>Cache-Control: no-cache</code>).</li>
+  <li>Reads the manifests back and compares them.</li>
+  <li>Optionally updates the website's download links (<code>--update-site</code>).</li>
+</ol>
+<div class="callout danger"><span class="label">--force</span>
+<p><code>--force</code> pushes past generate, preflight and postflight errors. Use it only when you know why the check is wrong; a launcher that reads a manifest pointing at a missing file fails the player's update.</p>
+</div>
+
+<h2>News between deploys</h2>
+<p>For a banner swap or an announcement without a full deploy: News tab → <strong>Publish news only</strong>. It uploads only <code>news-feed.json</code> and <code>assets/news/</code>, after the news checks pass. Patreon cards copy their image into <code>assets/news/</code> when you save, so publish (or deploy campaign) after saving.</p>
+
+<h2 id="manual-upload">Uploading a folder by hand</h2>
+<p>For files no package owns, such as the launcher's match report icons in <code>assets/replay-icons/</code>. A campaign deploy uploads all of <code>assets/</code>, so a manual upload is only needed between deploys. Use the same flags the tool uses:</p>
+<pre><code><span class="c"># preview, then upload</span>
+rclone copy "D:\SCBW\SCEvo_Deploy\assets\replay-icons" cf:evo-campaign/assets/replay-icons --checksum --header-upload "Cache-Control: public, max-age=3600" --dry-run
+rclone copy "D:\SCBW\SCEvo_Deploy\assets\replay-icons" cf:evo-campaign/assets/replay-icons --checksum --header-upload "Cache-Control: public, max-age=3600" -P
+
+<span class="c"># check one file is live</span>
+curl.exe -I https://scevo.download/assets/replay-icons/btn-unit-terran-marine@scbw.png</code></pre>
+<div class="callout warn"><span class="label">Never rclone sync</span>
+<p><code>sync</code> deletes remote files that aren't local. One wrong path wipes production. Always <code>copy</code>, and delete remote files only through the Verify tab.</p>
+</div>
+
+<h2>Remote orphans</h2>
+<p>Files on R2 that no manifest references. Verify tab → pick a branch → review the list → delete only what you confirm. Files outside the package prefixes (like <code>assets/replay-icons/</code>) are not listed there.</p>
+
+<h2>Changing the CDN address</h2>
+<ol>
+  <li>Check the new address: Settings → <strong>Check</strong>, or <code>.\run.cmd cdn-check https://new.host</code>.</li>
+  <li>Set it as <code>cdnBase</code> (Settings → CDN address).</li>
+  <li>Deploy the launcher package: launchers learn the address from <code>launcher-version.json</code>. r2.dev stays the fallback.</li>
+</ol>
+<p>Full setup: the launcher repo's <code>docs/cdn-custom-domain.md</code>.</p>
+
+<div class="pager"><a href="mods.html">← Mod packaging</a><a href="launcher.html">Launcher release →</a></div>
+</main>
+</div>
+</body>
+</html>

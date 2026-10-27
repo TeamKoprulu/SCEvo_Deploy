@@ -318,6 +318,7 @@ function itemRow(r) {
     </div>
     <select class="pkg"><option value="campaign"${r.item.package === 'campaign' ? ' selected' : ''}>Campaign</option><option value="melee"${r.item.package === 'melee' ? ' selected' : ''}>Melee</option></select>
     ${chSeg(r)}
+    ${r.canMeleeBeta ? `<button class="btn sm mb${r.item.meleeBeta ? ' primary' : ' ghost'}" title="Ship this mod in the code-locked melee beta">Melee beta${r.item.meleeBeta ? ' ✓' : ''}</button>` : ''}
     <button class="btn sm ghost ign">Ignore</button>
   </div>`;
 }
@@ -377,6 +378,12 @@ function renderCatalog() {
     : `<div class="empty">Nothing in the ${CT_FILTER} package yet.</div>`;
 
   const maps = rows.filter(isMeleeMap).filter((r) => r.status !== 'ignored');
+  const mbProblems = CAT.meleeBetaProblems ?? [];
+  $('#ctMeleeBetaProblems').innerHTML = mbProblems.length
+    ? `<div class="banner warn"><b>Melee beta tags</b>${mbProblems.map(esc).join('<br>')}</div>` : '';
+  const mbCount = rows.filter((r) => r.item?.meleeBeta).length;
+  $('#ctBuildMeleeBeta').textContent = mbCount ? `Build melee beta (${mbCount})` : 'Build melee beta';
+
   $('#ctMapsSection').hidden = CT_FILTER !== 'melee';
   $('#ctMapCount').textContent = `${maps.filter((r) => r.item?.channel === 'public').length} of ${maps.length}`;
   $('#ctMaps').innerHTML = maps.length ? maps.map(mapCard).join('') : '<div class="empty">No maps under the melee roots.</div>';
@@ -427,6 +434,11 @@ function bindCatalog() {
     $$('.ch .seg-btn', el).forEach((b) => b.addEventListener('click', () => catalogEdit({ source, patch: { channel: b.dataset.ch } })));
     const pkg = $('.pkg', el);
     if (pkg) pkg.addEventListener('change', () => catalogEdit({ source, patch: { package: pkg.value, channel: pkg.value === 'melee' ? 'public' : 'off' } }));
+    const mb = $('.mb', el);
+    if (mb) mb.addEventListener('click', () => {
+      const on = !!(CAT.rows ?? []).find((r) => r.source === source)?.item?.meleeBeta;
+      catalogEdit({ source, patch: { meleeBeta: !on } }, `${source.split('\\').pop()} ${on ? 'removed from' : 'tagged for'} the melee beta`);
+    });
     const ign = $('.ign', el);
     if (ign) ign.addEventListener('click', () => confirm(`Ignore ${source}?\n\nIt won't ship and won't be shown as new again.`) && catalogEdit({ source, ignore: true }, 'Ignored.'));
     const unign = $('.unign', el);
@@ -453,6 +465,24 @@ $('#ctSelectChanged').addEventListener('click', () => {
   renderCatalog();
 });
 $('#ctClearSel').addEventListener('click', () => { CT_SELECTED = new Set(); renderCatalog(); });
+
+$('#ctBuildMeleeBeta').addEventListener('click', async () => {
+  const btn = $('#ctBuildMeleeBeta');
+  btn.disabled = true;
+  try {
+    const r = await api('POST', '/api/build', { packages: ['meleebeta'], force: $('#ctForce').checked });
+    const bad = r.results.filter((x) => !x.ok);
+    const did = r.results.filter((x) => x.ok && x.action !== 'up-to-date').length;
+    const msgs = [`${did} beta mod(s) built`, `${r.results.length - did - bad.length} already up to date`];
+    if (r.pruned.length) msgs.push(`${r.pruned.length} removed`);
+    const changed = r.manifests.filter((m) => m.changed).map((m) => m.file);
+    if (changed.length) msgs.push(`wrote ${changed.join(', ')}`);
+    toast(bad.length ? `${bad.length} failed: ${bad.map((b) => `${b.source.split('\\').pop()} — ${b.error}`).join(' · ')}` : msgs.join(' · '), bad.length ? 'err' : 'ok');
+    if (r.problems.length) toast(r.problems.join(' · '), 'err');
+    await loadCatalog();
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; }
+});
 
 $('#ctBuild').addEventListener('click', async () => {
   $('#ctBuild').disabled = true;
@@ -517,12 +547,13 @@ $$('#mfBranch .seg-btn').forEach((b) => b.addEventListener('click', () => {
 async function loadManifest() {
   MANIFEST = await api('GET', `/api/manifest?branch=${BRANCH}`);
   if (MANIFEST.needsInit) { $('#mfList').innerHTML = '<div class="empty">Create the catalog on the Catalog tab first.</div>'; return; }
-  const isBeta = BRANCH === 'beta', isMelee = BRANCH === 'melee';
+  const isBeta = BRANCH === 'beta', isMeleeBeta = BRANCH === 'meleebeta', isMelee = BRANCH === 'melee' || isMeleeBeta;
 
-  $('#mfMetaTitle').textContent = isBeta ? 'Beta metadata' : isMelee ? 'Melee package' : 'Versions';
+  $('#mfMetaTitle').textContent = isBeta ? 'Beta metadata' : isMeleeBeta ? 'Melee beta' : isMelee ? 'Melee package' : 'Versions';
   $('#mfPublicVersions').hidden = isBeta || isMelee;
   $('#mfBetaMeta').hidden = !isBeta;
-  $('#mfMeleeMeta').hidden = !isMelee;
+  $('#mfMeleeMeta').hidden = BRANCH !== 'melee';
+  $('#mfMeleeBetaMeta').hidden = !isMeleeBeta;
   $('#mfCritSection').hidden = isMelee;
   $('#mfCritSevWrap').style.display = isBeta ? 'none' : '';
 
@@ -537,11 +568,16 @@ async function loadManifest() {
   $('#mfCritSev').value = cu.severity ?? 'critical';
   syncCritPill();
 
+  setBackground('#mfPubBg', MANIFEST.publicMeta?.background ?? null);
+  setBackground('#mfBetaBg', MANIFEST.betaMeta?.background ?? null);
+  fillEpisodes('#mfPubEpisode', MANIFEST.publicMeta?.episode);
+  fillEpisodes('#mfBetaEpisode', MANIFEST.betaMeta?.episode);
+  if (!isBeta && !isMelee) setColor('#mfPubAccent', MANIFEST.publicMeta?.accentColor ?? '', SITE_ACCENT);
   if (isBeta && MANIFEST.betaMeta) {
     const m = MANIFEST.betaMeta;
     $('#mfBetaEnabled').checked = m.betaEnabled;
     $('#mfBetaName').value = m.betaName;
-    $('#mfBetaAccent').value = m.accentColor;
+    setColor('#mfBetaAccent', m.accentColor, '#ff6600');
     $('#mfBetaMajor').value = m.majorVersion;
     $('#mfBetaFull').value = m.fullVersion;
     $('#mfBetaCore').value = m.coreVersion;
@@ -549,10 +585,149 @@ async function loadManifest() {
     $('#mfBetaHash').textContent = m.codeHash ? `current codeHash: ${m.codeHash}` : 'no codeHash set';
     syncBetaGate();
   }
+  if (isMeleeBeta && MANIFEST.meleeBetaMeta) {
+    const m = MANIFEST.meleeBetaMeta;
+    $('#mfMbEnabled').checked = m.betaEnabled;
+    $('#mfMbName').value = m.betaName;
+    $('#mfMbVersion').value = m.version;
+    setColor('#mfMbAccent', m.accentColor, '#ff6600');
+    $('#mfMbCode').value = '';
+    $('#mfMbHash').textContent = m.codeHash ? `current codeHash: ${m.codeHash}` : 'no codeHash set: nobody can unlock the beta until you set a code';
+  }
 
   setManifestDirty(false);
   renderManifestEntries();
+  if (!isMelee) MOCK_ACCENT[isBeta ? 'beta' : 'public'] = (isBeta ? MANIFEST.betaMeta?.accentColor : MANIFEST.publicMeta?.accentColor) || null;
+  if (isBeta && MANIFEST.betaMeta) MOCK_BETA_SHOWN = !!MANIFEST.betaMeta.betaEnabled;
+  renderMock();
 }
+
+// ── Launcher colours: one colour picked, the rest derived (lib/manifest.js themeFromAccent)
+const SITE_ACCENT = '#54b893';
+const hexOf = (v) => {
+  let h = String(v || '').trim().replace(/^#/, '').toLowerCase();
+  if (/^[0-9a-f]{3}$/.test(h)) h = h.split('').map((c) => c + c).join('');
+  return /^[0-9a-f]{6}$/.test(h) ? '#' + h : null;
+};
+// A lighter shade for the preview (the launcher uses it for highlights).
+const lighten = (hex, t) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) + (255 - parseInt(hex.slice(i, i + 2), 16)) * t).toString(16).padStart(2, '0')).join('');
+function renderPreview(sel, fallback) {
+  const prev = $(sel.replace('Accent', 'Preview'));
+  if (!prev) return;
+  const a = hexOf($(sel).value) || fallback;
+  const sw = (label, col, bg) => `<span class="sw" style="border-color:${col};background:${bg || 'transparent'};color:${col}"><i style="background:${col}"></i>${label}</span>`;
+  prev.innerHTML = (hexOf($(sel).value) ? '' : '<span>Default:</span>') +
+    sw('Accent', a) + sw('Highlight', lighten(a, 0.45)) + sw('Glow', a, a + '22') + sw('Dim', a + '88');
+  renderMock();
+}
+function setColor(sel, value, fallback) {
+  $(sel).value = value || '';
+  $(sel + 'Pick').value = hexOf(value) || fallback;
+  renderPreview(sel, fallback);
+}
+for (const [sel, fallback] of [['#mfPubAccent', SITE_ACCENT], ['#mfBetaAccent', '#ff6600'], ['#mfMbAccent', '#ff6600']]) {
+  $(sel + 'Pick').addEventListener('input', () => { $(sel).value = $(sel + 'Pick').value; renderPreview(sel, fallback); setManifestDirty(true); });
+  $(sel).addEventListener('input', () => { const h = hexOf($(sel).value); if (h) $(sel + 'Pick').value = h; renderPreview(sel, fallback); });
+}
+// ── Hero background per channel: picked here, saved to assets/launcher/ by the server,
+// written into the manifest on "Write manifest". Blank = the episode's own background.
+const BG = {};
+function setBackground(sel, bg, previewSrc) {
+  BG[sel] = bg || null;
+  const el = $(sel), img = el.querySelector('img');
+  img.hidden = !bg;
+  // The local copy first: a new image isn't on the CDN until the next upload.
+  img.onerror = bg ? () => { img.onerror = null; img.src = bg.url; } : null;
+  if (bg) img.src = previewSrc || localBg(bg);
+  el.querySelector('.bg-thumb i').hidden = !!bg;
+  el.querySelector('.bg-name').textContent = bg ? `${bg.url.split('/').pop()} · ${fmtBytes(bg.size || 0)}` : "the episode's own background";
+  el.querySelector('[data-act="clear"]').disabled = !bg;
+  renderMock();
+}
+const localBg = (bg) => `/launcher-bg/${encodeURIComponent(bg.url.split('/').pop())}`;
+for (const [sel, branch] of [['#mfPubBg', 'public'], ['#mfBetaBg', 'beta']]) {
+  const el = $(sel), input = el.querySelector('input[type=file]');
+  el.querySelector('[data-act="pick"]').addEventListener('click', () => input.click());
+  el.querySelector('[data-act="clear"]').addEventListener('click', () => { setBackground(sel, null); setManifestDirty(true); });
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await new Promise((ok, fail) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => fail(fr.error); fr.readAsDataURL(file); });
+      const bg = await api('POST', '/api/launcher-background', { branch, filename: file.name, data: String(dataUrl).split(',')[1] });
+      setBackground(sel, { url: bg.url, size: bg.size, sha256: bg.sha256 }, dataUrl);
+      setManifestDirty(true);
+      toast(`Saved ${bg.file}; it uploads with the campaign package.`, 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  });
+}
+
+// Episodes from the website repo (Settings → website path). Blank = the newest released one.
+function fillEpisodes(sel, value) {
+  const eps = MANIFEST.episodes ?? [];
+  $(sel).innerHTML = '<option value="">Newest released (default)</option>' + eps.map((e) =>
+    `<option value="${e.episode}">${e.episode} · ${esc(e.name)}${e.released ? '' : ' (upcoming)'}</option>`).join('');
+  $(sel).value = value ?? '';
+}
+['#mfPubEpisode', '#mfBetaEpisode'].forEach((sel) => $(sel).addEventListener('change', () => { setManifestDirty(true); renderMock(); }));
+
+// ── Launcher preview (mock.js): a non-working look-alike, redrawn from the form ──
+const MOCK_ACCENT = { public: null, beta: null }; // each channel's saved colour, once loaded
+let MOCK_BETA_SHOWN = true;                         // the Public/Beta switch shows while beta is enabled
+let MOCK_NEWS = null;                               // { cards, announcement } in English
+let mockNewsLoading = null;
+// The episode a channel shows: the chosen one, else the newest released (as the launcher does).
+function mockEpisode(value) {
+  const eps = MANIFEST?.episodes ?? [];
+  if (value !== '' && value != null) return eps.find((e) => String(e.episode) === String(value)) ?? null;
+  return eps.filter((e) => e.released).at(-1) ?? eps[0] ?? null;
+}
+async function loadMockNews(force) {
+  if (mockNewsLoading && !force) return mockNewsLoading;
+  mockNewsLoading = (async () => {
+    try {
+      // Unsaved News-tab edits when that tab is loaded, else the saved file.
+      const news = NEWS ?? (await api('GET', '/api/news')).news ?? {};
+      const feed = news.feed ?? (news.cards ?? []).map((c) => ({ kind: 'custom', ...c }));
+      const r = await api('POST', '/api/news-preview', { feed, lang: 'en' });
+      const announcement = NEWS ? { enabled: $('#nwAnnEnabled').checked, type: $('#nwAnnType').value, message: $('#nwAnnMsg').value } : news.announcement ?? null;
+      MOCK_NEWS = { cards: r.cards, announcement };
+    } catch (e) {
+      MOCK_NEWS = { cards: [], announcement: null, error: e.message };
+    }
+    mockNewsLoading = null;
+    renderMock();
+  })();
+  return mockNewsLoading;
+}
+let mockFrame = 0;
+function renderMock() {
+  cancelAnimationFrame(mockFrame);
+  mockFrame = requestAnimationFrame(() => {
+    const section = $('#mfMockSection');
+    if (!section || !MANIFEST) return;
+    section.hidden = BRANCH === 'melee' || BRANCH === 'meleebeta';
+    if (section.hidden) return;
+    const beta = BRANCH === 'beta';
+    if (!MOCK_NEWS) loadMockNews();
+    const bg = BG[beta ? '#mfBetaBg' : '#mfPubBg'];
+    const accent = beta ? (hexOf($('#mfBetaAccent').value) || '#ff6600') : (hexOf($('#mfPubAccent').value) || SITE_ACCENT);
+    LauncherMock.render($('#mfMock'), {
+      channel: beta ? 'beta' : 'public',
+      accent,
+      otherAccent: MOCK_ACCENT[beta ? 'public' : 'beta'],
+      betaShown: beta ? $('#mfBetaEnabled').checked : MOCK_BETA_SHOWN,
+      episode: mockEpisode($(beta ? '#mfBetaEpisode' : '#mfPubEpisode').value),
+      background: bg ? localBg(bg) : null,
+      backgroundFallback: bg?.url ?? null,
+      cards: MOCK_NEWS?.cards ?? [],
+      announcement: MOCK_NEWS?.announcement,
+    });
+  });
+}
+$('#mfMockNews').addEventListener('click', () => loadMockNews(true));
+$('#mfBetaEnabled').addEventListener('change', renderMock);
 
 function syncCritPill() {
   const on = $('#mfCritEnabled').checked;
@@ -565,10 +740,11 @@ function syncBetaGate() {
 }
 
 ['#mfVerCore', '#mfVerCampaign', '#mfCritMin', '#mfCritMsg', '#mfCritSev', '#mfBetaName',
- '#mfBetaAccent', '#mfBetaMajor', '#mfBetaFull', '#mfBetaCore', '#mfBetaCode', '#mfMeleeVersion']
+ '#mfBetaAccent', '#mfPubAccent', '#mfBetaMajor', '#mfBetaFull', '#mfBetaCore', '#mfBetaCode', '#mfMeleeVersion']
   .forEach((sel) => $(sel).addEventListener('input', () => { setManifestDirty(true); syncCritPill(); }));
 $('#mfCritEnabled').addEventListener('change', () => { setManifestDirty(true); syncCritPill(); });
 $('#mfBetaEnabled').addEventListener('change', () => { setManifestDirty(true); syncBetaGate(); });
+['#mfMbEnabled', '#mfMbName', '#mfMbVersion', '#mfMbAccent', '#mfMbCode'].forEach((sel) => $(sel).addEventListener('input', () => setManifestDirty(true)));
 
 function renderManifestEntries() {
   const entries = MANIFEST.entries ?? [];
@@ -593,7 +769,7 @@ $('#mfReload').addEventListener('click', () => {
 $('#mfSave').addEventListener('click', async () => {
   try {
     const payload = { branch: BRANCH };
-    if (BRANCH !== 'melee') {
+    if (BRANCH !== 'melee' && BRANCH !== 'meleebeta') {
       payload.criticalUpdate = {
         enabled: $('#mfCritEnabled').checked,
         minVersion: $('#mfCritMin').value.trim(),
@@ -603,6 +779,9 @@ $('#mfSave').addEventListener('click', async () => {
     }
     if (BRANCH === 'public') {
       payload.versions = { multiplayer: $('#mfVerCore').value.trim(), campaign: $('#mfVerCampaign').value.trim() };
+      const pubAccent = $('#mfPubAccent').value.trim();
+      if (pubAccent && !hexOf(pubAccent)) throw new Error(`Launcher colour "${pubAccent}" is not a hex colour like #54b893`);
+      payload.publicMeta = { accentColor: hexOf(pubAccent) || '', episode: $('#mfPubEpisode').value === '' ? null : Number($('#mfPubEpisode').value), background: BG['#mfPubBg'] };
     } else if (BRANCH === 'beta') {
       let codeHash = MANIFEST.betaMeta?.codeHash ?? '';
       const plain = $('#mfBetaCode').value.trim();
@@ -612,8 +791,23 @@ $('#mfSave').addEventListener('click', async () => {
         betaName: $('#mfBetaName').value.trim(),
         majorVersion: $('#mfBetaMajor').value.trim(),
         fullVersion: $('#mfBetaFull').value.trim(),
-        accentColor: $('#mfBetaAccent').value.trim() || '#ff6600',
+        accentColor: hexOf($('#mfBetaAccent').value) || '#ff6600',
+        episode: $('#mfBetaEpisode').value === '' ? null : Number($('#mfBetaEpisode').value),
+        background: BG['#mfBetaBg'],
         coreVersion: $('#mfBetaCore').value.trim(),
+        codeHash,
+      };
+    } else if (BRANCH === 'meleebeta') {
+      let codeHash = MANIFEST.meleeBetaMeta?.codeHash ?? '';
+      const plain = $('#mfMbCode').value.trim();
+      if (plain) codeHash = (await api('POST', '/api/beta-code-hash', { code: plain })).codeHash;
+      const accent = $('#mfMbAccent').value.trim();
+      if (accent && !hexOf(accent)) throw new Error(`Accent colour "${accent}" is not a hex colour like #ff6600`);
+      payload.meleeBetaMeta = {
+        betaEnabled: $('#mfMbEnabled').checked,
+        betaName: $('#mfMbName').value.trim(),
+        version: $('#mfMbVersion').value.trim(),
+        accentColor: hexOf(accent) || '#ff6600',
         codeHash,
       };
     } else {
@@ -734,8 +928,8 @@ $('#vfOrphans').addEventListener('click', async () => {
 
 let DRY = true;
 
-const UPLOAD_ORDER = ['payload', 'betapayload', 'meleepayload', 'assets', 'launcher', 'installer', 'manifests'];
-const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee', $('#dpPkgLauncher').checked && 'launcher'].filter(Boolean);
+const UPLOAD_ORDER = ['payload', 'betapayload', 'meleepayload', 'betameleepayload', 'assets', 'launcher', 'installer', 'manifests'];
+const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee', $('#dpPkgMeleeBeta').checked && 'meleebeta', $('#dpPkgLauncher').checked && 'launcher'].filter(Boolean);
 
 function syncDeployControls() {
   const pk = deployPackages();
@@ -776,14 +970,16 @@ async function loadPending() {
     PENDING = await api('GET', '/api/pending');
     line('#dpPendCampaign', PENDING.packages.campaign);
     line('#dpPendMelee', PENDING.packages.melee);
+    line('#dpPendMeleeBeta', PENDING.packages.meleebeta);
     line('#dpPendLauncher', PENDING.packages.launcher);
     if (PENDING.offline) $('#dpPendMelee').textContent = 'Could not reach the CDN to compare.';
     if (!PENDING_TICKED) {
       PENDING_TICKED = true;
-      const { campaign, melee, launcher } = PENDING.packages;
-      if (campaign.changed || melee.changed || launcher?.changed) {
+      const { campaign, melee, meleebeta, launcher } = PENDING.packages;
+      if (campaign.changed || melee.changed || meleebeta?.changed || launcher?.changed) {
         $('#dpPkgCampaign').checked = campaign.changed;
         $('#dpPkgMelee').checked = melee.changed;
+        $('#dpPkgMeleeBeta').checked = !!meleebeta?.changed;
         $('#dpPkgLauncher').checked = !!launcher?.changed;
         syncDeployControls();
       }
@@ -793,7 +989,7 @@ async function loadPending() {
 
 try { $('#dpSite').checked = localStorage.getItem('scevo.updateSite') === '1'; } catch {}
 $('#dpSite').addEventListener('change', (e) => { try { localStorage.setItem('scevo.updateSite', e.target.checked ? '1' : '0'); } catch {} });
-['#dpPkgCampaign', '#dpPkgMelee', '#dpPkgLauncher'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
+['#dpPkgCampaign', '#dpPkgMelee', '#dpPkgMeleeBeta', '#dpPkgLauncher'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
 $$('#dpMode .seg-btn').forEach((b) => b.addEventListener('click', () => {
   $$('#dpMode .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
   DRY = b.dataset.mode === 'dry';
@@ -1024,8 +1220,8 @@ function syncAnnPill() {
   pill.textContent = on ? ($('#nwAnnType').value || 'on') : 'off';
   pill.className = `pill ${on ? ({ critical: 'err', warning: 'warn' }[$('#nwAnnType').value] ?? 'acc') : ''}`;
 }
-['#nwAnnMsg', '#nwAnnType'].forEach((s) => $(s).addEventListener('input', () => { setNewsDirty(true); syncAnnPill(); }));
-$('#nwAnnEnabled').addEventListener('change', () => { setNewsDirty(true); syncAnnPill(); });
+['#nwAnnMsg', '#nwAnnType'].forEach((s) => $(s).addEventListener('input', () => { setNewsDirty(true); syncAnnPill(); MOCK_NEWS = null; }));
+$('#nwAnnEnabled').addEventListener('change', () => { setNewsDirty(true); syncAnnPill(); MOCK_NEWS = null; });
 
 // Read-only, but visible: verify.js reports locale gaps and there was previously
 // nowhere in the UI to see what it was talking about.
@@ -1338,17 +1534,6 @@ function fillPlaceholders() {
   });
 }
 
-// The launcher's no-image header (App.jsx NewsImage), for the preview.
-function textHeader(c, s) {
-  const bg = cssColor(c.imageBg, '#0a2a1a');
-  const ac = cssColor(c.imageAccent, headerAccent(s));
-  return `<div class="nwhead" style="--nh-bg:${bg};--nh-ac:${ac}">
-    <div class="nh-grid"></div><div class="nh-glow"></div>
-    <div class="nh-text"><div class="nh-sc">StarCraft</div><div class="nh-evo">Evolution Complete</div>
-      <div class="nh-box">${esc(`${c.imageText || 'EVO UPDATE'} ${c.imageLabel || ''}`.trim())}</div></div>
-  </div>`;
-}
-
 function renderPreviewPane() {
   const host = $('#nwPreview');
   if (!host) return;
@@ -1361,28 +1546,16 @@ function renderPreviewPane() {
       : s?.kind === 'banner' ? 'Set an image URL.' : 'Nothing to show.'}</div>`;
     return;
   }
-  if (c.type === 'banner') {
-    host.innerHTML = `<div class="nwcard banner"><img src="${esc(c.imageUrl)}" alt=""></div>`;
-    return;
-  }
-  const body = Array.isArray(c.highlights) && c.highlights.length && c.type === 'patchnotes'
-    ? `<ul>${c.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>`
-    : `<p>${esc(c.excerpt ?? '')}</p>`;
-  const badgeColor = cssColor(c.badgeColor, cssColor(c.imageAccent, headerAccent(s)));
-  // App.jsx NewsByline: date · icon author, in the channel accent.
-  const byline = c.date || c.author ? `<div class="nwbyline" style="--nb-ac:${headerAccent(s)}">
-      ${c.date ? `<span>${esc(c.date)}</span>` : ''}${c.date && c.author ? '<span class="dot">·</span>' : ''}
-      ${c.author ? `<span class="who">${c.authorIcon ? `<img src="${esc(c.authorIcon)}" alt="" onerror="this.remove()">` : ''}${esc(c.author)}</span>` : ''}</div>` : '';
-  host.innerHTML = `<div class="nwcard">
-    <div class="nwimg">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="">` : textHeader(c, s)}
-      ${c.badge ? `<span class="nwbadge" style="background:${esc(badgeColor)};border-color:${esc(badgeColor)};color:#080c10">${esc(c.badge)}</span>` : ''}</div>
-    <div class="nwbody"><b style="color:${headerAccent(s)}">${esc(c.title ?? '')}</b>${byline}${body}
-      ${c.linkUrl ? `<span class="faint small truncate">${esc(c.linkUrl)}</span>` : ''}</div>
-  </div>`;
+  // mock.js: the launcher's own card, in the channel's colours, at its size in the news grid.
+  const beta = (c.variant ?? s?.variant) === 'beta';
+  const accent = beta ? (MOCK_ACCENT.beta || '#ff6600') : (MOCK_ACCENT.public || SITE_ACCENT);
+  host.innerHTML = `<div class="mock-card-wrap"><div class="lm-cardhost" style="${LauncherMock.theme(accent).vars}">${LauncherMock.card(c, accent)}</div></div>
+    ${c.linkUrl ? `<div class="faint small truncate" style="margin-top:var(--s3)">${esc(c.linkUrl)}</div>` : ''}`;
 }
 
 function newsChanged(listOnly) {
   setNewsDirty(true);
+  MOCK_NEWS = null; // the Manifest tab's launcher preview fetches the edited feed
   renderCardList();
   if (listOnly) renderCardDetail();
   refreshPreview();

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Unbounded:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><img src="assets/logo.svg" alt="SC Evo"><span class="title">Release Handbook</span><span class="tag">Internal · SCEvo_Deploy/docs</span></header>
+<div class="wrap">
+<nav class="side">
+  <div class="group">Start</div>
+  <a href="index.html" class="active">Overview</a>
+  <a href="checks.html">Pre-push checks</a>
+  <div class="group">Game content</div>
+  <a href="assets.html">Asset splitting</a>
+  <a href="mods.html">Mod packaging</a>
+  <a href="cdn.html">Cloudflare push</a>
+  <div class="group">Launcher</div>
+  <a href="launcher.html">Launcher release</a>
+  <div class="group">Website</div>
+  <a href="blog.html">Blog posts</a>
+  <a href="website.html">Website push</a>
+</nav>
+<main>
+<h1>Pushing updates</h1>
+<p class="lead">How each part of SC Evo gets from our machines to players: game mods on Battle.net, the launcher's downloads on Cloudflare, the launcher itself, and the website. One page per front, with the commands and the checks to run before each push.</p>
+
+<div class="callout"><span class="label">Before any push</span>
+<p>Run the check for that front from the deploy repo. It is read-only and ends with <span class="badge b-pass">READY</span>, <span class="badge b-warn">READY WITH WARNINGS</span> or <span class="badge b-fail">NOT READY</span>.</p>
+<pre><code>cd D:\SCBW\SCEvo_Deploy
+<span class="c"># or: blog [post-id] | site | launcher | assets | mods | cdn</span>
+.\run.cmd check all</code></pre>
+<p>Details on <a href="checks.html">Pre-push checks</a>. Commands in these pages are written for PowerShell (the VS Code terminal); <code>#</code> lines are comments.</p>
+</div>
+
+<h2>The fronts</h2>
+<div class="cards">
+  <a class="card" href="assets.html"><span class="h">Asset splitting</span><span class="d">Mirror the dev SCEvo_Assets mod into the five split mods that go to Battle.net.</span><span class="repo">SCEvo_AssetUploads</span></a>
+  <a class="card" href="mods.html"><span class="h">Mod packaging</span><span class="d">Choose what ships, and package mods and maps from the SC2 install into the payload folders.</span><span class="repo">SCEvo_Deploy</span></a>
+  <a class="card" href="cdn.html"><span class="h">Cloudflare push</span><span class="d">Upload payloads and manifests to the R2 bucket that every launcher downloads from.</span><span class="repo">SCEvo_Deploy</span></a>
+  <a class="card" href="launcher.html"><span class="h">Launcher release</span><span class="d">Version, build and publish the launcher; players get it through the self-updater.</span><span class="repo">sc-evo-launcher</span></a>
+  <a class="card" href="blog.html"><span class="h">Blog posts</span><span class="d">Write a post, release it to the lists, short URL, sitemap and link previews.</span><span class="repo">EvoSite</span></a>
+  <a class="card" href="website.html"><span class="h">Website push</span><span class="d">The site's build scripts and publishing through Netlify.</span><span class="repo">EvoSite</span></a>
+</div>
+
+<h2>The repositories</h2>
+<table>
+  <tr><th>Repo</th><th>On this machine</th><th>What it holds</th></tr>
+  <tr><td><strong>SCEvoDev</strong></td><td><code>D:\SCBW\SCEvoDev</code></td><td>The SC Evo Complete mods and multiplayer maps (dev copies). Releases are tagged <code>Update-&lt;version&gt;</code>.</td></tr>
+  <tr><td><strong>SCBW_Campaign</strong></td><td><code>D:\SCBW\SCBW_Campaign</code></td><td>Campaign maps and campaign mods.</td></tr>
+  <tr><td><strong>SCEvo_AssetUploads</strong></td><td><code>D:\SCBW\SCEvo_AssetUploads</code></td><td>The five split asset mods uploaded to Battle.net, and <code>Prepare-Upload.ps1</code>.</td></tr>
+  <tr><td><strong>SCEvo_Deploy</strong></td><td><code>D:\SCBW\SCEvo_Deploy</code></td><td>The deploy tool (<code>.\run.cmd</code>), the catalog, built payloads, manifests, these docs and the checks.</td></tr>
+  <tr><td><strong>sc-evo-launcher</strong></td><td><code>D:\EvoLauncher\sc-evo-launcher</code></td><td>The Electron launcher.</td></tr>
+  <tr><td><strong>EvoSite</strong></td><td><code>D:\SCBW\EvoSite</code></td><td>scevo.org: pages, blog posts and the site's build scripts.</td></tr>
+</table>
+
+<h3>How the SC2 install is wired</h3>
+<p>The deploy tool packages from the StarCraft II folder (<code>sc2InstallPath</code> in <code>deploy-config.json</code>, here <code>D:\StarCraft II</code>). The dev repos are linked into it with junctions, so the editor and the deploy tool see the same files:</p>
+<table>
+  <tr><th>In the SC2 folder</th><th>Points at</th></tr>
+  <tr><td><code>Mods\SC Evolution Complete\SCEvo_*.SC2Mod</code></td><td><code>SCEvoDev\SC Evo Complete\…</code></td></tr>
+  <tr><td><code>Mods\SC Evolution Complete\SCEvo_CampaignMods</code></td><td><code>SCBW_Campaign\SCEvo_CampaignMods</code></td></tr>
+  <tr><td><code>Mods\SC Evolution Complete\Online Mods</code></td><td><code>SCEvo_AssetUploads\Online Mods</code> (the split mods)</td></tr>
+  <tr><td><code>Maps\SCEvo</code></td><td><code>SCBW_Campaign\SCEvo_Maps</code></td></tr>
+  <tr><td><code>Maps\SCEvo_MPMaps</code></td><td><code>SCEvoDev\SC Evo Complete\MP Maps</code></td></tr>
+</table>
+
+<h2>Where things end up</h2>
+<table>
+  <tr><th>What</th><th>Goes to</th><th>Players get it</th></tr>
+  <tr><td>Multiplayer mods (incl. split assets)</td><td>Battle.net, published from the SC2 Editor</td><td>When they join an SC Evo lobby</td></tr>
+  <tr><td>Campaign mods and maps, melee maps and mods, decals</td><td>R2 bucket <code>evo-campaign</code> (<code>payload/</code>, <code>betapayload/</code>, <code>meleepayload/</code>, <code>betameleepayload/</code>)</td><td>Through the launcher, from the manifests</td></tr>
+  <tr><td>News cards, news images, other launcher art</td><td>R2 <code>manifests/news-feed.json</code>, <code>assets/</code></td><td>Launcher home screen</td></tr>
+  <tr><td>Launcher exe and installer</td><td>R2 <code>launcher/</code>, <code>installer/</code>, <code>manifests/launcher-version.json</code></td><td>The launcher's self-updater, and the site's Download page</td></tr>
+  <tr><td>Website</td><td>GitHub <code>Ailoso/EvoSite</code>, served by Netlify</td><td>scevo.org</td></tr>
+</table>
+<p>Downloads are served from <code>https://scevo.download</code> (custom domain on the bucket), with the bucket's r2.dev address as the fallback.</p>
+
+<h2>A full patch, in order</h2>
+<ol class="steps">
+  <li><strong>Finish and commit the dev work</strong>Commit in SCEvoDev (and SCBW_Campaign for campaign changes). The asset check warns about uncommitted dev changes.</li>
+  <li><strong><a href="assets.html">Split the assets</a></strong><code>Prepare-Upload.ps1</code>, then <code>-Apply</code>, until the dry run reports nothing to do. Commit SCEvo_AssetUploads.</li>
+  <li><strong>Publish to Battle.net</strong>Every mod the asset report lists under "needs upload", from the SC2 Editor. Tag the release in SCEvoDev <code>Update-&lt;version&gt;</code>, with the version from the patch notes post (the writer picks it); the next asset report compares from that tag.</li>
+  <li><strong><a href="mods.html">Package for the launcher</a></strong><code>.\run.cmd check mods</code>, then Build campaign / melee in the deploy tool and set the versions on the Manifest tab.</li>
+  <li><strong><a href="cdn.html">Push to Cloudflare</a></strong><code>.\run.cmd check cdn</code>, deploy with a dry run first, then live.</li>
+  <li><strong><a href="blog.html">Patch notes post</a></strong>Write the post, <code>.\run.cmd check blog &lt;post-id&gt;</code>, release it.</li>
+  <li><strong><a href="website.html">Publish the site</a></strong><code>.\run.cmd check site</code>, then merge the working branch into <code>main</code> and push.</li>
+</ol>
+<p>A launcher release is separate and can go out on its own: <a href="launcher.html">Launcher release</a>.</p>
+
+<div class="pager"><span></span><a href="checks.html">Pre-push checks →</a></div>
+<footer class="note">Lives in SCEvo_Deploy/docs. Open index.html in a browser; nothing here is uploaded.</footer>
+</main>
+</div>
+</body>
+</html>

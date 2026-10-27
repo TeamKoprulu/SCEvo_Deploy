@@ -401,33 +401,6 @@ textarea { resize: vertical; }
 .item.off { opacity: .45; }
 .nw-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--s3); }
 .nw-fields > label:has(textarea) { grid-column: 1 / -1; }
-.nwcard { width: 300px; background: #0d1117; border: 1px solid #1a2a3a; border-radius: 8px; overflow: hidden; }
-.nwcard.banner { height: 300px; }
-.nwcard.banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.nwimg { height: 140px; position: relative; background: var(--panel-3); }
-.nwimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.nwbadge { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border: 1px solid var(--accent); border-radius: 3px;
-  background: #000a; color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
-.nwbody { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
-.nwbody b { color: var(--accent); font-size: 15px; }
-.nwbody p, .nwbody ul { margin: 6px 0 0; color: #7a8a9a; font-size: 13px; line-height: 1.5; }
-.nwbody ul { padding-left: 18px; }
-.nwbyline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; font-weight: 600; letter-spacing: .5px;
-  color: color-mix(in srgb, var(--nb-ac) 40%, transparent); }
-.nwbyline .dot { opacity: .6; }
-.nwbyline .who { display: inline-flex; align-items: center; gap: 6px; color: color-mix(in srgb, var(--nb-ac) 60%, transparent); }
-.nwbyline img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; border: 1px solid color-mix(in srgb, var(--nb-ac) 20%, transparent); }
-/* The launcher's no-image header (App.jsx NewsImage); always dark, like the launcher. */
-.nwhead { position: absolute; inset: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--nh-bg); }
-.nh-grid { position: absolute; inset: 0; opacity: .08; background-size: 24px 24px;
-  background-image: linear-gradient(var(--nh-ac) 1px, transparent 1px), linear-gradient(90deg, var(--nh-ac) 1px, transparent 1px); }
-.nh-glow { position: absolute; width: 160px; height: 160px; border-radius: 50%; background: var(--nh-ac); filter: blur(60px); opacity: .25; }
-.nh-text { position: relative; text-align: center; letter-spacing: 3px; text-transform: uppercase; }
-.nh-sc { font-size: 11px; color: var(--nh-ac); opacity: .7; margin-bottom: 4px; }
-.nh-evo { font-size: 10px; color: #fff; opacity: .5; letter-spacing: 5px; }
-.nh-box { margin-top: 10px; font-size: 13px; font-weight: 700; color: #fff; padding: 4px 14px; border-radius: 2px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--nh-ac) 13%, transparent), color-mix(in srgb, var(--nh-ac) 27%, transparent));
-  border: 1px solid color-mix(in srgb, var(--nh-ac) 33%, transparent); }
 .color-field { display: flex; gap: var(--s2); align-items: center; }
 .color-field input[type=color] { flex: none; width: 36px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r1); background: none; cursor: pointer; }
 .color-field input[type=text] { flex: 1; min-width: 0; }
@@ -438,3 +411,20 @@ textarea { resize: vertical; }
 
 .hint.pending { margin: -6px 0 var(--s2) 24px; }
 .hint.pending.warn-text { color: var(--warn); }
+
+/* Launcher colour: one colour, the rest derived (lib/manifest.js themeFromAccent) */
+.color-field { display: flex; gap: var(--s2, 6px); align-items: stretch; margin-top: 4px; }
+.color-field input[type=color] { flex: none; width: 38px; height: auto; min-height: 32px; padding: 2px; background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r1); cursor: pointer; }
+.color-field input[type=text] { flex: 1; min-width: 0; margin-top: 0; }
+.theme-preview { display: flex; gap: 6px; align-items: center; margin: 2px 0 var(--s3); font-size: 12px; color: var(--muted); }
+.theme-preview .sw { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid; border-radius: var(--r1); }
+.theme-preview .sw i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+
+/* Channel hero background (lib/backgrounds.js): shown instead of the episode's own art */
+.bg-field { display: flex; align-items: center; gap: 10px; margin: 0 0 var(--s3); padding: 8px; border: 1px solid var(--line-2); border-radius: var(--r1); background: var(--bg); }
+.bg-thumb { position: relative; flex: none; width: 112px; height: 40px; overflow: hidden; border-radius: 3px; background: repeating-linear-gradient(45deg, #0e151c 0 6px, #111a22 6px 12px); display: flex; align-items: center; justify-content: center; }
+.bg-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bg-thumb i { font-style: normal; font-size: 11px; color: var(--faint); }
+.bg-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bg-info b { font-size: 12.5px; color: var(--text, #cfd8e3); font-weight: 600; }
+.bg-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
