@@ -9,6 +9,7 @@ const cfg = require('./config');
 const PACKAGE_FILES = {
   campaign: ['update-manifest.json', 'beta-manifest.json', 'news-feed.json'],
   melee: ['melee-manifest.json'],
+  meleebeta: ['melee-beta-manifest.json'],
 };
 
 // The launcher that a deploy would publish (the launcher repo's version and exes), against the live
@@ -25,6 +26,11 @@ async function launcherPending({ r2 = require('./r2') } = {}) {
   const host = (u) => { try { return new URL(u).origin; } catch { return null; } };
   const liveBase = live?.cdnBase ?? host(live?.portable?.url);
   if (next.doc.cdnBase && liveBase !== next.doc.cdnBase) return { changed: true, details: [`CDN address → ${next.doc.cdnBase}`] };
+  // The Windows 7 build can change on its own (first release, or a rebuild at this version).
+  const w7Live = live?.win7 ?? null, w7Next = next.doc.win7 ?? null;
+  if (w7Next && (w7Next.version !== w7Live?.version || w7Next.portable?.sha256 !== w7Live?.portable?.sha256)) {
+    return { changed: true, details: [`Windows 7 launcher ${w7Live?.version ?? '—'} → ${w7Next.version}`] };
+  }
   const exeDiffers = live?.portable?.sha256 ? live.portable.sha256 !== next.doc.portable.sha256 : staged.staged.length > 0;
   if (exeDiffers) return { changed: true, warn: true, details: [`exe rebuilt but still ${v}: bump the version or players won't get it`] };
   return { changed: false, details: [] };

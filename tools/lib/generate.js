@@ -1,9 +1,10 @@
 'use strict';
-// Generates update-manifest.json, beta-manifest.json and melee-manifest.json
+// Generates update-manifest.json, beta-manifest.json, melee-manifest.json and melee-beta-manifest.json
 // from the catalog and the built payload files. Nothing here is edited by hand:
 // what ships is exactly what the catalog says, at the hashes on disk.
 //
-// Hand-edited settings (versions, criticalUpdate, beta name/code/theme) are
+// Hand-edited settings (versions, criticalUpdate, beta name/code/theme, public theme,
+// the episode shown) are
 // carried over from the current manifest, or taken from `overrides`.
 
 const fs = require('node:fs');
@@ -15,6 +16,7 @@ const { hashOf } = require('./hashcache');
 const { destsOf, thumbPathOf, loadState } = require('./build');
 const { readMapMeta, modesFor } = require('./mapmeta');
 const { DECALS_DIR } = require('./decals');
+const { meleeBetaDoc } = require('./meleebeta');
 
 const baseName = (p) => path.basename(p, path.extname(p));
 
@@ -141,11 +143,12 @@ function writeIfChanged(file, doc, dryRun) {
 }
 
 /**
- * opts: { doc, sc2Root, packages, overrides: { public: {versions, criticalUpdate}, beta: {meta, criticalUpdate}, melee: {version} }, dryRun }
- * Returns { written: [{file, changed}], problems: [string], docs: {public, beta, melee} }.
+ * opts: { doc, sc2Root, packages, overrides: { public: {versions, criticalUpdate}, beta: {meta, criticalUpdate}, melee: {version},
+ *         meleeBeta: {enabled, name, version, code, accentColor} }, dryRun }
+ * Returns { written: [{file, changed}], problems: [string], docs: {public, beta, melee, meleeBeta} }.
  */
 async function generate(opts) {
-  const { doc, sc2Root, packages = catalog.PACKAGES, overrides = {}, dryRun = false } = opts;
+  const { doc, sc2Root, packages = catalog.BUILD_PACKAGES, overrides = {}, dryRun = false } = opts;
   const problems = [];
   const written = [];
   const docs = {};
@@ -156,6 +159,10 @@ async function generate(opts) {
     docs.public = mf.buildPublicManifest({
       versions: o.versions ?? pub.versions,
       criticalUpdate: o.criticalUpdate ?? pub.criticalUpdate,
+      // Blank accent / episode in the overrides clears them (launcher defaults).
+      accentColor: 'accentColor' in o ? o.accentColor : pub.theme?.accentColor,
+      episode: 'episode' in o ? o.episode : pub.episode,
+      background: 'background' in o ? o.background : pub.background,
       modules: groupModules(await campaignEntries(doc, 'public', problems)),
     });
 
@@ -163,7 +170,7 @@ async function generate(opts) {
     const ob = overrides.beta || {};
     const meta = {
       betaEnabled: beta.betaEnabled, betaName: beta.betaName, majorVersion: beta.majorVersion,
-      fullVersion: beta.fullVersion, codeHash: beta.codeHash, accentColor: beta.theme?.accentColor,
+      fullVersion: beta.fullVersion, codeHash: beta.codeHash, accentColor: beta.theme?.accentColor, episode: beta.episode, background: beta.background,
       ...(ob.meta || {}),
     };
     docs.beta = mf.buildBetaManifest({
@@ -180,6 +187,11 @@ async function generate(opts) {
   if (packages.includes('melee')) {
     docs.melee = await meleeDoc(doc, sc2Root, overrides.melee || {}, problems);
     written.push(writeIfChanged(cfg.MELEE_MANIFEST, docs.melee, dryRun));
+  }
+
+  if (packages.includes('meleebeta')) {
+    docs.meleeBeta = await meleeBetaDoc(doc, overrides.meleeBeta || {}, problems);
+    written.push(writeIfChanged(cfg.MELEE_BETA_MANIFEST, docs.meleeBeta, dryRun));
   }
 
   return { written, problems, docs };

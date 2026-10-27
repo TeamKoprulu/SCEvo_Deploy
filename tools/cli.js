@@ -2,16 +2,19 @@
 // SCEvo Deploy — command line. Same core as the GUI (run.cmd with no arguments).
 //
 //   run.cmd init                          create deploy-catalog.json from what's deployed today
-//   run.cmd status [--package campaign|melee]
+//   run.cmd status [--package campaign|melee|meleebeta]
 //   run.cmd set <source> [--package campaign|melee] [--channel public|beta|both|off]
 //   run.cmd promote <source> public|beta|both
 //   run.cmd ignore <source>   /   run.cmd unignore <source>
-//   run.cmd build [--package p] [--only <source>]... [--force] [--dry-run]
+//   run.cmd build [--package p] [--only <source>]... [--force] [--dry-run]     (p: campaign, melee or meleebeta)
 //   run.cmd generate [--package p]
-//   run.cmd deploy [--package campaign|melee|launcher] [--dry-run] [--force] [--update-site]
+//   run.cmd deploy [--package campaign|melee|meleebeta|launcher] [--dry-run] [--force] [--update-site]
+//   run.cmd beta-tag <source> [off]       tag a mod for the melee beta's branch (or untag it)
+//   run.cmd melee-beta [--on|--off] [--name "…"] [--code CODE] [--version 1.0] [--accent #ff6600]
 //   run.cmd offline-zip                   zip the public campaign package for offline play (offline/)
 //   run.cmd cdn-check [https://host]       is the custom CDN address ready? (default: cdnBase in deploy-config.json)
 //   run.cmd decals [exclude|include <id>] list the melee decals that look blank, or leave a decal out / back in
+//   run.cmd check <blog [id]|site|launcher|assets|mods|cdn|all> [--quick]   pre-push checks (tools/check.js)
 // <source> is the path inside the SC2 install, e.g. "Maps\SCEvo_MPMaps\SEL_1v1\Golden Wall SEL.SC2Map",
 // or just the file name when it's unique. Exits non-zero on failure.
 
@@ -35,6 +38,9 @@ function parse(argv) {
     else if (a === '--force') args.force = true;
     else if (a === '--dry-run') args.dryRun = true;
     else if (a === '--update-site') args.updateSite = true;
+    else if (a === '--on') args.on = true;
+    else if (a === '--off') args.off = true;
+    else if (['--name', '--code', '--version', '--accent'].includes(a)) args[a.slice(2)] = argv[++i];
     else args._.push(a);
   }
   return args;
@@ -42,8 +48,8 @@ function parse(argv) {
 
 const log = (m) => console.log(m);
 const packagesOf = (args) => {
-  if (!args.package) return catalog.PACKAGES;
-  if (!catalog.PACKAGES.includes(args.package)) throw new Error(`--package must be one of ${catalog.PACKAGES.join(', ')}`);
+  if (!args.package) return catalog.BUILD_PACKAGES;
+  if (!catalog.BUILD_PACKAGES.includes(args.package)) throw new Error(`--package must be one of ${catalog.BUILD_PACKAGES.join(', ')}`);
   return [args.package];
 };
 
@@ -121,6 +127,12 @@ const commands = {
     }
     for (const pkg of pkgs) {
       log(`\n${pkg}:`);
+      if (pkg === 'meleebeta') {
+        const tagged = rows.filter((x) => x.item?.meleeBeta);
+        if (!tagged.length) log('  (no mods tagged: run.cmd beta-tag <mod>)');
+        tagged.forEach((r) => log(`  tagged   ${r.status === 'missing' ? 'MISSING SOURCE' : ''}${r.source}`));
+        continue;
+      }
       for (const r of rows.filter((x) => x.item && x.item.package === pkg)) {
         const s = r.status === 'missing' ? 'MISSING SOURCE' : st.get(catalog.keyOf(r.source));
         log(`  ${r.item.channel.padEnd(6)} ${String(s).padEnd(8)} ${r.source}`);
@@ -167,16 +179,46 @@ const commands = {
     log(`${source} is no longer ignored (it shows as new until you decide)`);
   },
 
+  async 'beta-tag'(args) {
+    const doc = loadCatalog();
+    const source = resolveSource(doc, sc2Root(), args._[1]);
+    const meleebeta = require('./lib/meleebeta');
+    const off = args._[2] === 'off';
+    if (!off && !meleebeta.canTag(source)) throw new Error(`Only mods in "${meleebeta.MOD_DIR}" can be tagged for the melee beta`);
+    if (!catalog.findItem(doc, source)) throw new Error(`${source} isn't in the catalog yet: add it with "set" first`);
+    catalog.upsert(doc, source, { meleeBeta: off ? null : true });
+    catalog.save(doc);
+    log(`${source}: ${off ? 'no longer in' : 'tagged for'} the melee beta. Run "build --package meleebeta" to update it.`);
+    const problems = meleebeta.closureProblems(doc, catalog.classify(doc, sc2Root()).rows);
+    problems.forEach((p) => log(`NOTE: ${p}`));
+  },
+
+  async 'melee-beta'(args) {
+    const doc = loadCatalog();
+    const o = {};
+    if (args.on) o.enabled = true;
+    if (args.off) o.enabled = false;
+    for (const k of ['name', 'code', 'version']) if (args[k] != null) o[k] = args[k];
+    if (args.accent != null) o.accentColor = args.accent;
+    const { written, problems, docs } = await generate({ doc, sc2Root: sc2Root(), packages: ['meleebeta'], overrides: { meleeBeta: o } });
+    const d = docs.meleeBeta;
+    log(`Melee beta: ${d.betaEnabled ? 'ON' : 'off'} · "${d.betaName}" · version ${d.version || '—'} · code ${d.codeHash ? 'set' : 'not set'} · ${d.modules?.length ?? 0} mod(s)`);
+    written.forEach((w) => log(`${w.changed ? 'wrote    ' : 'unchanged'} ${w.file}`));
+    problems.forEach((p) => log(`PROBLEM: ${p}`));
+    if (problems.length) process.exitCode = 1;
+  },
+
   async build(args) {
     const doc = loadCatalog();
     const only = args.only.length ? args.only.map((q) => resolveSource(doc, sc2Root(), q)) : null;
-    const { results, pruned } = await build({
+    const { results, pruned, problems = [] } = await build({
       doc, sc2Root: sc2Root(), packages: packagesOf(args), only, force: !!args.force, dryRun: !!args.dryRun, log,
       progress: (p) => { if (p.phase === 'start') log(`[${p.index}/${p.total}] ${p.file}`); },
     });
     const failed = results.filter((r) => !r.ok);
     log(`\n${results.length - failed.length} ok, ${failed.length} failed, ${pruned.length} removed`);
-    if (failed.length) { process.exitCode = 1; return; }
+    problems.forEach((p) => log(`PROBLEM: ${p}`));
+    if (failed.length || problems.length) { process.exitCode = 1; return; }
     if (!args.dryRun) await commands.generate(args);
   },
 
@@ -215,7 +257,8 @@ async function main() {
   const args = parse(process.argv.slice(2));
   const cmd = commands[args._[0]];
   if (!cmd) {
-    console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(1, 15).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+    const lines = fs.readFileSync(__filename, 'utf8').split('\n').slice(1);
+    console.log(lines.slice(0, lines.findIndex((l) => !l.startsWith('//'))).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
     process.exitCode = args._[0] && args._[0] !== 'help' ? 1 : 0;
     return;
   }

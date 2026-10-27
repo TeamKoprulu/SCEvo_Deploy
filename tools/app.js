@@ -88,6 +88,9 @@ async function runJob(name, fn) {
 
 /* ── route handlers ──────────────────────────────────────────────────────── */
 
+const MANIFEST_BRANCHES = ['public', 'beta', 'melee', 'meleebeta'];
+const packageOfBranch = (b) => b === 'melee' ? 'melee' : b === 'meleebeta' ? 'meleebeta' : 'campaign';
+
 const routes = {
   // Deliberately cheap — no network. The R2 probe costs up to 15s and lives on
   // /api/probe so the shell can paint immediately and fill the R2 chip in later.
@@ -163,6 +166,7 @@ const routes = {
         source: r.source, name: path.basename(r.source), group: path.dirname(r.source),
         kind: r.kind, packed: !!r.packed, status: r.status, item: r.item,
         build: r.item ? status.get(catalog.keyOf(r.source)) : null,
+        canMeleeBeta: require('./lib/meleebeta').canTag(r.source),
       };
       // Maps under a melee-capable root get their metadata for the map cards.
       const meleeCandidate = r.kind === 'map' && r.abs && (r.item?.package === 'melee' || (r.status !== 'tracked' && /SCEvo_MPMaps/i.test(r.source)));
@@ -174,7 +178,8 @@ const routes = {
       }
       return row;
     });
-    return { rows: out, missingRoots, melee: doc.melee, roots: doc.roots, ignoredCount: doc.ignore.length };
+    return { rows: out, missingRoots, melee: doc.melee, roots: doc.roots, ignoredCount: doc.ignore.length,
+      meleeBetaProblems: require('./lib/meleebeta').closureProblems(doc, rows) };
   },
 
   'GET /api/thumb': async (_b, url) => {
@@ -195,14 +200,21 @@ const routes = {
     return { items: doc.items.length, ignored: doc.ignore.length };
   },
 
-  // body: { source, patch?: { package, channel, name, description }, ignore?: true|false }
+  // body: { source, patch?: { package, channel, meleeBeta, name, description }, ignore?: true|false }
   'POST /api/catalog': async (body) => {
     const doc = catalog.load();
     if (!doc) throw new Error('No catalog yet');
     if (!body.source) throw new Error('Missing source');
     if (body.ignore === true) catalog.ignore(doc, body.source);
     else if (body.ignore === false) catalog.unignore(doc, body.source);
-    else catalog.upsert(doc, body.source, body.patch || {});
+    else {
+      const patch = { ...(body.patch || {}) };
+      if ('meleeBeta' in patch) {
+        if (patch.meleeBeta && !require('./lib/meleebeta').canTag(body.source)) throw new Error('Only mods in "Mods\\SC Evolution Complete" can be tagged for the melee beta');
+        patch.meleeBeta = patch.meleeBeta ? true : null;
+      }
+      catalog.upsert(doc, body.source, patch);
+    }
     catalog.save(doc);
     return { item: catalog.findItem(doc, body.source) };
   },
@@ -211,24 +223,24 @@ const routes = {
   'POST /api/build': async (body) => runJob('build', async ({ log, progress }) => {
     const doc = catalog.load();
     const sc2Root = cfg.readConfig().sc2InstallPath;
-    const packages = (body.packages || catalog.PACKAGES).filter((p) => catalog.PACKAGES.includes(p));
-    const { results, pruned } = await builder.build({ doc, sc2Root, packages, only: body.only || null, force: !!body.force, log, progress });
+    const packages = (body.packages || catalog.BUILD_PACKAGES).filter((p) => catalog.BUILD_PACKAGES.includes(p));
+    const { results, pruned, problems = [] } = await builder.build({ doc, sc2Root, packages, only: body.only || null, force: !!body.force, log, progress });
     const gen = await generate({ doc, sc2Root, packages });
     gen.written.filter((w) => w.changed).forEach((w) => log(`Regenerated ${w.file}`));
     gen.problems.forEach((p) => log(`PROBLEM: ${p}`));
-    return { results, pruned, manifests: gen.written, problems: gen.problems };
+    return { results, pruned, manifests: gen.written, problems: [...problems, ...gen.problems] };
   }),
 
   /* ── manifests (generated; only the settings are edited) ───── */
 
   'GET /api/manifest': async (_b, url) => {
-    const branch = ['beta', 'melee'].includes(url.searchParams.get('branch')) ? url.searchParams.get('branch') : 'public';
+    const branch = MANIFEST_BRANCHES.includes(url.searchParams.get('branch')) ? url.searchParams.get('branch') : 'public';
     const doc = catalog.load();
     if (!doc) return { needsInit: true };
-    const file = { public: cfg.PUBLIC_MANIFEST, beta: cfg.BETA_MANIFEST, melee: cfg.MELEE_MANIFEST }[branch];
+    const file = { public: cfg.PUBLIC_MANIFEST, beta: cfg.BETA_MANIFEST, melee: cfg.MELEE_MANIFEST, meleebeta: cfg.MELEE_BETA_MANIFEST }[branch];
     const existing = mf.readManifest(file);
-    const gen = await generate({ doc, sc2Root: cfg.readConfig().sc2InstallPath, packages: [branch === 'melee' ? 'melee' : 'campaign'], dryRun: true });
-    const next = gen.docs[branch];
+    const gen = await generate({ doc, sc2Root: cfg.readConfig().sc2InstallPath, packages: [packageOfBranch(branch)], dryRun: true });
+    const next = gen.docs[branch === 'meleebeta' ? 'meleeBeta' : branch];
     const before = new Map();
     for (const m of (existing?.modules ?? [])) for (const f of (m.files ?? [])) before.set(f.path, f.hash);
     for (const m of (existing?.maps ?? [])) before.set(m.file?.path, m.file?.hash);
@@ -250,9 +262,16 @@ const routes = {
         betaEnabled: !!existing?.betaEnabled, betaName: existing?.betaName ?? '',
         majorVersion: existing?.majorVersion ?? '', fullVersion: existing?.fullVersion ?? '',
         codeHash: existing?.codeHash ?? '', accentColor: existing?.theme?.accentColor ?? '#ff6600',
-        coreVersion: existing?.versions?.multiplayer ?? '',
+        coreVersion: existing?.versions?.multiplayer ?? '', episode: existing?.episode ?? null, background: existing?.background ?? null,
       } : null,
+      // Public channel colour (blank = the launcher's built-in site colour) and hero episode.
+      publicMeta: branch === 'public' ? { accentColor: existing?.theme?.accentColor ?? '', episode: existing?.episode ?? null, background: existing?.background ?? null } : null,
+      episodes: require('./lib/episodes').readEpisodes(cfg.readConfig().siteRepoPath),
       meleeVersion: doc.melee.version,
+      meleeBetaMeta: branch === 'meleebeta' ? {
+        betaEnabled: !!existing?.betaEnabled, betaName: existing?.betaName ?? '', version: existing?.version ?? '',
+        codeHash: existing?.codeHash ?? '', accentColor: existing?.theme?.accentColor ?? '#ff6600',
+      } : null,
       entries,
       problems: gen.problems,
     };
@@ -260,31 +279,44 @@ const routes = {
 
   // Writes the manifest for a branch with the edited settings.
   'POST /api/manifest': async (body) => {
-    const branch = ['beta', 'melee'].includes(body.branch) ? body.branch : 'public';
+    const branch = MANIFEST_BRANCHES.includes(body.branch) ? body.branch : 'public';
     const doc = catalog.load();
     const overrides = {};
-    if (branch === 'public') overrides.public = { versions: body.versions, criticalUpdate: body.criticalUpdate };
+    if (branch === 'meleebeta') {
+      const m = body.meleeBetaMeta || {};
+      overrides.meleeBeta = { enabled: !!m.betaEnabled, name: m.betaName ?? '', version: m.version ?? '', codeHash: m.codeHash ?? '', accentColor: m.accentColor ?? '' };
+    }
+    if (branch === 'public') {
+      overrides.public = { versions: body.versions, criticalUpdate: body.criticalUpdate };
+      if (body.publicMeta) Object.assign(overrides.public, { accentColor: body.publicMeta.accentColor ?? '', episode: body.publicMeta.episode ?? null, background: body.publicMeta.background ?? null });
+    }
     if (branch === 'beta') overrides.beta = { meta: body.betaMeta, criticalUpdate: body.criticalUpdate };
     if (branch === 'melee') {
       doc.melee.version = String(body.meleeVersion || doc.melee.version).trim();
       catalog.save(doc);
       overrides.melee = { version: doc.melee.version };
     }
-    const gen = await generate({ doc, sc2Root: cfg.readConfig().sc2InstallPath, packages: [branch === 'melee' ? 'melee' : 'campaign'], overrides });
+    const gen = await generate({ doc, sc2Root: cfg.readConfig().sc2InstallPath, packages: [packageOfBranch(branch)], overrides });
     return { written: gen.written, problems: gen.problems };
   },
+
+  // A channel's hero background: saved under assets/launcher/ (uploaded with the campaign
+  // package, before the manifests), named by its hash so a new image never reuses a cached URL.
+  'POST /api/launcher-background': async (body) => require('./lib/backgrounds').saveBackground(body),
 
   'POST /api/beta-code-hash': async (body) => ({ codeHash: mf.betaCodeHash(body.code ?? '') }),
 
   'POST /api/verify': async (body) => runJob('verify', async ({ progress, step }) => {
-    const branch = ['beta', 'melee'].includes(body.branch) ? body.branch : 'public';
+    const branch = MANIFEST_BRANCHES.includes(body.branch) ? body.branch : 'public';
     step('checks', 'active', `${branch} manifest`);
-    const r = branch === 'melee' ? await verify.preflightMelee(progress) : await verify.preflight(branch, progress);
+    const r = branch === 'melee' ? await verify.preflightMelee(progress)
+      : branch === 'meleebeta' ? await verify.preflightMeleeBeta(progress)
+      : await verify.preflight(branch, progress);
     step('checks', r.canDeploy ? 'done' : 'failed', `${r.errors} error(s), ${r.warnings} warning(s)`);
     return r;
   }),
 
-  // body: { packages: ['campaign','melee','launcher'], dryRun, force }
+  // body: { packages: ['campaign','melee','meleebeta','launcher'], dryRun, force }
   'POST /api/deploy': async (body) => runJob('deploy', async ({ log, progress, step }) => {
     const { DEPLOY_PACKAGES } = require('./lib/deploy');
     const packages = (body.packages || []).filter((p) => DEPLOY_PACKAGES.includes(p));
@@ -296,13 +328,15 @@ const routes = {
     require('./lib/deploy').deployNews({ dryRun: !!body.dryRun, force: !!body.force, log, progress, step })),
 
   'GET /api/remote-orphans': async (_b, url) => {
-    const branch = ['beta', 'melee'].includes(url.searchParams.get('branch')) ? url.searchParams.get('branch') : 'public';
-    const prefix = { public: 'payload', beta: 'betapayload', melee: 'meleepayload' }[branch];
+    const branch = MANIFEST_BRANCHES.includes(url.searchParams.get('branch')) ? url.searchParams.get('branch') : 'public';
+    const prefix = { public: 'payload', beta: 'betapayload', melee: 'meleepayload', meleebeta: 'betameleepayload' }[branch];
     const remote = await r2.listRemote(prefix);
     if (!remote.ok) return { ok: false, error: remote.error, orphans: [] };
     const known = new Set();
     if (branch === 'melee') {
       for (const f of verify.meleeFiles(mf.readManifest(cfg.MELEE_MANIFEST))) known.add(String(f.path).toLowerCase());
+    } else if (branch === 'meleebeta') {
+      for (const f of verify.meleeBetaFiles(mf.readManifest(cfg.MELEE_BETA_MANIFEST))) known.add(String(f.path).toLowerCase());
     } else {
       const doc = mf.readManifest(branch === 'beta' ? cfg.BETA_MANIFEST : cfg.PUBLIC_MANIFEST);
       for (const m of (doc?.modules ?? [])) for (const f of (m.files ?? [])) known.add(f.path.toLowerCase());
@@ -312,7 +346,7 @@ const routes = {
   },
 
   'POST /api/remote-delete': async (body) => runJob('remote-delete', async ({ log }) => {
-    const prefix = ['payload', 'betapayload', 'meleepayload'].includes(body.prefix) ? body.prefix : null;
+    const prefix = ['payload', 'betapayload', 'meleepayload', 'betameleepayload'].includes(body.prefix) ? body.prefix : null;
     if (!prefix) throw new Error('Unknown prefix');
     const results = [];
     for (const p of (body.paths ?? [])) {
@@ -407,7 +441,8 @@ const routes = {
 
 /* ── HTTP plumbing ───────────────────────────────────────────────────────── */
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
 
 function send(res, status, body, headers = {}) {
   const data = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
@@ -455,6 +490,21 @@ const server = http.createServer(async (req, res) => {
   // Static UI
   if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
     if (token !== TOKEN) return send(res, 403, { error: 'Invalid or missing token' });
+    // The website's images (episode art for the launcher mock): /site-asset/assets/img/…
+    if (url.pathname.startsWith('/site-asset/')) {
+      const siteRoot = cfg.readConfig().siteRepoPath;
+      const imgRoot = siteRoot ? path.resolve(siteRoot, 'assets', 'img') : null;
+      const file = siteRoot ? path.resolve(siteRoot, decodeURIComponent(url.pathname.slice('/site-asset/'.length))) : null;
+      if (!file || !file.startsWith(imgRoot + path.sep) || !fs.existsSync(file)) return send(res, 404, { error: 'Not found' });
+      return send(res, 200, fs.readFileSync(file), { 'Content-Type': MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=300' });
+    }
+    // Hero backgrounds saved here but not uploaded yet: /launcher-bg/<file>
+    if (url.pathname.startsWith('/launcher-bg/')) {
+      const file = path.basename(decodeURIComponent(url.pathname.slice('/launcher-bg/'.length)));
+      const abs = path.join(require('./lib/backgrounds').DIR, file);
+      if (!/^(public|beta)-[0-9a-f]{12}.(webp|png|jpg)$/.test(file) || !fs.existsSync(abs)) return send(res, 404, { error: 'Not found' });
+      return send(res, 200, fs.readFileSync(abs), { 'Content-Type': MIME[path.extname(file)] });
+    }
     const name = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
     const file = path.join(UI_DIR, name);
     if (!file.startsWith(UI_DIR) || !fs.existsSync(file)) return send(res, 404, { error: 'Not found' });

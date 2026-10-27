@@ -4,9 +4,9 @@
 //   probe -> regenerate manifests -> preflight -> stage launcher (launcher)
 //   -> upload payload folders -> postflight (CDN HEAD checks) -> upload manifests LAST -> read back
 //
-// `packages` picks what goes up: any of 'campaign' (mods, maps, news), 'melee' and
-// 'launcher' (exe, installer, launcher-version.json). Each package uploads only its
-// own folders and its own manifests.
+// `packages` picks what goes up: any of 'campaign' (mods, maps, news), 'melee',
+// 'meleebeta' (the melee beta's mods) and 'launcher' (exe, installer, launcher-version.json).
+// Each package uploads only its own folders and its own manifests.
 
 const cfg = require('./config');
 const catalog = require('./catalog');
@@ -16,10 +16,11 @@ const r2 = require('./r2');
 const mf = require('./manifest');
 const site = require('./site');
 
-const DEPLOY_PACKAGES = ['campaign', 'melee', 'launcher'];
+const DEPLOY_PACKAGES = ['campaign', 'melee', 'meleebeta', 'launcher'];
 const MANIFESTS = {
   campaign: ['update-manifest.json', 'beta-manifest.json', 'news-feed.json'],
   melee: ['melee-manifest.json'],
+  meleebeta: ['melee-beta-manifest.json'],
   launcher: ['launcher-version.json'],
 };
 
@@ -37,7 +38,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
   log(`R2 reachable — ${probe.bucket}`);
 
   // 1. Manifests always match the catalog and the built files (the launcher has none to generate).
-  const built = packages.filter((p) => catalog.PACKAGES.includes(p));
+  const built = packages.filter((p) => catalog.BUILD_PACKAGES.includes(p));
   step('generate', 'active');
   const gen = built.length ? await generate({ doc, sc2Root, packages: built, dryRun: false }) : { written: [], problems: [] };
   gen.written.filter((w) => w.changed).forEach((w) => log(`Regenerated ${w.file}`));
@@ -55,6 +56,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
     pre.push(['beta', await verify.preflight('beta', progress)]);
   }
   if (packages.includes('melee')) pre.push(['melee', await verify.preflightMelee(progress)]);
+  if (packages.includes('meleebeta')) pre.push(['meleebeta', await verify.preflightMeleeBeta(progress)]);
   const errors = pre.reduce((n, [, r]) => n + r.errors, 0);
   const warnings = pre.reduce((n, [, r]) => n + r.warnings, 0);
   if (errors && !force) {
@@ -79,6 +81,9 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
     const versionText = lv.ok ? (lv.previous && lv.previous !== lv.version ? `launcher ${lv.previous} → ${lv.version}` : `launcher ${lv.version} (unchanged)`)
       + (lv.previousSource === 'local' ? ' (live version unreachable; compared with the local file)' : '') : null;
     log(lv.ok ? `launcher-version.json: ${versionText}` : `WARNING: ${lv.error}`);
+    if (lv.ok) log(lv.win7Source === 'build' ? `Windows 7 launcher: ${lv.doc.win7.version} (this build)`
+      : lv.win7Source === 'live' ? `Windows 7 launcher: ${lv.doc.win7.version} (kept from the live file)`
+      : 'Windows 7 launcher: not published (no Windows 7 build)');
     step('stage', 'done', versionText ?? 'launcher repo not configured');
   } else {
     step('stage', 'skipped', 'launcher not chosen');
@@ -108,6 +113,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
       if (beta?.betaEnabled) post.push(...await verify.postflight(beta, 'beta', progress));
     }
     if (packages.includes('melee')) post.push(...await verify.postflightMelee(mf.readManifest(cfg.MELEE_MANIFEST), progress));
+    if (packages.includes('meleebeta')) post.push(...await verify.postflightMeleeBeta(mf.readManifest(cfg.MELEE_BETA_MANIFEST), progress));
     if (packages.includes('launcher') && launcherVersion?.ok) post.push(...await verify.postflightLauncher(launcherVersion.doc, progress));
     const bad = post.filter((f) => f.level === 'error');
     if (bad.length && !force) { step('postflight', 'failed', `${bad.length} file(s) wrong or missing`); return { stage: 'postflight', aborted: true, postflight: post, uploads }; }
@@ -130,6 +136,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
     const files = [];
     if (packages.includes('campaign')) files.push(cfg.PUBLIC_MANIFEST, cfg.BETA_MANIFEST);
     if (packages.includes('melee')) files.push(cfg.MELEE_MANIFEST);
+    if (packages.includes('meleebeta')) files.push(cfg.MELEE_BETA_MANIFEST);
     published = await verify.verifyPublishedManifests(files);
     const bad = published.filter((f) => f.level === 'error');
     step('confirm', bad.length ? 'failed' : 'done', bad.length ? `${bad.length} manifest(s) did not read back` : 'published manifests match');
@@ -199,7 +206,10 @@ function updateWebsite({ packages, dryRun, updateSite, log, step, launcherDoc })
   try {
     const lv = launcherDoc ?? mf.readManifest(cfg.LAUNCHER_VER);
     const r = site.updateSiteLinks({ siteRepoPath, version: lv?.version, portableUrl: lv?.portable?.url, installerUrl: lv?.installer?.url, dryRun });
-    if (!r.changed) {
+    // The download page's copy of launcher-version.json (version, sizes, the Windows 7 build).
+    const d = site.updateSiteLauncherVersion({ siteRepoPath, doc: lv, dryRun });
+    if (d.changed) log(`${dryRun ? 'Would update' : 'Updated'} ${d.file}${dryRun ? '' : ' (uncommitted in the website repo)'}`);
+    if (!r.changed && !d.changed) {
       step('site', 'done', `already ${lv.version}`);
     } else {
       log(`${dryRun ? 'Would update' : 'Updated'} ${r.file}: launcher links → ${lv.version}${dryRun ? '' : ' (uncommitted in the website repo; commit and push to publish)'}`);

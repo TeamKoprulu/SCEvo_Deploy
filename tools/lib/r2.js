@@ -20,6 +20,10 @@ const { hashFileStream } = require('./hashcache');
 
 const PORTABLE_EXE = 'SC Evo Launcher.exe';
 const SETUP_EXE    = 'SC Evo Launcher Setup.exe';
+// Windows 7/8 build (Electron 22, launcher repo: npm run build:win7). Optional: when it isn't
+// built, launcher-version.json gets no "win7" section and Windows 7 launchers see no update.
+const PORTABLE_EXE_WIN7 = 'SC Evo Launcher Win7.exe';
+const SETUP_EXE_WIN7    = 'SC Evo Launcher Win7 Setup.exe';
 
 function rcloneAvailable() {
   return new Promise((resolve) => {
@@ -220,9 +224,33 @@ async function publishedLauncherVersion(timeoutMs = 10000) {
 }
 
 const ARTIFACTS = [
-  { folder: 'launcher',  exe: PORTABLE_EXE },
-  { folder: 'installer', exe: SETUP_EXE },
+  { folder: 'launcher',  exe: PORTABLE_EXE, dist: 'dist-electron' },
+  { folder: 'installer', exe: SETUP_EXE, dist: 'dist-electron' },
 ];
+const ARTIFACTS_WIN7 = [
+  { folder: 'launcher',  exe: PORTABLE_EXE_WIN7, dist: 'dist-electron-win7', key: 'launcherWin7', optional: true },
+  { folder: 'installer', exe: SETUP_EXE_WIN7, dist: 'dist-electron-win7', key: 'installerWin7', optional: true },
+];
+const fileKey = (a) => a.key || a.folder;
+
+// The version a build really is: electron-builder writes it to latest.yml in its output folder.
+function builtVersion(repo, dist) {
+  try {
+    const m = /^version:\s*['"]?([^\s'"]+)/m.exec(fs.readFileSync(path.join(repo, dist, 'latest.yml'), 'utf8'));
+    return m ? m[1] : null;
+  } catch { return null; }
+}
+const repoVersionOf = (repo) => { try { return JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).version; } catch { return null; } };
+
+// The Windows 7 build is published only when it was built at the launcher repo's current
+// version. Otherwise its exes stay untouched (on disk and on the CDN) and the live "win7"
+// section is kept, so Windows 7 launchers are never offered an exe under the wrong version.
+function win7Fresh(repo) {
+  if (!repo) return false;
+  const v = repoVersionOf(repo);
+  return !!v && builtVersion(repo, 'dist-electron-win7') === v
+    && ARTIFACTS_WIN7.every((a) => fs.existsSync(path.join(repo, a.dist, a.exe)));
+}
 
 // Copies the built exes out of the launcher repo, skipping the copy when the hash
 // is unchanged. A dry run only reports what it would copy.
@@ -232,36 +260,44 @@ async function stageLauncherArtifacts({ dryRun = false, published = null } = {})
   const cfg = readConfig();
   const repo = cfg.launcherRepoPath;
   const out = { staged: [], skipped: [], warnings: [], files: {} };
-  for (const a of ARTIFACTS) {
+  for (const a of [...ARTIFACTS, ...ARTIFACTS_WIN7]) {
     const dest = path.join(REPO_ROOT, a.folder, a.exe);
-    if (fs.existsSync(dest)) out.files[a.folder] = dest;
+    if (fs.existsSync(dest)) out.files[fileKey(a)] = dest;
   }
   if (!repo || !fs.existsSync(path.join(repo, 'package.json'))) {
     out.warnings.push(`Launcher repo not configured or invalid: ${repo || '(unset)'}`);
     return out;
   }
-  for (const a of ARTIFACTS) {
-    const src = path.join(repo, 'dist-electron', a.exe);
+  const repoVersion = repoVersionOf(repo);
+  const normalBuilt = builtVersion(repo, 'dist-electron');
+  if (normalBuilt && repoVersion && normalBuilt !== repoVersion) {
+    out.warnings.push(`The launcher build is ${normalBuilt} but package.json says ${repoVersion}: run "npm run build" in the launcher repo, or players will be offered ${repoVersion} and get ${normalBuilt}.`);
+  }
+  const win7Built = builtVersion(repo, 'dist-electron-win7');
+  out.win7 = win7Fresh(repo) ? 'fresh' : win7Built ? 'stale' : 'none';
+  if (out.win7 === 'stale') {
+    out.warnings.push(`The Windows 7 build is ${win7Built}, not ${repoVersion}: it won't be published (the live Windows 7 version stays). Run "npm run build:win7" to include it.`);
+  }
+  for (const a of [...ARTIFACTS, ...(out.win7 === 'fresh' ? ARTIFACTS_WIN7 : [])]) {
+    const src = path.join(repo, a.dist, a.exe);
     const dest = path.join(REPO_ROOT, a.folder, a.exe);
     if (!fs.existsSync(src)) {
-      out.warnings.push(`Not built: ${a.exe} — run "npm run build" in the launcher repo`);
+      if (!a.optional) out.warnings.push(`Not built: ${a.exe} — run "npm run build" in the launcher repo`);
       continue;
     }
     const srcHash = await hashFileStream(src);
     const dstHash = fs.existsSync(dest) ? await hashFileStream(dest) : null;
     if (srcHash === dstHash) { out.skipped.push(a.exe); continue; }
-    if (dryRun) out.files[a.folder] = src;
+    if (dryRun) out.files[fileKey(a)] = src;
     else {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(src, dest);
-      out.files[a.folder] = dest;
+      out.files[fileKey(a)] = dest;
     }
     out.staged.push(a.exe);
   }
   // Launchers self-update only when the published version differs from their own,
   // so a new exe under the old version number reaches nobody.
-  let repoVersion = null;
-  try { repoVersion = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).version; } catch {}
   const live = published?.version ?? null;
   const exeChanged = out.staged.length || (published?.portable?.sha256 && out.files.launcher
     && published.portable.sha256 !== await hashFileStream(out.files.launcher));
@@ -275,24 +311,27 @@ async function stageLauncherArtifacts({ dryRun = false, published = null } = {})
 // Built with JSON.stringify — the old script concatenated it by hand, and this
 // is the one file a broken launcher cannot fix by self-updating.
 // files: the exes to describe (from stageLauncherArtifacts). A dry run writes nothing.
-async function writeLauncherVersion({ dryRun = false, published = null, files = {} } = {}) {
+// launcherRepoPath overrides the configured repo (tests).
+async function writeLauncherVersion({ dryRun = false, published = null, files = {}, launcherRepoPath } = {}) {
   const cfg = readConfig();
-  const pkgPath = cfg.launcherRepoPath ? path.join(cfg.launcherRepoPath, 'package.json') : null;
+  const repo = launcherRepoPath ?? cfg.launcherRepoPath;
+  const pkgPath = repo ? path.join(repo, 'package.json') : null;
   if (!pkgPath || !fs.existsSync(pkgPath)) {
-    return { ok: false, error: `package.json not found (launcherRepoPath: ${cfg.launcherRepoPath || 'unset'})` };
+    return { ok: false, error: `package.json not found (launcherRepoPath: ${repo || 'unset'})` };
   }
   const version = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
   const previous = published?.version ?? null;
   const doc = { version };
   if (cfg.showVersionDebug === true) doc.showVersionDebug = true;
-  // The launcher refuses Windows 7/8 since 1.3 (Electron 28); recorded for the site and tools.
+  // The normal launcher needs Windows 10 (Electron 28); Windows 7/8 use the "win7" build below.
   doc.minWindows = '10';
   // Launchers remember this host and download from it first (r2.dev stays their fallback).
   doc.cdnBase = publicBase();
   // sha256 + size let the launcher's self-updater resume and verify the download.
-  const artifact = async ({ folder, exe }) => {
+  const artifact = async (a) => {
+    const { folder, exe } = a;
     const out = { url: `${publicBase()}/${folder}/${encodeURI(exe)}` };
-    const local = files[folder] ?? path.join(REPO_ROOT, folder, exe);
+    const local = files[fileKey(a)] ?? path.join(REPO_ROOT, folder, exe);
     if (fs.existsSync(local)) {
       out.size = fs.statSync(local).size;
       out.sha256 = await hashFileStream(local);
@@ -301,8 +340,20 @@ async function writeLauncherVersion({ dryRun = false, published = null, files = 
   };
   doc.portable  = await artifact(ARTIFACTS[0]);
   doc.installer = await artifact(ARTIFACTS[1]);
+  // The Windows 7/8 build updates only from this section (its package.json has channel "win7").
+  // Built at this version: described here. Otherwise the live section is kept as it is
+  // (its exes weren't staged, so the CDN copies still match it). Never published: no section.
+  let win7Source = null;
+  if (win7Fresh(repo)) {
+    doc.win7 = { version, portable: await artifact(ARTIFACTS_WIN7[0]), installer: await artifact(ARTIFACTS_WIN7[1]) };
+    win7Source = 'build';
+  } else if (published?.win7?.version && published.win7.portable && published.win7.installer) {
+    const { version: v7, portable, installer } = published.win7;
+    doc.win7 = { version: v7, portable, installer };
+    win7Source = 'live';
+  }
   if (!dryRun) writeTextAtomic(LAUNCHER_VER, JSON.stringify(doc, null, 2) + '\n');
-  return { ok: true, version, previous, previousSource: published?.source ?? null, doc, path: LAUNCHER_VER };
+  return { ok: true, version, previous, previousSource: published?.source ?? null, doc, win7Source, path: LAUNCHER_VER };
 }
 
 // Manifests must never be served stale from an edge cache; everything else may
@@ -311,5 +362,5 @@ const CACHE_CONTROL = { manifests: 'no-cache', default: 'public, max-age=3600' }
 
 module.exports = {
   CACHE_CONTROL, rcloneAvailable, rcloneRemotes, rcloneProbe, uploadFolder, listRemote, deleteRemote,
-  stageLauncherArtifacts, writeLauncherVersion, publishedLauncherVersion, PORTABLE_EXE, SETUP_EXE,
+  stageLauncherArtifacts, writeLauncherVersion, publishedLauncherVersion, builtVersion, win7Fresh, PORTABLE_EXE, SETUP_EXE, PORTABLE_EXE_WIN7, SETUP_EXE_WIN7,
 };

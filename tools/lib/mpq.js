@@ -226,4 +226,4 @@ async function buildAll(items, onProgress) {
   return results;
 }
 
-module.exports = { buildAll, buildOne, readMpqHeader, hashTableSizeFor, mpqScript, cleanTemp, TEMP_DIR };
+module.exports = { buildAll, buildOne, readMpqHeader, hashTableSizeFor, mpqScript, cleanTemp, runMpqEditor, TEMP_DIR };

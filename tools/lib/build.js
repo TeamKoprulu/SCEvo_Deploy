@@ -17,6 +17,7 @@ const mpq = require('./mpq');
 const { hashOf } = require('./hashcache');
 const { readMapMeta } = require('./mapmeta');
 const { buildDecals, DECALS_DIR } = require('./decals');
+const meleebeta = require('./meleebeta');
 
 const STATE_FILE = path.join(CACHE_DIR, 'build-state.json');
 const BUILT_EXT = /\.(sc2map|sc2mod|evm|png)$/i;
@@ -87,11 +88,11 @@ function walkFiles(dir, acc = []) {
 }
 
 /**
- * opts: { doc, sc2Root, packages = ['campaign','melee'], only (source list), force, dryRun, log, progress }
- * Returns { results: [{source, action, ok, error?}], pruned: [paths] }.
+ * opts: { doc, sc2Root, packages = ['campaign','melee','meleebeta'], only (source list), force, dryRun, log, progress }
+ * Returns { results: [{source, action, ok, error?}], pruned: [paths], problems: [string] }.
  */
 async function build(opts) {
-  const { doc, sc2Root, packages = catalog.PACKAGES, only = null, force = false, dryRun = false } = opts;
+  const { doc, sc2Root, packages = catalog.BUILD_PACKAGES, only = null, force = false, dryRun = false } = opts;
   const log = opts.log || (() => {});
   const progress = opts.progress || (() => {});
   const state = loadState();
@@ -197,9 +198,19 @@ async function build(opts) {
     }
   }
 
+  // Melee beta: the tagged mods, with their dependencies pointed at the beta folder.
+  let problems = [];
+  if (packages.includes('meleebeta')) {
+    const mb = await meleebeta.buildMeleeBeta({ doc, rows, state, fingerprint, only, force, dryRun, log, runMpq: mpq.runMpqEditor });
+    results.push(...mb.results);
+    problems = mb.problems;
+    mb.expected.forEach((f) => expected.add(f));
+    if (!dryRun) saveState(state);
+  }
+
   // Prune: every built file no item claims any more (channel switched off,
   // promoted, item removed). Only for the packages being built.
-  for (const it of doc.items.filter((i) => packages.includes(i.package))) {
+  for (const it of doc.items.filter((i) => packages.includes(i.package) && OUTPUT_DIRS[i.package])) {
     for (const d of destsOf(it)) expected.add(d.toLowerCase());
     if (it.package === 'melee' && catalog.isMap(it.source) && catalog.channelsOf(it).length) expected.add(thumbPathOf(it).toLowerCase());
   }
@@ -215,7 +226,7 @@ async function build(opts) {
     }
   }
   if (!dryRun) mpq.cleanTemp();
-  return { results, pruned };
+  return { results, pruned, problems };
 }
 
 // Records the current payload files as built from the current sources, so a

@@ -9,6 +9,8 @@
 //
 //   package: "campaign" | "melee"
 //   channel: campaign "public" | "beta" | "both" | "off";  melee "public" | "off"
+//   meleeBeta: true  -> the mod also ships in the melee beta's branch (meleebeta.js),
+//                       whatever its own package and channel
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -16,6 +18,8 @@ const crypto = require('node:crypto');
 const { CATALOG_PATH, DEFAULT_ROOTS, stripJunk, writeTextAtomic } = require('./config');
 
 const PACKAGES = ['campaign', 'melee'];
+// What Build / generate can be asked for: the item packages, plus the melee beta (built from tagged items).
+const BUILD_PACKAGES = [...PACKAGES, 'meleebeta'];
 const CHANNELS = { campaign: ['public', 'beta', 'both', 'off'], melee: ['public', 'off'] };
 const SC2_EXT = /\.(sc2mod|sc2map)$/i;
 
@@ -65,6 +69,8 @@ function validate(doc) {
     seen.add(k);
     if (!PACKAGES.includes(it.package)) problems.push(`${it.source}: unknown package "${it.package}"`);
     else if (!CHANNELS[it.package].includes(it.channel)) problems.push(`${it.source}: channel "${it.channel}" is not valid for ${it.package}`);
+    if (it.meleeBeta !== undefined && it.meleeBeta !== true) problems.push(`${it.source}: meleeBeta must be true or absent`);
+    if (it.meleeBeta && !/\.sc2mod$/i.test(it.source)) problems.push(`${it.source}: only mods can be tagged for the melee beta`);
     if (it.package === 'melee' && isMap(it.source) && !/^[0-9a-f]{10}$/.test(String(it.mapId || ''))) {
       problems.push(`${it.source}: melee maps need a 10-hex mapId`);
     }
@@ -88,7 +94,7 @@ function save(doc, file = CATALOG_PATH) {
   return ordered;
 }
 
-const ITEM_KEYS = ['source', 'package', 'channel', 'target', 'mapId', 'name', 'description', 'module', 'downloadUrl', 'downloadUrls'];
+const ITEM_KEYS = ['source', 'package', 'channel', 'meleeBeta', 'target', 'mapId', 'name', 'description', 'module', 'downloadUrl', 'downloadUrls'];
 function orderItem(it) {
   const out = {};
   for (const k of ITEM_KEYS) if (it[k] !== undefined && it[k] !== null && it[k] !== '') out[k] = it[k];
@@ -195,6 +201,7 @@ function upsert(doc, source, patch) {
   Object.assign(it, patch);
   // An emptied override (name, description, modes) falls back to the map's own value.
   for (const [k, v] of Object.entries(patch)) if (v === '' || v === null) delete it[k];
+  if (it.meleeBeta === false) delete it.meleeBeta;
   if (it.package === 'melee' && !CHANNELS.melee.includes(it.channel)) it.channel = it.channel === 'off' ? 'off' : 'public';
   if (it.package === 'melee' && isMap(it.source) && !it.mapId) it.mapId = newMapId();
   return doc;
@@ -219,6 +226,6 @@ function channelsOf(item) {
 }
 
 module.exports = {
-  PACKAGES, CHANNELS, keyOf, isMap, emptyCatalog, load, save, validate,
+  PACKAGES, BUILD_PACKAGES, CHANNELS, keyOf, isMap, emptyCatalog, load, save, validate,
   installPathOf, targetOf, newMapId, discover, classify, findItem, upsert, ignore, unignore, channelsOf,
 };

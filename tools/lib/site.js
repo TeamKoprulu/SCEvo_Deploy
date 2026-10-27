@@ -43,4 +43,19 @@ function updateSiteLinks({ siteRepoPath, version, portableUrl, installerUrl, dry
   return { changed, file, before, after: want };
 }
 
-module.exports = { updateSiteLinks, siteValid, withVersion, LINKS_REL };
+// The download page reads <siteRepoPath>/assets/data/launcher-version.json for the version,
+// sizes and links, including the "win7" section (EvoSite scripts/sync-launcher-info.mjs does
+// the same copy by hand). Written only when the content changes.
+const DATA_REL = path.join('assets', 'data', 'launcher-version.json');
+function updateSiteLauncherVersion({ siteRepoPath, doc, dryRun = false }) {
+  const file = path.join(siteRepoPath || '', DATA_REL);
+  if (!siteRepoPath || !fs.existsSync(path.dirname(file))) throw new Error(`assets/data not found in ${siteRepoPath}`);
+  if (!doc?.version || !doc.portable || !doc.installer) throw new Error('launcher-version.json is incomplete');
+  const text = JSON.stringify(doc, null, 2) + '\n';
+  const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n') : null;
+  const changed = before !== text;
+  if (changed && !dryRun) writeTextAtomic(file, text);
+  return { changed, file };
+}
+
+module.exports = { updateSiteLinks, updateSiteLauncherVersion, siteValid, withVersion, LINKS_REL, DATA_REL };

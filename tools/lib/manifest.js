@@ -165,21 +165,60 @@ function nowIso() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
-function buildPublicManifest({ versions, criticalUpdate, modules }) {
+// "#F60" / "f60" / "#ff6600" -> "#ff6600"; anything else -> null.
+function normalizeHex(v) {
+  let h = String(v ?? '').trim().replace(/^#/, '').toLowerCase();
+  if (/^[0-9a-f]{3}$/.test(h)) h = h.split('').map((c) => c + c).join('');
+  return /^[0-9a-f]{6}$/.test(h) ? '#' + h : null;
+}
+
+// The launcher's colour theme from one accent colour. Launcher 1.4+ derives its whole
+// palette from accentColor; 1.3.x reads every field, so the full shape is always written.
+function themeFromAccent(accent, { badgeText = null } = {}) {
   return {
+    accentColor: accent,
+    accentColorDim: accent + '44',
+    particleColor: hexToRgbString(accent),
+    bgGlow: accent + '15',
+    badgeText,
+    badgeColor: badgeText ? accent : null,
+  };
+}
+
+// A channel's hero background image (uploaded by the deploy tool to assets/launcher/):
+// { url, size, sha256 } or nothing. 1.3.x launchers ignore it.
+function cleanBackground(bg) {
+  if (!bg || typeof bg.url !== 'string' || !/^https?:\/\//.test(bg.url)) return null;
+  const out = { url: bg.url };
+  if (Number.isFinite(bg.size)) out.size = bg.size;
+  if (/^[0-9a-f]{64}$/.test(String(bg.sha256 || ''))) out.sha256 = bg.sha256;
+  return out;
+}
+
+// theme: the public channel's accent (the current episode's palette); blank uses the
+// launcher's built-in site colour. 1.3.x launchers ignore a public theme.
+// episode: which episode the launcher's campaign hero shows (the site's "episode:" number).
+function buildPublicManifest({ versions, criticalUpdate, modules, accentColor, episode, background }) {
+  const out = {
     schemaVersion: SCHEMA_VERSION,
     lastUpdated: nowIso(),
     versions: {
       multiplayer: String(versions?.multiplayer ?? ''),
       campaign:    String(versions?.campaign ?? ''),
     },
-    criticalUpdate: mergeCritical(criticalUpdate, false),
-    modules: serializeModules(modules),
   };
+  const accent = normalizeHex(accentColor);
+  if (accent) out.theme = themeFromAccent(accent);
+  if (Number.isInteger(Number(episode)) && episode !== '' && episode != null) out.episode = Number(episode);
+  const bg = cleanBackground(background);
+  if (bg) out.background = bg;
+  out.criticalUpdate = mergeCritical(criticalUpdate, false);
+  out.modules = serializeModules(modules);
+  return out;
 }
 
 function buildBetaManifest({ meta, criticalUpdate, modules, coreVersion }) {
-  const accent = String(meta?.accentColor || '#ff6600');
+  const accent = normalizeHex(meta?.accentColor) || '#ff6600';
   const out = {
     schemaVersion: SCHEMA_VERSION,
     lastUpdated: nowIso(),
@@ -188,15 +227,12 @@ function buildBetaManifest({ meta, criticalUpdate, modules, coreVersion }) {
     majorVersion: String(meta?.majorVersion ?? ''),
     fullVersion: String(meta?.fullVersion ?? ''),
     codeHash: String(meta?.codeHash ?? ''),
-    theme: {
-      accentColor: accent,
-      accentColorDim: accent + '44',
-      particleColor: hexToRgbString(accent),
-      bgGlow: accent + '15',
-      badgeText: 'BETA',
-      badgeColor: accent,
-    },
+    theme: themeFromAccent(accent, { badgeText: 'BETA' }),
   };
+  // The episode the beta is for; the launcher shows its art while the beta channel is active.
+  if (meta?.episode !== '' && meta?.episode != null && Number.isInteger(Number(meta.episode))) out.episode = Number(meta.episode);
+  const bg = cleanBackground(meta?.background);
+  if (bg) out.background = bg;
   // When the beta is off, production serves the stripped shape (no modules, no
   // criticalUpdate, no versions). The old script could only ever write
   // betaEnabled:true, so that shape had to be hand-edited.
@@ -239,5 +275,5 @@ function compareVersions(a, b) {
 module.exports = {
   readManifest, writeManifest, moduleIdFor, normalizeManifestPath, indexByPath,
   buildWorkingSet, serializeModules, buildPublicManifest, buildBetaManifest,
-  mergeCritical, hexToRgbString, betaCodeHash, compareVersions, nowIso,
+  mergeCritical, hexToRgbString, normalizeHex, themeFromAccent, cleanBackground, betaCodeHash, compareVersions, nowIso,
 };

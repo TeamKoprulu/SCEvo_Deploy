@@ -531,14 +531,63 @@ async function postflightMelee(manifest, onProgress) {
   return out;
 }
 
+/* ── melee beta package ──────────────────────────────────────────────────── */
+
+const { MELEE_BETA_MANIFEST, MELEE_BETA_DIR } = require('./config');
+const meleeBetaFiles = (manifest) => (manifest?.modules ?? []).flatMap((m) => (m.files ?? []).map((f) => ({ label: f.path, ...f })));
+
+async function preflightMeleeBeta(onProgress) {
+  const findings = [];
+  if (!fs.existsSync(MELEE_BETA_MANIFEST)) return summarize([finding(WARN, 'melee-beta-none', 'No melee-beta-manifest.json yet: run Build melee beta')]);
+  const hygiene = checkJsonHygiene(MELEE_BETA_MANIFEST);
+  findings.push(...hygiene.findings);
+  const doc = hygiene.parsed;
+  if (!doc) return summarize(findings);
+  if (!doc.betaEnabled) { findings.push(finding(OK, 'melee-beta-off', 'The melee beta is off: players see no beta')); return summarize(findings); }
+  if (!/^[0-9a-f]{64}$/.test(String(doc.codeHash || ''))) findings.push(finding(ERROR, 'melee-beta-code', 'The melee beta is on but has no code'));
+  if (!String(doc.betaName || '').trim()) findings.push(finding(WARN, 'melee-beta-name', 'The melee beta has no name'));
+  const files = meleeBetaFiles(doc);
+  if (!files.length) findings.push(finding(ERROR, 'melee-beta-empty', 'The melee beta is on but ships no mods'));
+  let checked = 0;
+  for (const f of files) {
+    onProgress && onProgress({ phase: 'verify', file: f.label, checked, total: files.length });
+    checked++;
+    if (!/^Mods\/SC Evolution Complete Beta\//.test(f.path)) findings.push(finding(ERROR, 'path-root', `"${f.path}" must be under "Mods/SC Evolution Complete Beta/"`));
+    const abs = path.join(MELEE_BETA_DIR, ...String(f.path).split('/'));
+    if (!fs.existsSync(abs)) { findings.push(finding(ERROR, 'file-absent', `${f.label} is in melee-beta-manifest.json but not in betameleepayload/`, abs)); continue; }
+    const st = fs.statSync(abs);
+    if (st.size !== f.size) { findings.push(finding(ERROR, 'size-mismatch', `${f.label}: manifest says ${f.size} bytes, file is ${st.size}`)); continue; }
+    const { hash } = await hashOf(abs);
+    if (hash !== f.hash) findings.push(finding(ERROR, 'hash-mismatch', `${f.label}: hash does not match the file on disk`));
+  }
+  onProgress && onProgress({ phase: 'done', checked, total: files.length });
+  return summarize(findings);
+}
+
+async function postflightMeleeBeta(manifest, onProgress) {
+  const out = [];
+  if (!manifest?.betaEnabled) return out;
+  const files = meleeBetaFiles(manifest);
+  let done = 0;
+  for (const f of files) {
+    onProgress && onProgress({ phase: 'head', file: f.label, done, total: files.length });
+    done++;
+    out.push(...await checkCdnFile(`betameleepayload/${encodeURI(f.path)}`, f.size, f.label));
+  }
+  if (!out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `All ${files.length} melee beta file(s) verified on the CDN`));
+  return out;
+}
+
 // The launcher exes launcher-version.json is about to point at, at the size it records.
 async function postflightLauncher(doc, onProgress) {
   const out = [];
-  const items = [['portable', 'launcher'], ['installer', 'installer']].filter(([k]) => doc?.[k]?.url && doc[k].size);
-  for (const [k, folder] of items) {
-    onProgress && onProgress({ phase: 'head', file: `${folder} exe`, done: out.length, total: items.length });
-    const rel = `${folder}/${doc[k].url.split('/').pop()}`;
-    out.push(...await checkCdnFile(rel, doc[k].size, `Launcher ${k} exe`));
+  // The normal build, plus the Windows 7 build when launcher-version.json has a "win7" section.
+  const items = [['portable', 'launcher', doc], ['installer', 'installer', doc], ['portable', 'launcher', doc?.win7, 'Windows 7 '], ['installer', 'installer', doc?.win7, 'Windows 7 ']]
+    .filter(([k, , d]) => d?.[k]?.url && d[k].size);
+  for (const [k, folder, d, label = ''] of items) {
+    onProgress && onProgress({ phase: 'head', file: `${label}${folder} exe`, done: out.length, total: items.length });
+    const rel = `${folder}/${d[k].url.split('/').pop()}`;
+    out.push(...await checkCdnFile(rel, d[k].size, `Launcher ${label}${k} exe`));
   }
   if (items.length && !out.some((x) => x.level !== OK)) out.push(finding(OK, 'cdn-ok', `Launcher exes verified on the CDN (v${doc.version})`));
   return out;
@@ -557,6 +606,7 @@ function summarize(findings) {
 
 module.exports = {
   preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, postflightLauncher, meleeFiles,
+  preflightMeleeBeta, postflightMeleeBeta, meleeBetaFiles,
   checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings, checkNewsFeed,
   fetchJson, headFile, summarize,
   LARGE_FILE_BYTES,

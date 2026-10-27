@@ -20,6 +20,7 @@ const HISTORY_DIR  = path.join(MANIFEST_DIR, '.history');
 const PAYLOAD_DIR  = path.join(REPO_ROOT, 'payload');
 const BETA_DIR     = path.join(REPO_ROOT, 'betapayload');
 const MELEE_DIR    = path.join(REPO_ROOT, 'meleepayload');
+const MELEE_BETA_DIR = path.join(REPO_ROOT, 'betameleepayload');
 const ASSETS_DIR   = path.join(REPO_ROOT, 'assets');
 
 // The Patreon page news cards are filled from; "patreonVanity" in deploy-config.json overrides it.
@@ -28,6 +29,7 @@ const DEFAULT_PATREON_VANITY = 'TeamKopruluSC2';
 const PUBLIC_MANIFEST = path.join(MANIFEST_DIR, 'update-manifest.json');
 const BETA_MANIFEST   = path.join(MANIFEST_DIR, 'beta-manifest.json');
 const MELEE_MANIFEST  = path.join(MANIFEST_DIR, 'melee-manifest.json');
+const MELEE_BETA_MANIFEST = path.join(MANIFEST_DIR, 'melee-beta-manifest.json');
 const NEWS_FEED       = path.join(MANIFEST_DIR, 'news-feed.json');
 const LAUNCHER_VER    = path.join(MANIFEST_DIR, 'launcher-version.json');
 
@@ -67,6 +69,7 @@ const DEFAULT_ROOTS = [
 const OUTPUT_DIRS = {
   campaign: { public: PAYLOAD_DIR, beta: BETA_DIR },
   melee:    { public: MELEE_DIR },
+  meleebeta: { beta: MELEE_BETA_DIR },   // the melee beta's branch of mods (meleebeta.js)
 };
 
 // Upload order matters: manifests MUST be last so the CDN never advertises
@@ -75,6 +78,7 @@ const UPLOAD_FOLDERS = [
   { name: 'Payload',      local: 'payload',      package: 'campaign' },
   { name: 'BetaPayload',  local: 'betapayload',  package: 'campaign' },
   { name: 'MeleePayload', local: 'meleepayload', package: 'melee'    },
+  { name: 'BetaMeleePayload', local: 'betameleepayload', package: 'meleebeta' },
   { name: 'Assets',       local: 'assets',       package: 'campaign' },
   { name: 'Launcher',     local: 'launcher',     package: 'launcher' },
   { name: 'Installer',    local: 'installer',    package: 'launcher' },
@@ -130,8 +134,8 @@ function ensureCacheDir() {
 
 module.exports = {
   REPO_ROOT, TOOLS_DIR, CACHE_DIR, CONFIG_PATH, CATALOG_PATH, MPQ_EDITOR,
-  MANIFEST_DIR, HISTORY_DIR, PAYLOAD_DIR, BETA_DIR, MELEE_DIR, ASSETS_DIR, OUTPUT_DIRS, DEFAULT_PATREON_VANITY,
-  PUBLIC_MANIFEST, BETA_MANIFEST, MELEE_MANIFEST, NEWS_FEED, LAUNCHER_VER,
+  MANIFEST_DIR, HISTORY_DIR, PAYLOAD_DIR, BETA_DIR, MELEE_DIR, MELEE_BETA_DIR, ASSETS_DIR, OUTPUT_DIRS, DEFAULT_PATREON_VANITY,
+  PUBLIC_MANIFEST, BETA_MANIFEST, MELEE_MANIFEST, MELEE_BETA_MANIFEST, NEWS_FEED, LAUNCHER_VER,
   R2_BASE, publicBase, publicBases, BUCKET, SCHEMA_VERSION, DEFAULT_ROOTS, UPLOAD_FOLDERS, MANIFEST_FOLDER,
   readConfig, updateConfig, stripJunk, writeJsonAtomic, writeTextAtomic, ensureCacheDir,
 };
