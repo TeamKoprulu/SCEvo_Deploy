@@ -5,7 +5,8 @@
 //   -> upload payload folders -> postflight (CDN HEAD checks) -> upload manifests LAST -> read back
 //
 // `packages` picks what goes up: any of 'campaign' (mods, maps, news), 'melee',
-// 'meleebeta' (the melee beta's mods) and 'launcher' (exe, installer, launcher-version.json).
+// 'meleebeta' (the melee beta's mods), 'launcher' (exe, installer, launcher-version.json) and
+// 'assets' (the assets/ folder only: replay icons, hero backgrounds, news images; no manifest).
 // Each package uploads only its own folders and its own manifests.
 
 const cfg = require('./config');
@@ -16,13 +17,15 @@ const r2 = require('./r2');
 const mf = require('./manifest');
 const site = require('./site');
 
-const DEPLOY_PACKAGES = ['campaign', 'melee', 'meleebeta', 'launcher'];
+const DEPLOY_PACKAGES = ['campaign', 'melee', 'meleebeta', 'launcher', 'assets'];
 const MANIFESTS = {
   campaign: ['update-manifest.json', 'beta-manifest.json', 'news-feed.json'],
   melee: ['melee-manifest.json'],
   meleebeta: ['melee-beta-manifest.json'],
   launcher: ['launcher-version.json'],
+  assets: [],
 };
+const ships = (folder, packages) => packages.includes(folder.package) || (folder.alsoWith || []).some((p) => packages.includes(p));
 
 async function deploy({ packages, dryRun = false, force = false, updateSite = false, log = () => {}, progress = () => {}, step = () => {} }) {
   if (!packages || !packages.length) throw new Error('Choose at least one package to deploy');
@@ -63,7 +66,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
     step('preflight', 'failed', `${errors} error(s)`);
     return { stage: 'preflight', aborted: true, preflight: Object.fromEntries(pre) };
   }
-  step('preflight', 'done', built.length ? `${errors ? `forced past ${errors} error(s), ` : ''}${warnings} warning(s)` : 'launcher only');
+  step('preflight', 'done', built.length ? `${errors ? `forced past ${errors} error(s), ` : ''}${warnings} warning(s)` : 'no manifests to check');
 
   // 3. Launcher artifacts (launcher package only).
   let launcherVersion = null;
@@ -92,7 +95,7 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
   // 4. Payload first.
   step('payload', 'active');
   const uploads = [];
-  for (const folder of cfg.UPLOAD_FOLDERS.filter((f) => packages.includes(f.package))) {
+  for (const folder of cfg.UPLOAD_FOLDERS.filter((f) => ships(f, packages))) {
     log(`Uploading ${folder.name}…`);
     const r = await r2.uploadFolder(folder.local, { dryRun, onProgress: progress, onLog: log, cacheControl: r2.CACHE_CONTROL.default });
     uploads.push(r);
@@ -115,28 +118,33 @@ async function deploy({ packages, dryRun = false, force = false, updateSite = fa
     if (packages.includes('melee')) post.push(...await verify.postflightMelee(mf.readManifest(cfg.MELEE_MANIFEST), progress));
     if (packages.includes('meleebeta')) post.push(...await verify.postflightMeleeBeta(mf.readManifest(cfg.MELEE_BETA_MANIFEST), progress));
     if (packages.includes('launcher') && launcherVersion?.ok) post.push(...await verify.postflightLauncher(launcherVersion.doc, progress));
+    if (packages.includes('assets')) post.push(...await verify.postflightAssets(progress));
     const bad = post.filter((f) => f.level === 'error');
     if (bad.length && !force) { step('postflight', 'failed', `${bad.length} file(s) wrong or missing`); return { stage: 'postflight', aborted: true, postflight: post, uploads }; }
     step('postflight', 'done', bad.length ? `forced past ${bad.length} error(s)` : 'all files present');
   }
 
   // 6. Manifests last; only this package's files, never .history or *.bak.json.
-  step('manifests', 'active');
   const include = packages.flatMap((p) => MANIFESTS[p]);
-  const mu = await r2.uploadFolder(cfg.MANIFEST_FOLDER.local, { dryRun, onProgress: progress, onLog: log, include, exclude: ['.history/**', '*.bak.json'], cacheControl: r2.CACHE_CONTROL.manifests });
-  uploads.push(mu);
-  if (!mu.ok) { step('manifests', 'failed', mu.error); throw new Error(`Manifest upload failed: ${mu.error}`); }
-  step('manifests', 'done', `${mu.transfers ?? 0} file(s)`);
+  if (!include.length) step('manifests', 'skipped', 'no manifest in these packages');
+  else {
+    step('manifests', 'active');
+    const mu = await r2.uploadFolder(cfg.MANIFEST_FOLDER.local, { dryRun, onProgress: progress, onLog: log, include, exclude: ['.history/**', '*.bak.json'], cacheControl: r2.CACHE_CONTROL.manifests });
+    uploads.push(mu);
+    if (!mu.ok) { step('manifests', 'failed', mu.error); throw new Error(`Manifest upload failed: ${mu.error}`); }
+    step('manifests', 'done', `${mu.transfers ?? 0} file(s)`);
+  }
 
   // 7. Read back.
   let published = null;
+  const files = [];
+  if (packages.includes('campaign')) files.push(cfg.PUBLIC_MANIFEST, cfg.BETA_MANIFEST);
+  if (packages.includes('melee')) files.push(cfg.MELEE_MANIFEST);
+  if (packages.includes('meleebeta')) files.push(cfg.MELEE_BETA_MANIFEST);
   if (dryRun) step('confirm', 'skipped', 'dry run');
+  else if (!files.length) step('confirm', 'skipped', 'no catalog manifest to read back');
   else {
     step('confirm', 'active');
-    const files = [];
-    if (packages.includes('campaign')) files.push(cfg.PUBLIC_MANIFEST, cfg.BETA_MANIFEST);
-    if (packages.includes('melee')) files.push(cfg.MELEE_MANIFEST);
-    if (packages.includes('meleebeta')) files.push(cfg.MELEE_BETA_MANIFEST);
     published = await verify.verifyPublishedManifests(files);
     const bad = published.filter((f) => f.level === 'error');
     step('confirm', bad.length ? 'failed' : 'done', bad.length ? `${bad.length} manifest(s) did not read back` : 'published manifests match');

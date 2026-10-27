@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-17T04:29:08Z",
+  "lastUpdated": "2026-10-27T01:46:25Z",
   "versions": {
     "multiplayer": "1.21.0.1",
-    "campaign": "0.6.1"
+    "campaign": "0.7"
   },
   "theme": {
     "accentColor": "#ababab",
@@ -12,6 +12,33 @@
     "bgGlow": "#ababab15",
     "badgeText": null,
     "badgeColor": null
+  },
+  "background": {
+    "url": "https://scevo.download/assets/launcher/public-1571ad8d6cd7.webp",
+    "size": 619018,
+    "sha256": "1571ad8d6cd746fb24ac8ea9801db8ba5b76212971d95804923f1e52cc4fe67e"
+  },
+  "hero": {
+    "video": {
+      "url": "https://scevo.download/assets/hero/public-821d883aad3c.webm",
+      "size": 6426743,
+      "sha256": "821d883aad3c76bd53102f023d35f58c0e8a8d3e8fbc12a4795f5ad36695c74c",
+      "poster": {
+        "url": "https://scevo.download/assets/hero/public-438a3b2c2902.webp",
+        "size": 62386,
+        "sha256": "438a3b2c29021f08ca0af4dd2aff5a5fd38cb7517457442a59a26a46c29178d1"
+      },
+      "x": 232,
+      "y": 116,
+      "scale": 1.25,
+      "layer": "behind",
+      "vignette": "below"
+    },
+    "logo": {
+      "x": 2,
+      "y": 120,
+      "scale": 1
+    }
   },
   "criticalUpdate": {
     "enabled": false,

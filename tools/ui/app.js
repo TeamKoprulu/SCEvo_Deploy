@@ -595,6 +595,7 @@ async function loadManifest() {
     $('#mfMbHash').textContent = m.codeHash ? `current codeHash: ${m.codeHash}` : 'no codeHash set: nobody can unlock the beta until you set a code';
   }
 
+  HERO = structuredClone((isBeta ? MANIFEST.betaMeta?.hero : MANIFEST.publicMeta?.hero) ?? {});
   setManifestDirty(false);
   renderManifestEntries();
   if (!isMelee) MOCK_ACCENT[isBeta ? 'beta' : 'public'] = (isBeta ? MANIFEST.betaMeta?.accentColor : MANIFEST.publicMeta?.accentColor) || null;
@@ -611,13 +612,16 @@ const hexOf = (v) => {
 };
 // A lighter shade for the preview (the launcher uses it for highlights).
 const lighten = (hex, t) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) + (255 - parseInt(hex.slice(i, i + 2), 16)) * t).toString(16).padStart(2, '0')).join('');
+// The swatch row (when the field has one), then the launcher preview: a colour field without
+// swatches (the melee beta's) still redraws the preview.
 function renderPreview(sel, fallback) {
   const prev = $(sel.replace('Accent', 'Preview'));
-  if (!prev) return;
-  const a = hexOf($(sel).value) || fallback;
-  const sw = (label, col, bg) => `<span class="sw" style="border-color:${col};background:${bg || 'transparent'};color:${col}"><i style="background:${col}"></i>${label}</span>`;
-  prev.innerHTML = (hexOf($(sel).value) ? '' : '<span>Default:</span>') +
-    sw('Accent', a) + sw('Highlight', lighten(a, 0.45)) + sw('Glow', a, a + '22') + sw('Dim', a + '88');
+  if (prev) {
+    const a = hexOf($(sel).value) || fallback;
+    const sw = (label, col, bg) => `<span class="sw" style="border-color:${col};background:${bg || 'transparent'};color:${col}"><i style="background:${col}"></i>${label}</span>`;
+    prev.innerHTML = (hexOf($(sel).value) ? '' : '<span>Default:</span>') +
+      sw('Accent', a) + sw('Highlight', lighten(a, 0.45)) + sw('Glow', a, a + '22') + sw('Dim', a + '88');
+  }
   renderMock();
 }
 function setColor(sel, value, fallback) {
@@ -707,20 +711,19 @@ function renderMock() {
   mockFrame = requestAnimationFrame(() => {
     const section = $('#mfMockSection');
     if (!section || !MANIFEST) return;
-    section.hidden = BRANCH === 'melee' || BRANCH === 'meleebeta';
+    renderHeroEditor();
+    const melee = BRANCH === 'melee' || BRANCH === 'meleebeta';
+    section.hidden = melee && !MANIFEST.meleePreview;
+    $('#mfMockNews').hidden = melee;
+    $('#mfMockMapWrap').hidden = !melee;
+    $('#mfMockHint').textContent = melee
+      ? 'The Melee vs AI lobby as a player opens it on the chosen map (unsaved colour and beta edits included). Nothing in it works.'
+      : 'A look-alike of launcher 1.4 drawn from the settings above (unsaved edits included). Nothing in it works; the news is the current news feed.';
     if (section.hidden) return;
-    const beta = BRANCH === 'beta';
+    if (melee) return renderMeleeMock();
     if (!MOCK_NEWS) loadMockNews();
-    const bg = BG[beta ? '#mfBetaBg' : '#mfPubBg'];
-    const accent = beta ? (hexOf($('#mfBetaAccent').value) || '#ff6600') : (hexOf($('#mfPubAccent').value) || SITE_ACCENT);
     LauncherMock.render($('#mfMock'), {
-      channel: beta ? 'beta' : 'public',
-      accent,
-      otherAccent: MOCK_ACCENT[beta ? 'public' : 'beta'],
-      betaShown: beta ? $('#mfBetaEnabled').checked : MOCK_BETA_SHOWN,
-      episode: mockEpisode($(beta ? '#mfBetaEpisode' : '#mfPubEpisode').value),
-      background: bg ? localBg(bg) : null,
-      backgroundFallback: bg?.url ?? null,
+      ...campaignMockState(),
       cards: MOCK_NEWS?.cards ?? [],
       announcement: MOCK_NEWS?.announcement,
     });
@@ -728,6 +731,215 @@ function renderMock() {
 }
 $('#mfMockNews').addEventListener('click', () => loadMockNews(true));
 $('#mfBetaEnabled').addEventListener('change', renderMock);
+$('#mfMbEnabled').addEventListener('change', renderMock);
+
+// The Melee tab's lobby: Melee shows the public look, Melee beta its own colour (unsaved edits
+// included). The Public/Beta switch shows while the melee beta is on, as in the launcher.
+function renderMeleeMock() {
+  const p = MANIFEST.meleePreview;
+  const beta = BRANCH === 'meleebeta';
+  const sel = $('#mfMockMap');
+  const ids = p.maps.map((m) => m.id).join('|');
+  if (sel.dataset.ids !== ids) {
+    const keep = sel.value;
+    sel.innerHTML = p.maps.map((m) => `<option value="${esc(m.id)}">${esc(m.name)} (${m.players}P)</option>`).join('');
+    sel.dataset.ids = ids;
+    if (p.maps.some((m) => m.id === keep)) sel.value = keep;
+  }
+  const map = p.maps.find((m) => m.id === sel.value) ?? p.maps[0] ?? null;
+  const betaAccent = beta ? (hexOf($('#mfMbAccent').value) || '#ff6600') : p.betaAccent;
+  const publicAccent = hexOf(p.publicAccent) || SITE_ACCENT;
+  LauncherMock.renderMelee($('#mfMock'), {
+    channel: beta ? 'beta' : 'public',
+    accent: beta ? betaAccent : publicAccent,
+    otherAccent: beta ? publicAccent : betaAccent,
+    betaShown: beta ? $('#mfMbEnabled').checked : p.betaEnabled,
+    balance: 'multi',
+    map: map && { ...map, thumb: map.thumb },
+  });
+}
+$('#mfMockMap').addEventListener('change', renderMock);
+
+// ── Hero editor (Manifest → Public / Beta): the channel's "hero" section, as the launcher reads
+// it (sc-evo-launcher src/heroLayout.mjs). Pieces are placed in launcher px: x from the hero's
+// centre, y from its top, scale × the default size. Media live in assets/hero/ (lib/hero.js) and
+// are previewed from the local copies until they're uploaded.
+let HERO = {};             // the shown channel's hero, edited in place; written on "Write manifest"
+let HE_SEL = 'logo';       // the selected piece
+let HE_VIEW = { k: 1 };    // the stage's scale (heroStrip)
+const HE_PARTS = ['video', 'logo', 'emblem'];
+const heroChannel = () => (BRANCH === 'public' || BRANCH === 'beta' ? BRANCH : null);
+const heroLocal = (a) => (a?.url ? `/hero-asset/${encodeURIComponent(a.url.split('/').pop())}` : null);
+const heroForMock = () => (HERO.video ? { ...HERO, video: { ...HERO.video, src: heroLocal(HERO.video), poster: heroLocal(HERO.video.poster) } } : HERO);
+const placedOf = (p) => !!p && ['x', 'y', 'scale'].some((k) => Number.isFinite(p[k]));
+
+// The campaign preview's state for the shown channel (shared by the window preview and the editor).
+function campaignMockState() {
+  const beta = BRANCH === 'beta';
+  const bg = BG[beta ? '#mfBetaBg' : '#mfPubBg'];
+  return {
+    channel: beta ? 'beta' : 'public',
+    accent: beta ? (hexOf($('#mfBetaAccent').value) || '#ff6600') : (hexOf($('#mfPubAccent').value) || SITE_ACCENT),
+    otherAccent: MOCK_ACCENT[beta ? 'public' : 'beta'],
+    betaShown: beta ? $('#mfBetaEnabled').checked : MOCK_BETA_SHOWN,
+    episode: mockEpisode($(beta ? '#mfBetaEpisode' : '#mfPubEpisode').value),
+    background: bg ? localBg(bg) : null,
+    backgroundFallback: bg?.url ?? null,
+    hero: heroForMock(),
+  };
+}
+
+function renderHeroEditor() {
+  const section = $('#mfHeroSection');
+  section.hidden = !MANIFEST || !heroChannel() || !!MANIFEST.needsInit;
+  if (section.hidden) return;
+  HE_VIEW = LauncherMock.heroStrip($('#heStage'), { ...campaignMockState(), width: Number($('#heWidth').value) });
+  $$('#heStage [data-part]').forEach((el) => el.classList.toggle('sel', el.dataset.part === HE_SEL));
+  for (const part of HE_PARTS) {
+    const box = $(`.he-part[data-part="${part}"]`);
+    box.classList.toggle('sel', part === HE_SEL);
+    const p = HERO[part];
+    $$('input[data-k]', box).forEach((inp) => {
+      if (document.activeElement === inp) return; // don't fight the typing
+      const v = placedOf(p) ? p[inp.dataset.k] : undefined;
+      inp.value = Number.isFinite(v) ? v : '';
+      inp.placeholder = { x: '0', y: '86', scale: '1' }[inp.dataset.k];
+      inp.disabled = part === 'video' ? !HERO.video : part === 'emblem' && HERO.emblem?.show === false;
+    });
+    const state = $('[data-state]', box);
+    if (state) state.textContent = part === 'emblem' && HERO.emblem?.show === false ? 'hidden' : placedOf(p) ? 'placed' : 'episode layout';
+  }
+  const v = HERO.video;
+  $('#heVideoName').textContent = v
+    ? `${v.url.split('/').pop()} · ${fmtBytes(v.size || 0)} · ${v.poster ? `still ${v.poster.url.split('/').pop()}` : 'no still yet'}`
+    : 'none: the hero shows no model';
+  for (const id of ['#hePosterPick', '#hePosterMake', '#heVideoClear', '#heVideoLayer', '#hePosterAt']) $(id).disabled = !v;
+  $('#heVideoLayer').value = v?.vignette === 'below' ? 'below' : v?.layer === 'front' ? 'front' : 'behind';
+  $('#heEmblemShow').checked = HERO.emblem?.show !== false;
+}
+
+// A piece's placement, measured from where the preview draws it when it still follows the
+// episode's layout (so the first drag starts from what you see).
+function ensurePlaced(part) {
+  if (placedOf(HERO[part])) return HERO[part];
+  if (part === 'video') {
+    HERO.video = { ...HERO.video, x: HERO.video?.x ?? 0, y: HERO.video?.y ?? LauncherMock.HERO_H / 2, scale: HERO.video?.scale ?? 1 };
+    return HERO.video;
+  }
+  const el = $(`#heStage [data-part="${part}"]`), heroEl = $('#heStage .lm-hero');
+  const r = el.getBoundingClientRect(), h = heroEl.getBoundingClientRect(), k = HE_VIEW.k;
+  const scale = part === 'logo' ? r.width / k / LauncherMock.STAGE_W : 1;
+  HERO[part] = { x: Math.round((r.left + r.width / 2 - (h.left + h.width / 2)) / k), y: Math.round((r.top + r.height / 2 - h.top) / k), scale: Math.round(scale * 100) / 100 };
+  return HERO[part];
+}
+// renderMock redraws the editor's stage too.
+function heroEdited() {
+  setManifestDirty(true);
+  renderMock();
+}
+
+$('#heStage').addEventListener('pointerdown', (e) => {
+  let el = e.target.closest('[data-part]');
+  if (!el || e.button !== 0) return;
+  e.preventDefault();
+  const part = el.dataset.part;
+  HE_SEL = part;
+  const wasPlaced = placedOf(HERO[part]);
+  const start = { ...ensurePlaced(part) };
+  if (!wasPlaced) { renderHeroEditor(); el = $(`#heStage [data-part="${part}"]`); }
+  el.classList.add('dragging');
+  const x0 = e.clientX, y0 = e.clientY, k = HE_VIEW.k;
+  const move = (ev) => {
+    const p = HERO[part];
+    p.x = Math.round(start.x + (ev.clientX - x0) / k);
+    p.y = Math.round(start.y + (ev.clientY - y0) / k);
+    el.style.left = `calc(50% + ${p.x}px)`;
+    el.style.top = `${p.y}px`;
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    heroEdited();
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+});
+$('#heStage').addEventListener('wheel', (e) => {
+  const el = e.target.closest('[data-part]');
+  if (!el) return;
+  e.preventDefault();
+  const part = el.dataset.part;
+  HE_SEL = part;
+  const p = ensurePlaced(part);
+  p.scale = Math.round(Math.min(4, Math.max(0.1, (p.scale ?? 1) * (e.deltaY < 0 ? 1.05 : 1 / 1.05))) * 100) / 100;
+  heroEdited();
+}, { passive: false });
+
+for (const part of HE_PARTS) {
+  const box = $(`.he-part[data-part="${part}"]`);
+  box.addEventListener('pointerdown', () => { if (HE_SEL !== part) { HE_SEL = part; renderHeroEditor(); } });
+  $$('input[data-k]', box).forEach((inp) => inp.addEventListener('input', () => {
+    const n = Number(inp.value);
+    if (inp.value === '' || !Number.isFinite(n)) return;
+    ensurePlaced(part)[inp.dataset.k] = n;
+    heroEdited();
+  }));
+  $('[data-reset]', box)?.addEventListener('click', () => { delete HERO[part]; heroEdited(); });
+}
+$('#heEmblemShow').addEventListener('change', () => {
+  if ($('#heEmblemShow').checked) delete HERO.emblem; else HERO.emblem = { show: false };
+  heroEdited();
+});
+// Depth: under the vignette (shaded with the background), over it behind the logo, or in front.
+$('#heVideoLayer').addEventListener('change', () => {
+  if (!HERO.video) return;
+  const d = $('#heVideoLayer').value;
+  HERO.video.layer = d === 'front' ? 'front' : 'behind';
+  if (d === 'below') HERO.video.vignette = 'below'; else delete HERO.video.vignette;
+  heroEdited();
+});
+$('#heWidth').addEventListener('change', renderHeroEditor);
+new ResizeObserver(() => { if (!$('#mfHeroSection').hidden) renderHeroEditor(); }).observe($('#heStage'));
+
+const fileData = (file) => new Promise((ok, fail) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = () => fail(fr.error); fr.readAsDataURL(file); });
+const assetOf = (a) => ({ url: a.url, size: a.size, sha256: a.sha256 });
+$('#heVideoPick').addEventListener('click', () => $('#heVideoFile').click());
+$('#hePosterPick').addEventListener('click', () => $('#hePosterFile').click());
+$('#heVideoFile').addEventListener('change', async () => {
+  const file = $('#heVideoFile').files[0];
+  $('#heVideoFile').value = '';
+  if (!file) return;
+  try {
+    toast(`Saving ${file.name}…`);
+    const r = await api('POST', '/api/hero-media', { branch: heroChannel(), kind: 'video', filename: file.name, data: await fileData(file) });
+    // A new video keeps the old one's placement; the first one starts right of the logo.
+    const prev = HERO.video ?? { x: 220, y: LauncherMock.HERO_H / 2, scale: 1, layer: 'behind' };
+    HERO.video = { ...assetOf(r.video), ...(r.poster ? { poster: assetOf(r.poster) } : {}), x: prev.x, y: prev.y, scale: prev.scale, layer: prev.layer ?? 'behind' };
+    HE_SEL = 'video';
+    heroEdited();
+    toast(r.posterError ? `Saved ${r.video.file}, but no still: ${r.posterError}` : `Saved ${r.video.file} and its still; they upload with the assets.`, r.posterError ? 'err' : 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+});
+$('#hePosterFile').addEventListener('change', async () => {
+  const file = $('#hePosterFile').files[0];
+  $('#hePosterFile').value = '';
+  if (!file || !HERO.video) return;
+  try {
+    const r = await api('POST', '/api/hero-media', { branch: heroChannel(), kind: 'poster', filename: file.name, data: await fileData(file) });
+    HERO.video.poster = assetOf(r.poster);
+    heroEdited();
+  } catch (e) { toast(e.message, 'err'); }
+});
+$('#hePosterMake').addEventListener('click', async () => {
+  if (!HERO.video) return;
+  try {
+    const at = Math.min(100, Math.max(0, Number($('#hePosterAt').value) || 0)) / 100;
+    const r = await api('POST', '/api/hero-poster', { branch: heroChannel(), file: HERO.video.url.split('/').pop(), at });
+    HERO.video.poster = assetOf(r.poster);
+    heroEdited();
+  } catch (e) { toast(e.message, 'err'); }
+});
+$('#heVideoClear').addEventListener('click', () => { delete HERO.video; heroEdited(); });
 
 function syncCritPill() {
   const on = $('#mfCritEnabled').checked;
@@ -781,7 +993,7 @@ $('#mfSave').addEventListener('click', async () => {
       payload.versions = { multiplayer: $('#mfVerCore').value.trim(), campaign: $('#mfVerCampaign').value.trim() };
       const pubAccent = $('#mfPubAccent').value.trim();
       if (pubAccent && !hexOf(pubAccent)) throw new Error(`Launcher colour "${pubAccent}" is not a hex colour like #54b893`);
-      payload.publicMeta = { accentColor: hexOf(pubAccent) || '', episode: $('#mfPubEpisode').value === '' ? null : Number($('#mfPubEpisode').value), background: BG['#mfPubBg'] };
+      payload.publicMeta = { accentColor: hexOf(pubAccent) || '', episode: $('#mfPubEpisode').value === '' ? null : Number($('#mfPubEpisode').value), background: BG['#mfPubBg'], hero: HERO };
     } else if (BRANCH === 'beta') {
       let codeHash = MANIFEST.betaMeta?.codeHash ?? '';
       const plain = $('#mfBetaCode').value.trim();
@@ -794,6 +1006,7 @@ $('#mfSave').addEventListener('click', async () => {
         accentColor: hexOf($('#mfBetaAccent').value) || '#ff6600',
         episode: $('#mfBetaEpisode').value === '' ? null : Number($('#mfBetaEpisode').value),
         background: BG['#mfBetaBg'],
+        hero: HERO,
         coreVersion: $('#mfBetaCore').value.trim(),
         codeHash,
       };
@@ -929,7 +1142,7 @@ $('#vfOrphans').addEventListener('click', async () => {
 let DRY = true;
 
 const UPLOAD_ORDER = ['payload', 'betapayload', 'meleepayload', 'betameleepayload', 'assets', 'launcher', 'installer', 'manifests'];
-const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee', $('#dpPkgMeleeBeta').checked && 'meleebeta', $('#dpPkgLauncher').checked && 'launcher'].filter(Boolean);
+const deployPackages = () => [$('#dpPkgCampaign').checked && 'campaign', $('#dpPkgMelee').checked && 'melee', $('#dpPkgMeleeBeta').checked && 'meleebeta', $('#dpPkgLauncher').checked && 'launcher', $('#dpPkgAssets').checked && 'assets'].filter(Boolean);
 
 function syncDeployControls() {
   const pk = deployPackages();
@@ -972,15 +1185,18 @@ async function loadPending() {
     line('#dpPendMelee', PENDING.packages.melee);
     line('#dpPendMeleeBeta', PENDING.packages.meleebeta);
     line('#dpPendLauncher', PENDING.packages.launcher);
+    line('#dpPendAssets', PENDING.packages.assets);
     if (PENDING.offline) $('#dpPendMelee').textContent = 'Could not reach the CDN to compare.';
     if (!PENDING_TICKED) {
       PENDING_TICKED = true;
-      const { campaign, melee, meleebeta, launcher } = PENDING.packages;
-      if (campaign.changed || melee.changed || meleebeta?.changed || launcher?.changed) {
+      const { campaign, melee, meleebeta, launcher, assets } = PENDING.packages;
+      if (campaign.changed || melee.changed || meleebeta?.changed || launcher?.changed || assets?.changed) {
         $('#dpPkgCampaign').checked = campaign.changed;
         $('#dpPkgMelee').checked = melee.changed;
         $('#dpPkgMeleeBeta').checked = !!meleebeta?.changed;
         $('#dpPkgLauncher').checked = !!launcher?.changed;
+        // A campaign deploy uploads assets/ too; tick Launcher assets only when campaign isn't going.
+        $('#dpPkgAssets').checked = !!assets?.changed && !campaign.changed;
         syncDeployControls();
       }
     }
@@ -989,7 +1205,7 @@ async function loadPending() {
 
 try { $('#dpSite').checked = localStorage.getItem('scevo.updateSite') === '1'; } catch {}
 $('#dpSite').addEventListener('change', (e) => { try { localStorage.setItem('scevo.updateSite', e.target.checked ? '1' : '0'); } catch {} });
-['#dpPkgCampaign', '#dpPkgMelee', '#dpPkgMeleeBeta', '#dpPkgLauncher'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
+['#dpPkgCampaign', '#dpPkgMelee', '#dpPkgMeleeBeta', '#dpPkgLauncher', '#dpPkgAssets'].forEach((sel) => $(sel).addEventListener('change', syncDeployControls));
 $$('#dpMode .seg-btn').forEach((b) => b.addEventListener('click', () => {
   $$('#dpMode .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
   DRY = b.dataset.mode === 'dry';

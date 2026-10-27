@@ -91,6 +91,24 @@ async function runJob(name, fn) {
 const MANIFEST_BRANCHES = ['public', 'beta', 'melee', 'meleebeta'];
 const packageOfBranch = (b) => b === 'melee' ? 'melee' : b === 'meleebeta' ? 'meleebeta' : 'campaign';
 
+// What the Melee tab's lobby preview needs: the map pool (the generated melee manifest when given,
+// else the written one; the melee beta plays the public pool) with thumbnail URLs, the public
+// colour (the campaign's public accent, as the launcher uses) and the melee beta's state.
+function meleePreview(generated) {
+  const melee = generated ?? mf.readManifest(cfg.MELEE_MANIFEST);
+  const beta = mf.readManifest(cfg.MELEE_BETA_MANIFEST);
+  return {
+    maps: (melee?.maps ?? []).map((m) => ({
+      id: m.id, name: m.name, description: m.description ?? '', modes: m.modes ?? '', players: m.players ?? 0,
+      size: m.size ?? null, tileset: m.tileset ?? null,
+      thumb: m.thumbnail?.path && fs.existsSync(path.join(cfg.MELEE_DIR, m.thumbnail.path)) ? `/melee-thumb/${m.id}.png` : null,
+    })),
+    publicAccent: mf.readManifest(cfg.PUBLIC_MANIFEST)?.theme?.accentColor || null,
+    betaEnabled: !!beta?.betaEnabled,
+    betaAccent: beta?.theme?.accentColor || '#ff6600',
+  };
+}
+
 const routes = {
   // Deliberately cheap — no network. The R2 probe costs up to 15s and lives on
   // /api/probe so the shell can paint immediately and fill the R2 chip in later.
@@ -263,11 +281,13 @@ const routes = {
         majorVersion: existing?.majorVersion ?? '', fullVersion: existing?.fullVersion ?? '',
         codeHash: existing?.codeHash ?? '', accentColor: existing?.theme?.accentColor ?? '#ff6600',
         coreVersion: existing?.versions?.multiplayer ?? '', episode: existing?.episode ?? null, background: existing?.background ?? null,
+        hero: existing?.hero ?? null,
       } : null,
       // Public channel colour (blank = the launcher's built-in site colour) and hero episode.
-      publicMeta: branch === 'public' ? { accentColor: existing?.theme?.accentColor ?? '', episode: existing?.episode ?? null, background: existing?.background ?? null } : null,
+      publicMeta: branch === 'public' ? { accentColor: existing?.theme?.accentColor ?? '', episode: existing?.episode ?? null, background: existing?.background ?? null, hero: existing?.hero ?? null } : null,
       episodes: require('./lib/episodes').readEpisodes(cfg.readConfig().siteRepoPath),
       meleeVersion: doc.melee.version,
+      meleePreview: branch === 'melee' || branch === 'meleebeta' ? meleePreview(branch === 'melee' ? next : null) : null,
       meleeBetaMeta: branch === 'meleebeta' ? {
         betaEnabled: !!existing?.betaEnabled, betaName: existing?.betaName ?? '', version: existing?.version ?? '',
         codeHash: existing?.codeHash ?? '', accentColor: existing?.theme?.accentColor ?? '#ff6600',
@@ -288,7 +308,7 @@ const routes = {
     }
     if (branch === 'public') {
       overrides.public = { versions: body.versions, criticalUpdate: body.criticalUpdate };
-      if (body.publicMeta) Object.assign(overrides.public, { accentColor: body.publicMeta.accentColor ?? '', episode: body.publicMeta.episode ?? null, background: body.publicMeta.background ?? null });
+      if (body.publicMeta) Object.assign(overrides.public, { accentColor: body.publicMeta.accentColor ?? '', episode: body.publicMeta.episode ?? null, background: body.publicMeta.background ?? null, hero: body.publicMeta.hero ?? null });
     }
     if (branch === 'beta') overrides.beta = { meta: body.betaMeta, criticalUpdate: body.criticalUpdate };
     if (branch === 'melee') {
@@ -303,6 +323,19 @@ const routes = {
   // A channel's hero background: saved under assets/launcher/ (uploaded with the campaign
   // package, before the manifests), named by its hash so a new image never reuses a cached URL.
   'POST /api/launcher-background': async (body) => require('./lib/backgrounds').saveBackground(body),
+
+  // Hero editor media: a video (plus a still made from it) or a still chosen by hand, saved under
+  // assets/hero/. body: { branch, kind: "video"|"poster", filename, data } → { video?, poster }
+  'POST /api/hero-media': async (body) => {
+    const hero = require('./lib/hero');
+    const saved = hero.saveHeroMedia(body);
+    if (body.kind !== 'video') return { poster: saved };
+    let poster = null, posterError = null;
+    try { poster = hero.makePoster({ branch: body.branch, file: saved.file }); } catch (e) { posterError = e.message; }
+    return { video: saved, poster, posterError };
+  },
+  // A new still from a saved hero video, `at` (0–1) of the way in. body: { branch, file, at }
+  'POST /api/hero-poster': async (body) => ({ poster: require('./lib/hero').makePoster(body) }),
 
   'POST /api/beta-code-hash': async (body) => ({ codeHash: mf.betaCodeHash(body.code ?? '') }),
 
@@ -382,6 +415,8 @@ const routes = {
   'POST /api/news-preview': async (body) => {
     if (!Array.isArray(body.feed)) throw new Error('Missing feed');
     const feed = structuredClone(body.feed);
+    // As Save does: a badge that follows the accent gets it, so the preview shows the saved card.
+    feed.forEach(linkBadgeColor);
     if (feed.some((s) => s?.kind === 'patreon')) await patreon.bakePatreonSlots(feed, (await patreonPosts()).posts);
     const { cards } = await newsResolver().resolve(feed, body.lang || 'en', { withSlot: true });
     return { cards: cards.map(stripSlotRule) };
@@ -442,7 +477,7 @@ const routes = {
 /* ── HTTP plumbing ───────────────────────────────────────────────────────── */
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml',
-  '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
+  '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webm': 'video/webm' };
 
 function send(res, status, body, headers = {}) {
   const data = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
@@ -497,6 +532,19 @@ const server = http.createServer(async (req, res) => {
       const file = siteRoot ? path.resolve(siteRoot, decodeURIComponent(url.pathname.slice('/site-asset/'.length))) : null;
       if (!file || !file.startsWith(imgRoot + path.sep) || !fs.existsSync(file)) return send(res, 404, { error: 'Not found' });
       return send(res, 200, fs.readFileSync(file), { 'Content-Type': MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=300' });
+    }
+    // Hero editor media saved here (assets/hero/), before they reach the CDN: /hero-asset/<file>
+    if (url.pathname.startsWith('/hero-asset/')) {
+      const abs = require('./lib/hero').fileFor(decodeURIComponent(url.pathname.slice('/hero-asset/'.length)));
+      if (!abs || !fs.existsSync(abs)) return send(res, 404, { error: 'Not found' });
+      return send(res, 200, fs.readFileSync(abs), { 'Content-Type': MIME[path.extname(abs)] ?? 'application/octet-stream', 'Cache-Control': 'max-age=3600' });
+    }
+    // Built melee map thumbnails for the lobby preview: /melee-thumb/<map id>.png
+    if (url.pathname.startsWith('/melee-thumb/')) {
+      const file = path.basename(decodeURIComponent(url.pathname.slice('/melee-thumb/'.length)));
+      const abs = path.join(cfg.MELEE_DIR, 'thumbs', file);
+      if (!/^[0-9a-f]{10}\.png$/.test(file) || !fs.existsSync(abs)) return send(res, 404, { error: 'Not found' });
+      return send(res, 200, fs.readFileSync(abs), { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=60' });
     }
     // Hero backgrounds saved here but not uploaded yet: /launcher-bg/<file>
     if (url.pathname.startsWith('/launcher-bg/')) {

@@ -36,6 +36,22 @@ async function launcherPending({ r2 = require('./r2') } = {}) {
   return { changed: false, details: [] };
 }
 
+// Files in assets/ (replay icons, hero backgrounds, news images) that R2 doesn't have yet, or has
+// with other bytes. No manifest lists them, so the folder itself is compared. Summed per subfolder.
+async function assetsPending({ diff = require('./r2').diffFolder } = {}) {
+  const r = await diff('assets');
+  if (!r.ok) return { changed: false, details: [`could not compare: ${r.error}`] };
+  const per = (paths) => {
+    const n = new Map();
+    for (const p of paths) { const top = p.includes('/') ? p.slice(0, p.indexOf('/')) : '(top level)'; n.set(top, (n.get(top) || 0) + 1); }
+    return [...n].map(([dir, c]) => `${dir} ${c}`).join(', ');
+  };
+  const details = [];
+  if (r.missing.length) details.push(`${r.missing.length} new (${per(r.missing)})`);
+  if (r.differ.length) details.push(`${r.differ.length} changed (${per(r.differ)})`);
+  return { changed: details.length > 0, details };
+}
+
 const strip = (doc) => { if (!doc || typeof doc !== 'object') return doc; const { lastUpdated, ...rest } = doc; return rest; };
 const same = (a, b) => JSON.stringify(strip(a)) === JSON.stringify(strip(b));
 
@@ -66,9 +82,9 @@ function describe(name, live, local) {
 
 /**
  * fetchJson(url) -> { ok, data, error } (verify.fetchJson). Returns
- * { offline, packages: { campaign: { changed, details: [] }, melee: { … } } }.
+ * { offline, packages: { campaign: { changed, details: [] }, melee: { … }, launcher, assets } }.
  */
-async function pendingPackages({ fetchJson = require('./verify').fetchJson, base = cfg.publicBase(), manifestDir = cfg.MANIFEST_DIR, launcher = launcherPending } = {}) {
+async function pendingPackages({ fetchJson = require('./verify').fetchJson, base = cfg.publicBase(), manifestDir = cfg.MANIFEST_DIR, launcher = launcherPending, assets = assetsPending } = {}) {
   const packages = {};
   let offline = false;
   for (const [pkg, names] of Object.entries(PACKAGE_FILES)) {
@@ -86,7 +102,8 @@ async function pendingPackages({ fetchJson = require('./verify').fetchJson, base
     packages[pkg] = { changed: details.length > 0, details };
   }
   try { packages.launcher = await launcher(); } catch (e) { packages.launcher = { changed: false, details: [`could not check: ${e.message}`] }; }
+  try { packages.assets = await assets(); } catch (e) { packages.assets = { changed: false, details: [`could not check: ${e.message}`] }; }
   return { offline, packages };
 }
 
-module.exports = { pendingPackages, launcherPending, describe, PACKAGE_FILES };
+module.exports = { pendingPackages, launcherPending, assetsPending, describe, PACKAGE_FILES };

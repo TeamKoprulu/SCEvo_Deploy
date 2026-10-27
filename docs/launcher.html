@@ -78,9 +78,13 @@ npm run build:win7</code></pre>
 <table>
   <tr><th>What</th><th>Built by</th><th>Lives in</th></tr>
   <tr><td>Match report unit icons</td><td><code>node scripts/build-replay-units.js</code> (from <code>SCEvo_Assets.SC2Mod</code> textures, then retail)</td><td><code>SCEvo_Deploy\assets\replay-icons\</code> → R2 <code>assets/replay-icons/</code></td></tr>
+  <tr><td>Hero backgrounds</td><td>The deploy tool's Manifest tab</td><td><code>assets/launcher/</code></td></tr>
   <tr><td>News images</td><td>The deploy tool's News tab</td><td><code>assets/news/</code></td></tr>
 </table>
-<p>They go up with a campaign deploy, or by hand: <a href="cdn.html#manual-upload">Cloudflare push → Uploading a folder by hand</a>.</p>
+<p>They go up with the <strong>Launcher assets</strong> package (all of <code>assets\</code>, no manifest), or with a campaign deploy. To ship new art with a launcher release and no campaign deploy:</p>
+<pre><code>.\run.cmd deploy --package launcher,assets --dry-run
+.\run.cmd deploy --package launcher,assets --update-site</code></pre>
+<p>On the Deploy tab, tick <strong>Launcher</strong> and <strong>Launcher assets</strong>. The tab and <code>.\run.cmd status</code> compare <code>assets\</code> with R2 by hash (e.g. "388 new (replay-icons 388)"), and a live deploy checks R2 against the folder again after the upload.</p>
 
 <div class="pager"><a href="cdn.html">← Cloudflare push</a><a href="blog.html">Blog posts →</a></div>
 </main>

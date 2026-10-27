@@ -8,6 +8,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const {
   REPO_ROOT, PAYLOAD_DIR, BETA_DIR, MANIFEST_DIR, ASSETS_DIR, R2_BASE, publicBase, publicBases,
   PUBLIC_MANIFEST, BETA_MANIFEST, readConfig, stripJunk,
@@ -439,6 +440,23 @@ async function verifyPublishedManifests(files) {
 
 /* ── entry point ─────────────────────────────────────────────────────────── */
 
+// The hero editor's media (manifest "hero": video and its still, assets/hero/) must be here, as
+// listed, so the assets upload puts them on the CDN before the manifest points at them.
+function checkHeroMedia(doc) {
+  const hero = require('./hero');
+  const out = [];
+  const pieces = [['hero video', doc?.hero?.video], ['hero video still', doc?.hero?.video?.poster]];
+  for (const [label, a] of pieces) {
+    if (!a?.url) continue;
+    const abs = hero.fileFor(a.url);
+    if (!abs || !fs.existsSync(abs)) { out.push(finding(ERROR, 'hero-media-missing', `The ${label} ${a.url.split('/').pop()} is not in assets/hero/`, a.url)); continue; }
+    const buf = fs.readFileSync(abs);
+    if (a.sha256 && crypto.createHash('sha256').update(buf).digest('hex') !== a.sha256) out.push(finding(ERROR, 'hero-media-hash', `The ${label} in assets/hero/ does not match the manifest's hash`, abs));
+  }
+  if (doc?.hero?.video && !doc.hero.video.poster) out.push(finding(WARN, 'hero-no-still', 'The hero video has no still: slow connections and reduced-motion players see no model'));
+  return out;
+}
+
 async function preflight(branch, onProgress) {
   const file = branch === 'beta' ? BETA_MANIFEST : PUBLIC_MANIFEST;
   const findings = [];
@@ -453,6 +471,7 @@ async function preflight(branch, onProgress) {
     findings.push(...await checkAgainstDisk(hygiene.parsed, branch, onProgress));
   }
   findings.push(...await checkDrift(branch));
+  findings.push(...checkHeroMedia(hygiene.parsed));
 
   // news-feed.json is served to every client on launch; a parse failure there
   // breaks the whole news pane.
@@ -604,10 +623,24 @@ function summarize(findings) {
   };
 }
 
+// The assets/ folder (replay icons, hero backgrounds, news images) against R2, by hash. No manifest
+// lists these files, so the folder is compared as a whole.
+async function postflightAssets(onProgress, { diff = require('./r2').diffFolder } = {}) {
+  onProgress && onProgress({ phase: 'head', file: 'assets', done: 0, total: 1 });
+  const r = await diff('assets');
+  if (!r.ok) return [finding(ERROR, 'assets-check', `Could not compare assets/ with R2: ${r.error}`)];
+  const out = [
+    ...r.missing.map((p) => finding(ERROR, 'cdn-missing', `assets/${p} is not on R2`)),
+    ...r.differ.map((p) => finding(ERROR, 'cdn-mismatch', `assets/${p} on R2 differs from the local file`)),
+  ];
+  if (!out.length) out.push(finding(OK, 'cdn-ok', `assets/ verified on R2 (${r.same} file(s))`));
+  return out;
+}
+
 module.exports = {
-  preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, postflightLauncher, meleeFiles,
+  preflight, postflight, verifyPublishedManifests, checkDrift, preflightMelee, postflightMelee, postflightLauncher, postflightAssets, meleeFiles,
   preflightMeleeBeta, postflightMeleeBeta, meleeBetaFiles,
-  checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings, checkNewsFeed,
+  checkJsonHygiene, checkStructure, checkAgainstDisk, checkNewsStrings, checkNewsFeed, checkHeroMedia,
   fetchJson, headFile, summarize,
   LARGE_FILE_BYTES,
 };

@@ -2,7 +2,7 @@
 
 Packages SC Evo content from the SC2 install and publishes it to Cloudflare R2 for the launcher.
 
-Four packages ship from here, each deployable on its own:
+Five packages ship from here, each deployable on its own:
 
 | Package | Manifest | Payload folder (= R2 prefix) | Installed by the launcher |
 |---|---|---|---|
@@ -10,6 +10,7 @@ Four packages ship from here, each deployable on its own:
 | **Melee vs AI** | `melee-manifest.json` | `meleepayload/` | mods under the SC2 folder; maps in `%APPDATA%\sc-evo-launcher\melee\` |
 | **Melee beta** | `melee-beta-manifest.json` | `betameleepayload/` | mods under `Mods\SC Evolution Complete Beta\`, only after the player enters the beta code |
 | **Launcher** | `launcher-version.json` | `launcher/`, `installer/` (copied from the launcher repo's `dist-electron/` at deploy time) | the launcher's self-updater |
+| **Launcher assets** | none | `assets/` only: replay icons, hero backgrounds, news images (a campaign deploy uploads it too) | streamed by the launcher, never installed |
 
 ## Setup (once per machine)
 
@@ -36,6 +37,7 @@ Typical release:
 3. **Manifest tab:** set versions, the critical-update notice or the beta settings, then **Write manifest**.
 4. **Deploy tab** (`run.cmd deploy --package … [--dry-run]`): dry run first, then live. The tab compares each package with the live CDN, shows what isn't deployed yet (e.g. "decals added", "launcher 1.3.0 → 1.3.1") and ticks those packages. `run.cmd status` prints the same summary.
    - **Launcher only:** bump `version` in the launcher repo's `package.json`, build it, then deploy just the **Launcher** package (`run.cmd deploy --package launcher`). A rebuilt exe under the same version is flagged, because players are only offered a new version number.
+   - **Launcher art without a campaign deploy:** the **Launcher assets** package uploads `assets/` and nothing else. Ship it with a launcher release that needs new art: `run.cmd deploy --package launcher,assets`. The Deploy tab and `run.cmd status` compare `assets/` with R2 by hash and show what isn't there yet.
    - **Update website download links** (`--update-site`, campaign only): after the upload, points the website's launcher downloads (`assets\js\site-links.js` in the **Website repo path** from Settings) at the R2 copies, with `?v=<launcher version>`. The file is edited in place and left uncommitted, whatever else is uncommitted there; commit and push the site to publish it.
 
 ## The catalog: `deploy-catalog.json`
@@ -90,6 +92,15 @@ run.cmd promote "Loomings3Legacy.SC2Map" public
   - re-extract both after a game patch that adds decals
 - **Blank-looking decals** are reported by the build. `run.cmd decals` lists them, and `run.cmd decals exclude Decal_Zerg_0083_01` leaves one out (stored in the catalog under `melee.decalExclude`). `include` puts it back.
 - **The textures stay untinted.** The launcher colours them with the player colour the way the game does.
+
+## Campaign hero (Manifest → Public / Beta → Hero editor)
+
+The launcher's campaign hero for each channel (launcher 1.4+; the manifest's `hero` section, see the launcher repo's `docs/manifest-spec.md`).
+
+- **Video:** choose a `.webm` (under 40 MB; VP9 keeps transparency). A still is made from it with ffmpeg (needs `ffmpeg`/`ffprobe` on PATH); pick another point with **Still at … % → Make still**, or **Choose still…** for your own image. Players see the still until the video plays, and only the still with reduced motion, data saver or a 2G/3G connection. **Depth**: under the vignette (shaded like the background), over it behind the logo, or in front of the logo.
+- **Placing:** drag the logo, emblem or video on the stage and scroll over one to resize it, or type x / y / scale. Units are launcher px: x from the hero's centre, y from its top; the hero is always 172 px tall and only gets wider, so check **Window width** up to ultrawide. **Reset** puts a piece back in the episode's own layout; untick **Shown** to hide the emblem.
+- **Background:** the **Hero background** field above it.
+- **Saving:** **Write manifest**. Media are saved in `assets/hero/` and upload with the campaign or assets package; preflight fails if one the manifest names is missing or changed.
 
 ## Melee beta (closed test)
 

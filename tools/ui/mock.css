@@ -62,15 +62,45 @@
 .lm-hero { position: relative; height: 172px; flex-shrink: 0; overflow: hidden; border-bottom: 1px solid var(--line); }
 .lm-hero-empty { display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 13px; }
 .lm-hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .45; }
-.lm-hero-shade { position: absolute; inset: 0; background: radial-gradient(ellipse 55% 75% at 50% 45%, transparent, rgba(var(--bg-rgb), .9) 78%),
+.lm-hero-shade { position: absolute; inset: 0; z-index: 1; background: radial-gradient(ellipse 55% 75% at 50% 45%, transparent, rgba(var(--bg-rgb), .9) 78%),
   linear-gradient(180deg, rgba(var(--bg-rgb), .53), transparent 30%, transparent 65%, var(--bg)); }
-.lm-emblem { position: absolute; left: 50%; top: 8px; width: 104px; height: 104px; transform: translateX(-50%); }
-.lm-emblem > img { position: relative; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 12px 22px rgba(0,0,0,.8)); }
-.lm-glow { position: absolute; inset: -26px; background: var(--ac); opacity: .6; animation: lmGlow 4s ease-in-out infinite;
-  -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+/* shell.jsx CampaignHero: the stage is 140px tall and 1.95x as wide, 6px off the bottom.
+   The emblem's top/size and the glow box come inline from the episode's tune (mock.js hero). */
+.lm-stage { position: absolute; left: 50%; bottom: 6px; width: 273px; height: 140px; margin-left: -136.5px; z-index: 2; }
+.lm-emblem { position: absolute; }
+.lm-emblem > img { position: relative; width: 100%; height: 100%; object-fit: contain;
+  opacity: var(--lm-emblem-dim); animation: lmEmblemDim 11.9s ease-in-out infinite; }
+.lm-glow { position: absolute; pointer-events: none; mix-blend-mode: screen;
+  -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
+  opacity: calc(.9 * var(--lm-glow-dim) * var(--lm-glow-flick));
+  animation: lmGlowDim 9.7s ease-in-out infinite, lmGlowFlick 13.3s linear infinite; }
+.lm-glow.lm-breathe { animation: lmGlowDim 9.7s ease-in-out infinite, lmGlowFlick 13.3s linear infinite, lmBreathe 4s ease-in-out infinite; }
+.lm-glow.lm-scan-lines { opacity: calc(.55 * var(--lm-glow-dim) * var(--lm-glow-flick));
+  animation: lmScan 3.2s linear infinite, lmGlowDim 9.7s ease-in-out infinite, lmGlowFlick 13.3s linear infinite; }
 .lm-emblem-tape { position: absolute; left: 64%; top: 2px; }
-.lm-eplogo { position: absolute; left: 50%; bottom: 6px; height: 86px; width: auto; transform: translateX(-50%); filter: drop-shadow(0 8px 18px rgba(0,0,0,.85)); }
-@keyframes lmGlow { 0%, 100% { opacity: .45; } 50% { opacity: .75; } }
+.lm-eplogo { position: absolute; filter: drop-shadow(0 8px 24px rgba(0,0,0,.9)); }
+.lm-eplogo img { width: 100%; height: auto; display: block; }
+/* The hero video (or its still): HERO_H × scale tall, placed like the logo (shell.jsx CampaignHero). */
+.lm-hvideo { position: absolute; }
+.lm-hvideo img, .lm-hvideo video { height: 100%; width: auto; display: block; }
+.lm-hvideo video.over { position: absolute; left: 0; top: 0; }
+/* The hero editor's stage (heroStrip): the hero alone, its pieces draggable. */
+.lm-strip-frame { position: relative; overflow: hidden; outline: 1px solid var(--line, #333); }
+.lmock.lm-strip { transform-origin: 0 0; }
+.lmock.lm-strip .lm-hero { height: 172px; border-bottom: 0; }
+.lmock.lm-strip [data-part] { pointer-events: auto; cursor: grab; }
+.lmock.lm-strip [data-part].dragging { cursor: grabbing; }
+.lmock.lm-strip [data-part].sel { outline: 2px dashed var(--ac); outline-offset: 2px; }
+.lmock.lm-strip [data-part] * { pointer-events: none; }
+/* The launcher's emblem and glow animations (shell.jsx HERO_CSS). */
+@property --lm-glow-dim { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --lm-glow-flick { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --lm-emblem-dim { syntax: "<number>"; inherits: false; initial-value: 1; }
+@keyframes lmBreathe { 0%, 100% { transform: scale(.96); } 50% { transform: scale(1.03); } }
+@keyframes lmScan { from { background-position: 0 -60%, 0 0; } to { background-position: 0 160%, 0 24px; } }
+@keyframes lmEmblemDim { 0%, 8% { --lm-emblem-dim: 1; } 16% { --lm-emblem-dim: .86; } 22% { --lm-emblem-dim: .97; } 27% { --lm-emblem-dim: .82; } 31%, 47% { --lm-emblem-dim: 1; } 52% { --lm-emblem-dim: .9; } 54% { --lm-emblem-dim: .8; } 57% { --lm-emblem-dim: .94; } 66%, 78% { --lm-emblem-dim: .88; } 86% { --lm-emblem-dim: 1; } 91% { --lm-emblem-dim: .84; } 100% { --lm-emblem-dim: 1; } }
+@keyframes lmGlowDim { 0% { --lm-glow-dim: 1; } 18% { --lm-glow-dim: .82; } 30% { --lm-glow-dim: .95; } 46% { --lm-glow-dim: .55; } 58% { --lm-glow-dim: .62; } 70% { --lm-glow-dim: 1; } 84% { --lm-glow-dim: .78; } 100% { --lm-glow-dim: 1; } }
+@keyframes lmGlowFlick { 0%, 11% { --lm-glow-flick: 1; } 11.4% { --lm-glow-flick: .25; } 12% { --lm-glow-flick: .9; } 12.4% { --lm-glow-flick: .4; } 13.2%, 34% { --lm-glow-flick: 1; } 34.3% { --lm-glow-flick: .15; } 34.6% { --lm-glow-flick: .85; } 34.9% { --lm-glow-flick: .2; } 35.2% { --lm-glow-flick: .7; } 35.5% { --lm-glow-flick: .3; } 36.4%, 55% { --lm-glow-flick: 1; } 56.5% { --lm-glow-flick: .35; } 61% { --lm-glow-flick: .3; } 61.3% { --lm-glow-flick: .6; } 61.6% { --lm-glow-flick: .28; } 64%, 79% { --lm-glow-flick: 1; } 79.3% { --lm-glow-flick: .55; } 80%, 92% { --lm-glow-flick: 1; } 92.2% { --lm-glow-flick: .1; } 92.6% { --lm-glow-flick: .1; } 93% { --lm-glow-flick: .8; } 94%, 100% { --lm-glow-flick: 1; } }
 
 /* BETA tape */
 .lm-tape { display: inline-flex; flex-direction: column; filter: drop-shadow(0 4px 7px rgba(0,0,0,.8)); }
@@ -138,8 +168,86 @@ ul.lm-cexcerpt { line-height: 1.6; padding-left: 18px; }
 .lm-shimmer { position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent); animation: lmShimmer 3.5s ease-in-out infinite; }
 @keyframes lmShimmer { 0% { left: -40%; } 60%, 100% { left: 110%; } }
 
+/* Melee vs AI lobby (melee/MeleeTab.jsx, LobbySetup.jsx, ui.jsx): --a is the tab's accent */
+.lm-melee { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 16px;
+  background: radial-gradient(circle at 70% 30%, color-mix(in srgb, var(--ac) 4%, transparent), transparent 60%); }
+.lm-lobby { flex: 1; min-height: 0; display: flex; gap: 16px; }
+.lm-mpanel { width: 236px; flex-shrink: 0; padding: 14px; display: flex; flex-direction: column; gap: 8px;
+  background: rgba(var(--panel-rgb), .8); border: 1px solid var(--line); border-radius: 8px; }
+.lm-mthumb { width: 206px; height: 206px; flex-shrink: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: var(--bg);
+  display: flex; align-items: center; justify-content: center; }
+.lm-mthumb img { width: 100%; height: 100%; object-fit: contain; }
+.lm-mthumb span { font: 700 41px var(--head); color: var(--line); }
+.lm-mname { margin-top: 2px; font: 700 13px var(--head); letter-spacing: 1.5px; color: #f6f5f5; word-break: break-word; }
+.lm-mdetails { font-size: 13px; font-weight: 600; }
+.lm-label { font-size: 12px; font-weight: 600; letter-spacing: 3px; color: var(--dim); text-transform: uppercase; }
+.lm-mdesc { flex: 1; min-height: 0; overflow: hidden; font-size: 13px; color: #a0a0a0; line-height: 1.4; white-space: pre-wrap; }
+.lm-ghost { height: 32px; padding: 0 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--a) 27%, transparent); border-radius: 6px; color: var(--a); font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+.lm-lright { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.lm-lrow { display: flex; align-items: center; gap: 12px; }
+.lm-lw { width: 70px; }
+.lm-mseg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.lm-mseg-o { padding: 7px 16px; color: var(--dim); font-size: 13px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+.lm-mseg.sm .lm-mseg-o { padding: 5px 12px; }
+.lm-mseg-o + .lm-mseg-o { border-left: 1px solid var(--line); }
+.lm-mseg-o small { display: block; font-size: 11px; font-weight: 500; letter-spacing: .5px; color: var(--dim2); }
+.lm-mseg-o.on { color: var(--a); background: linear-gradient(135deg, color-mix(in srgb, var(--a) 13%, transparent), color-mix(in srgb, var(--a) 4%, transparent));
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--a) 9%, transparent); }
+.lm-mseg-o.on small { color: color-mix(in srgb, var(--a) 67%, transparent); }
+.lm-teams { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 48px 1fr; align-items: start; align-content: start; }
+.lm-team { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lm-thead { padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--a);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--a) 9%, transparent), transparent); border-left: 2px solid color-mix(in srgb, var(--a) 53%, transparent); }
+.lm-vs { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px; }
+.lm-vs i { flex: 1; width: 1px; min-height: 20px; background: linear-gradient(transparent, color-mix(in srgb, var(--a) 33%, transparent)); }
+.lm-vs i:last-child { background: linear-gradient(color-mix(in srgb, var(--a) 33%, transparent), transparent); }
+.lm-vs b { font: 800 18px var(--head); letter-spacing: 2px; color: var(--a); text-shadow: 0 0 12px color-mix(in srgb, var(--a) 53%, transparent); }
+.lm-pcard { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 8px 10px 8px 0; border-radius: 6px; overflow: hidden;
+  background: rgba(var(--panel-rgb), .8); border: 1px solid var(--line); }
+.lm-pcard.me { background: linear-gradient(90deg, color-mix(in srgb, var(--a) 6%, transparent), rgba(var(--panel-rgb), .8) 60%); border-color: color-mix(in srgb, var(--a) 20%, transparent); }
+.lm-pstripe { width: 4px; align-self: stretch; margin: -8px 0; background: #b0b8b5; box-shadow: 0 0 10px #b0b8b588; }
+.lm-prace { position: relative; width: 52px; height: 52px; flex-shrink: 0; border-radius: 6px; background: var(--bg); border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center; }
+.lm-prace img { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 1px 2px #000a); }
+.lm-prace small, .lm-pdecal small { position: absolute; right: 2px; bottom: 0; font-size: 11px; color: var(--dim); }
+.lm-pinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.lm-pinfo b { font-size: 15px; font-weight: 700; color: #f6f5f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lm-pcard.me .lm-pinfo b { color: var(--a); }
+.lm-pinfo span { font-size: 13px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lm-pdd { max-width: 190px; height: 32px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 4px; font-size: 13px; font-weight: 600; color: #f6f5f5; }
+.lm-pdd small { font-size: 11px; color: var(--dim); }
+.lm-pdecal { position: relative; width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); border: 1px solid #ffffff44; border-radius: 4px; box-shadow: 0 1px 4px #00000066; font: 800 17px var(--head); color: #ffffffcc; }
+.lm-pcolor { width: 24px; height: 24px; flex-shrink: 0; border-radius: 4px; border: 1px solid #ffffff33; display: flex; align-items: center; justify-content: center;
+  color: #fff; font: 800 11px var(--head); text-shadow: 0 0 3px #000; }
+.lm-lfoot { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--dim); }
+.lm-check { display: flex; align-items: center; gap: 6px; }
+.lm-check i { width: 13px; height: 13px; border: 1px solid #8a8a8a; border-radius: 2px; background: #fff; }
+.lm-speed { display: flex; align-items: center; gap: 8px; }
+.lm-slider { position: relative; width: 82px; height: 2px; margin: 0 7px; background: color-mix(in srgb, var(--a) 53%, transparent); display: flex; justify-content: space-between; }
+.lm-slider i { width: 2px; height: 6px; margin-top: -2px; background: var(--a); border-radius: 1px; }
+.lm-slider b { position: absolute; right: -7px; top: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg); border: 2px solid var(--a); }
+.lm-mbottom { flex-shrink: 0; min-height: 56px; margin-top: 12px; display: flex; align-items: center; justify-content: flex-end; }
+
+/* Hero editor (Manifest → Public / Beta) */
+#heStage { margin-bottom: var(--s4, 16px); }
+.he-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--s3, 12px); }
+.he-part { border: 1px solid var(--line, #333); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.he-part.sel { border-color: var(--accent, #2fb8ff); }
+.he-title { display: flex; align-items: baseline; gap: 10px; }
+.he-title .faint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.he-actions, .he-nums { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.he-nums label, .he-actions label { display: flex; align-items: center; gap: 4px; margin: 0; }
+.he-nums input[type=number] { width: 76px; }
+.he-actions input[type=number] { width: 58px; }
+
 /* Deploy tool chrome around the mocks */
 .mock-head { display: flex; align-items: center; gap: var(--s3, 12px); flex-wrap: wrap; }
 .mock-head .faint { flex: 1; }
+.mock-head .inline-select { display: flex; align-items: center; gap: 8px; margin: 0; }
+.mock-head .inline-select select { min-width: 220px; }
+.mock-head [hidden] { display: none; }
 .mock-card-wrap { display: flex; justify-content: flex-start; }
 .mock-card-wrap .lm-cardhost { outline: 1px solid var(--line, #333); outline-offset: 6px; margin: 6px; }

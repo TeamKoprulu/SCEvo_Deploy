@@ -201,9 +201,61 @@
         </div>
       </div>
 
+      <div class="section" id="mfHeroSection" hidden>
+        <div class="sec-head mock-head"><h3>Hero editor</h3>
+          <span class="faint small">Drag the logo, emblem or video; scroll over one to resize it. Saved with <b>Write manifest</b>; the media upload with the assets.</span>
+          <label class="inline-select">Window width <select id="heWidth">
+            <option value="900">900 · smallest window</option>
+            <option value="1024" selected>1024 · default window</option>
+            <option value="1440">1440</option>
+            <option value="1920">1920 · 1080p maximised</option>
+            <option value="2560">2560 · 1440p maximised</option>
+            <option value="3440">3440 · ultrawide</option>
+          </select></label>
+        </div>
+        <div class="sec-body">
+          <div id="heStage"></div>
+          <div class="he-grid">
+            <div class="he-part" data-part="video">
+              <div class="he-title"><b>Video</b><span class="faint small" id="heVideoName">none</span></div>
+              <div class="he-actions">
+                <input type="file" id="heVideoFile" accept=".webm" hidden>
+                <button class="btn sm" type="button" id="heVideoPick">Choose .webm…</button>
+                <input type="file" id="hePosterFile" accept=".webp,.png,.jpg,.jpeg" hidden>
+                <button class="btn sm" type="button" id="hePosterPick" title="The still shown before the video plays, and instead of it on slow connections">Choose still…</button>
+                <label class="inline-select" title="Make the still from this point of the video">Still at <input type="number" id="hePosterAt" min="0" max="100" step="5" value="40">%</label>
+                <button class="btn sm" type="button" id="hePosterMake">Make still</button>
+                <button class="btn sm" type="button" id="heVideoClear">Remove</button>
+              </div>
+              <div class="he-nums"><label>x<input type="number" data-k="x" step="1"></label><label>y<input type="number" data-k="y" step="1"></label>
+                <label>scale<input type="number" data-k="scale" step="0.05" min="0.1" max="4"></label>
+                <label class="inline-select" title="Under the vignette, the hero's edge shading darkens the video like the background">Depth <select id="heVideoLayer">
+                  <option value="below">under the vignette</option>
+                  <option value="behind">over the vignette, behind the logo</option>
+                  <option value="front">in front of the logo</option></select></label></div>
+            </div>
+            <div class="he-part" data-part="logo">
+              <div class="he-title"><b>Logo</b><span class="faint small" data-state>episode layout</span></div>
+              <div class="he-nums"><label>x<input type="number" data-k="x" step="1"></label><label>y<input type="number" data-k="y" step="1"></label>
+                <label>scale<input type="number" data-k="scale" step="0.05" min="0.1" max="4"></label>
+                <button class="btn sm" type="button" data-reset>Reset</button></div>
+            </div>
+            <div class="he-part" data-part="emblem">
+              <div class="he-title"><b>Emblem</b><span class="faint small" data-state>episode layout</span></div>
+              <div class="he-nums"><label>x<input type="number" data-k="x" step="1"></label><label>y<input type="number" data-k="y" step="1"></label>
+                <label>scale<input type="number" data-k="scale" step="0.05" min="0.1" max="4"></label>
+                <label class="check"><input type="checkbox" id="heEmblemShow" checked> Shown</label>
+                <button class="btn sm" type="button" data-reset>Reset</button></div>
+            </div>
+          </div>
+          <p class="hint">Positions are launcher pixels: x from the hero's centre, y from its top (the hero is always 172 px tall; only its width changes with the window). Reset puts a piece back in the episode's own layout.</p>
+        </div>
+      </div>
+
       <div class="section" id="mfMockSection">
         <div class="sec-head mock-head"><h3>Launcher preview</h3>
-          <span class="faint small">A look-alike of launcher 1.4 drawn from the settings above (unsaved edits included). Nothing in it works; the news is the current news feed.</span>
+          <span class="faint small" id="mfMockHint">A look-alike of launcher 1.4 drawn from the settings above (unsaved edits included). Nothing in it works; the news is the current news feed.</span>
+          <label class="inline-select" id="mfMockMapWrap" hidden>Map <select id="mfMockMap"></select></label>
           <button class="btn ghost sm" id="mfMockNews" title="Fetch the news feed again">Refresh news</button>
         </div>
         <div class="sec-body"><div id="mfMock"></div></div>
@@ -266,6 +318,8 @@
                 <p class="hint pending" id="dpPendMeleeBeta"></p>
                 <label class="check"><input type="checkbox" id="dpPkgLauncher"> Launcher <span class="faint">(exe, installer, launcher-version.json)</span></label>
                 <p class="hint pending" id="dpPendLauncher"></p>
+                <label class="check"><input type="checkbox" id="dpPkgAssets"> Launcher assets <span class="faint">(assets/ only: replay icons, hero backgrounds, news images; no manifest)</span></label>
+                <p class="hint pending" id="dpPendAssets"></p>
               </div>
               <p class="hint" id="dpBranchNote"></p>
               <label class="check"><input type="checkbox" id="dpSite"> Update website download links</label>

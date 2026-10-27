@@ -8,7 +8,8 @@
 //   run.cmd ignore <source>   /   run.cmd unignore <source>
 //   run.cmd build [--package p] [--only <source>]... [--force] [--dry-run]     (p: campaign, melee or meleebeta)
 //   run.cmd generate [--package p]
-//   run.cmd deploy [--package campaign|melee|meleebeta|launcher] [--dry-run] [--force] [--update-site]
+//   run.cmd deploy [--package campaign|melee|meleebeta|launcher|assets[,…]] [--dry-run] [--force] [--update-site]
+//                                         assets = the assets/ folder only (replay icons, hero backgrounds, news images)
 //   run.cmd beta-tag <source> [off]       tag a mod for the melee beta's branch (or untag it)
 //   run.cmd melee-beta [--on|--off] [--name "…"] [--code CODE] [--version 1.0] [--accent #ff6600]
 //   run.cmd offline-zip                   zip the public campaign package for offline play (offline/)
@@ -232,9 +233,12 @@ const commands = {
 
   async deploy(args) {
     const { DEPLOY_PACKAGES } = require('./lib/deploy');
-    if (args.package && !DEPLOY_PACKAGES.includes(args.package)) throw new Error(`--package must be one of ${DEPLOY_PACKAGES.join(', ')}`);
+    // --package launcher,assets ships several at once.
+    const chosen = args.package ? String(args.package).split(',').map((p) => p.trim()).filter(Boolean) : DEPLOY_PACKAGES;
+    const bad = chosen.filter((p) => !DEPLOY_PACKAGES.includes(p));
+    if (bad.length) throw new Error(`--package must be one of ${DEPLOY_PACKAGES.join(', ')} (or several, comma-separated)`);
     const r = await deploy({
-      packages: args.package ? [args.package] : DEPLOY_PACKAGES, dryRun: !!args.dryRun, force: !!args.force, updateSite: !!args.updateSite, log,
+      packages: chosen, dryRun: !!args.dryRun, force: !!args.force, updateSite: !!args.updateSite, log,
       step: (id, state, detail) => log(`-- ${id}: ${state}${detail ? ` (${detail})` : ''}`),
     });
     if (r.aborted) { log(`Aborted at ${r.stage}.`); process.exitCode = 1; }

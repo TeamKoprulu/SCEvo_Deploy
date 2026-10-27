@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { pendingPackages, describe } = require('../lib/pending');
+const { pendingPackages, assetsPending, describe } = require('../lib/pending');
 
 function setup(local) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pending-'));
@@ -22,7 +22,7 @@ const melee = { version: '1.21', lastUpdated: 'a', modules: [], maps: [{ id: 'm1
 
 test('same apart from lastUpdated: nothing pending', async () => {
   const dir = setup({ 'melee-manifest.json': melee });
-  const r = await pendingPackages({ fetchJson: fakeFetch({ 'melee-manifest.json': { ...melee, lastUpdated: 'b' } }), base: 'x', manifestDir: dir, launcher: noLauncher });
+  const r = await pendingPackages({ fetchJson: fakeFetch({ 'melee-manifest.json': { ...melee, lastUpdated: 'b' } }), base: 'x', manifestDir: dir, launcher: noLauncher, assets: noLauncher });
   assert.equal(r.packages.melee.changed, false);
   assert.equal(r.offline, false);
 });
@@ -30,16 +30,16 @@ test('same apart from lastUpdated: nothing pending', async () => {
 test('decals added and a map changed are reported', async () => {
   const local = { ...melee, maps: [{ id: 'm1', file: { path: 'maps/m1.evm', hash: 'h2' } }], decals: { list: { path: 'decals/decals.json', hash: 'd' }, files: [] } };
   const dir = setup({ 'melee-manifest.json': local });
-  const r = await pendingPackages({ fetchJson: fakeFetch({ 'melee-manifest.json': melee }), base: 'x', manifestDir: dir, launcher: noLauncher });
+  const r = await pendingPackages({ fetchJson: fakeFetch({ 'melee-manifest.json': melee }), base: 'x', manifestDir: dir, launcher: noLauncher, assets: noLauncher });
   assert.equal(r.packages.melee.changed, true);
   assert.deepEqual(r.packages.melee.details, ['decals added', '1 map changed']);
 });
 
 test('not on the CDN yet, and offline', async () => {
   const dir = setup({ 'melee-manifest.json': melee });
-  const missing = await pendingPackages({ fetchJson: fakeFetch({}), base: 'x', manifestDir: dir, launcher: noLauncher });
+  const missing = await pendingPackages({ fetchJson: fakeFetch({}), base: 'x', manifestDir: dir, launcher: noLauncher, assets: noLauncher });
   assert.deepEqual(missing.packages.melee.details, ['melee-manifest.json: not on the CDN yet']);
-  const off = await pendingPackages({ fetchJson: fakeFetch({}, true), base: 'x', manifestDir: dir, launcher: noLauncher });
+  const off = await pendingPackages({ fetchJson: fakeFetch({}, true), base: 'x', manifestDir: dir, launcher: noLauncher, assets: noLauncher });
   assert.equal(off.offline, true);
   assert.equal(off.packages.melee.changed, false);
 });
@@ -78,7 +78,12 @@ test('launcher: repo not set is not pending', async () => {
 test('the launcher ships as its own deploy package', () => {
   const { MANIFESTS, DEPLOY_PACKAGES } = require('../lib/deploy');
   const cfg = require('../lib/config');
-  assert.deepEqual(DEPLOY_PACKAGES, ['campaign', 'melee', 'meleebeta', 'launcher']);
+  assert.deepEqual(DEPLOY_PACKAGES, ['campaign', 'melee', 'meleebeta', 'launcher', 'assets']);
+  // assets/ goes up with a campaign deploy or on its own, never with a manifest of its own.
+  const assets = cfg.UPLOAD_FOLDERS.find((f) => f.local === 'assets');
+  assert.equal(assets.package, 'campaign');
+  assert.deepEqual(assets.alsoWith, ['assets']);
+  assert.deepEqual(MANIFESTS.assets, []);
   assert.deepEqual(MANIFESTS.launcher, ['launcher-version.json']);
   assert.ok(!MANIFESTS.campaign.includes('launcher-version.json'));
   assert.deepEqual(cfg.UPLOAD_FOLDERS.filter((f) => f.package === 'launcher').map((f) => f.local), ['launcher', 'installer']);
@@ -91,4 +96,11 @@ test('launcher: a new CDN address at the same version is pending', async () => {
     writeLauncherVersion: async () => ({ ok: true, doc: { version: '1.3.1', cdnBase: 'https://scevo.download', portable: { sha256: 'a' } } }),
   };
   assert.deepEqual(await launcherPending({ r2 }), { changed: true, details: ['CDN address → https://scevo.download'] });
+});
+
+test('assets: new and changed files summed per subfolder', async () => {
+  const diff = async () => ({ ok: true, missing: ['replay-icons/a.png', 'replay-icons/b.png', 'launcher/public-1.webp'], differ: ['news/x.png'], same: 3 });
+  assert.deepEqual(await assetsPending({ diff }), { changed: true, details: ['3 new (replay-icons 2, launcher 1)', '1 changed (news 1)'] });
+  assert.deepEqual(await assetsPending({ diff: async () => ({ ok: true, missing: [], differ: [], same: 8 }) }), { changed: false, details: [] });
+  assert.equal((await assetsPending({ diff: async () => ({ ok: false, error: 'no remote' }) })).changed, false);
 });

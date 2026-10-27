@@ -202,6 +202,31 @@ function listRemote(prefix) {
   });
 }
 
+// Local folder against the bucket, by hash, one way: { ok, missing: [], differ: [], same } with paths
+// relative to the folder. Files only on R2 are left out (uploads never delete).
+function diffFolder(localName, timeoutMs = 120000) {
+  const localPath = path.join(REPO_ROOT, localName);
+  return new Promise((resolve) => {
+    if (!fs.existsSync(localPath)) return resolve({ ok: true, missing: [], differ: [], same: 0 });
+    execFile('rclone', ['check', localPath, `${BUCKET}/${localName}`, '--one-way', '--combined', '-'],
+      { windowsHide: true, maxBuffer: 32 << 20, timeout: timeoutMs }, (err, stdout, stderr) => {
+        const out = { ok: true, missing: [], differ: [], same: 0 };
+        for (const line of String(stdout).split(/\r?\n/)) {
+          const m = /^([+*=!]) (.+)$/.exec(line);
+          if (!m) continue;
+          if (m[1] === '+') out.missing.push(m[2]);
+          else if (m[1] === '*') out.differ.push(m[2]);
+          else if (m[1] === '=') out.same++;
+        }
+        // rclone exits 1 when it finds differences; only a run that compared nothing failed.
+        if (err && !out.missing.length && !out.differ.length && !out.same) {
+          return resolve({ ok: false, error: (String(stderr).trim().split(/\r?\n/).pop() || err.message), missing: [], differ: [], same: 0 });
+        }
+        resolve(out);
+      });
+  });
+}
+
 function deleteRemote(prefix, relPath) {
   return new Promise((resolve) => {
     execFile('rclone', ['deletefile', `${BUCKET}/${prefix}/${relPath}`], { windowsHide: true },
@@ -361,6 +386,6 @@ async function writeLauncherVersion({ dryRun = false, published = null, files = 
 const CACHE_CONTROL = { manifests: 'no-cache', default: 'public, max-age=3600' };
 
 module.exports = {
-  CACHE_CONTROL, rcloneAvailable, rcloneRemotes, rcloneProbe, uploadFolder, listRemote, deleteRemote,
+  CACHE_CONTROL, rcloneAvailable, rcloneRemotes, rcloneProbe, uploadFolder, listRemote, diffFolder, deleteRemote,
   stageLauncherArtifacts, writeLauncherVersion, publishedLauncherVersion, builtVersion, win7Fresh, PORTABLE_EXE, SETUP_EXE, PORTABLE_EXE_WIN7, SETUP_EXE_WIN7,
 };

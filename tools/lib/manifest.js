@@ -195,10 +195,42 @@ function cleanBackground(bg) {
   return out;
 }
 
+// A channel's campaign hero (Manifest → Hero editor; launcher 1.4+, src/heroLayout.mjs):
+//   video: { url, size, sha256, poster: { url, size, sha256 }, x, y, scale, layer, vignette? ("below") }
+//   logo / emblem: { x, y, scale } in launcher CSS px (x from the hero's centre, y from its top),
+//   emblem.show: false hides it. Pieces without numbers are left out (the episode's own layout).
+// Returns the cleaned section, or null when nothing is left.
+function cleanHero(h) {
+  if (!h || typeof h !== 'object') return null;
+  const num = (v, lo, hi) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v * 1000) / 1000)) : undefined);
+  const place = (p) => {
+    if (!p || typeof p !== 'object') return null;
+    const out = {};
+    for (const [k, lo, hi] of [['x', -4000, 4000], ['y', -172, 344], ['scale', 0.1, 4]]) { const v = num(p[k], lo, hi); if (v !== undefined) out[k] = v; }
+    return Object.keys(out).length ? out : null;
+  };
+  const out = {};
+  const bg = cleanBackground(h.background);
+  if (bg) out.background = bg;
+  const video = cleanBackground(h.video);
+  if (video && /\.webm(?:$|\?)/i.test(video.url)) {
+    const poster = cleanBackground(h.video.poster);
+    // vignette "below": shaded with the background, and so behind the logo too.
+    const below = h.video.vignette === 'below';
+    out.video = { ...video, ...(poster ? { poster } : {}), ...(place(h.video) || {}), layer: h.video.layer === 'front' && !below ? 'front' : 'behind',
+      ...(below ? { vignette: 'below' } : {}) };
+  }
+  const logo = place(h.logo);
+  if (logo) out.logo = logo;
+  const emblem = h.emblem?.show === false ? { show: false } : place(h.emblem);
+  if (emblem) out.emblem = emblem;
+  return Object.keys(out).length ? out : null;
+}
+
 // theme: the public channel's accent (the current episode's palette); blank uses the
 // launcher's built-in site colour. 1.3.x launchers ignore a public theme.
 // episode: which episode the launcher's campaign hero shows (the site's "episode:" number).
-function buildPublicManifest({ versions, criticalUpdate, modules, accentColor, episode, background }) {
+function buildPublicManifest({ versions, criticalUpdate, modules, accentColor, episode, background, hero }) {
   const out = {
     schemaVersion: SCHEMA_VERSION,
     lastUpdated: nowIso(),
@@ -212,6 +244,8 @@ function buildPublicManifest({ versions, criticalUpdate, modules, accentColor, e
   if (Number.isInteger(Number(episode)) && episode !== '' && episode != null) out.episode = Number(episode);
   const bg = cleanBackground(background);
   if (bg) out.background = bg;
+  const h = cleanHero(hero);
+  if (h) out.hero = h;
   out.criticalUpdate = mergeCritical(criticalUpdate, false);
   out.modules = serializeModules(modules);
   return out;
@@ -233,6 +267,8 @@ function buildBetaManifest({ meta, criticalUpdate, modules, coreVersion }) {
   if (meta?.episode !== '' && meta?.episode != null && Number.isInteger(Number(meta.episode))) out.episode = Number(meta.episode);
   const bg = cleanBackground(meta?.background);
   if (bg) out.background = bg;
+  const h = cleanHero(meta?.hero);
+  if (h) out.hero = h;
   // When the beta is off, production serves the stripped shape (no modules, no
   // criticalUpdate, no versions). The old script could only ever write
   // betaEnabled:true, so that shape had to be hand-edited.
@@ -275,5 +311,5 @@ function compareVersions(a, b) {
 module.exports = {
   readManifest, writeManifest, moduleIdFor, normalizeManifestPath, indexByPath,
   buildWorkingSet, serializeModules, buildPublicManifest, buildBetaManifest,
-  mergeCritical, hexToRgbString, normalizeHex, themeFromAccent, cleanBackground, betaCodeHash, compareVersions, nowIso,
+  mergeCritical, hexToRgbString, normalizeHex, themeFromAccent, cleanBackground, cleanHero, betaCodeHash, compareVersions, nowIso,
 };

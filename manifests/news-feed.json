@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastUpdated": "2026-10-12T08:28:12Z",
+  "lastUpdated": "2026-10-27T00:52:43Z",
   "strings": {
     "en": {
       "play": "PLAY",
@@ -321,17 +321,17 @@
     },
     {
       "id": "patreon-1791077400768",
-      "patreonId": "164489935",
+      "patreonId": "172182186",
       "type": "update",
-      "title": "June/July Developer Updates",
-      "date": "August 21, 2026",
+      "title": "August / September Development Updates",
+      "date": "October 25, 2026",
       "excerpt": "",
-      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/june-july-164489935",
+      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/august-september-172182186",
       "badge": "Patreon",
       "author": "Angel \"Kat\" Huerta",
-      "imageUrl": "https://scevo.download/assets/news/patreon-164489935-ffe2dba0.png",
+      "imageUrl": "https://scevo.download/assets/news/patreon-172182186-e9834c42.png",
       "imageAccent": "#ff9500",
-      "imageBg": "#2a1b0a",
+      "imageBg": "#2a1d0a",
       "badgeColor": "#ff9500",
       "authorIcon": "https://scevo.org/assets/img/authoricons/avatar-kat.webp"
     }
@@ -384,20 +384,20 @@
       "exclude": "used",
       "overrides": {
         "imageAccent": "#ff9500",
-        "imageBg": "#2a1b0a",
+        "imageBg": "#2a1d0a",
         "badgeColor": "#ff9500"
       },
-      "patreonId": "164489935",
+      "patreonId": "172182186",
       "type": "update",
-      "title": "June/July Developer Updates",
-      "date": "August 21, 2026",
+      "title": "August / September Development Updates",
+      "date": "October 25, 2026",
       "excerpt": "",
-      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/june-july-164489935",
+      "linkUrl": "https://www.patreon.com/TeamKopruluSC2/posts/august-september-172182186",
       "badge": "Patreon",
       "author": "Kat",
-      "imageUrl": "https://scevo.download/assets/news/patreon-164489935-ffe2dba0.png",
+      "imageUrl": "https://scevo.download/assets/news/patreon-172182186-e9834c42.png",
       "imageAccent": "#ff9500",
-      "imageBg": "#2a1b0a",
+      "imageBg": "#2a1d0a",
       "badgeColor": "#ff9500"
     }
   ]

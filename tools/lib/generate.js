@@ -163,6 +163,7 @@ async function generate(opts) {
       accentColor: 'accentColor' in o ? o.accentColor : pub.theme?.accentColor,
       episode: 'episode' in o ? o.episode : pub.episode,
       background: 'background' in o ? o.background : pub.background,
+      hero: 'hero' in o ? o.hero : pub.hero,
       modules: groupModules(await campaignEntries(doc, 'public', problems)),
     });
 
@@ -171,6 +172,7 @@ async function generate(opts) {
     const meta = {
       betaEnabled: beta.betaEnabled, betaName: beta.betaName, majorVersion: beta.majorVersion,
       fullVersion: beta.fullVersion, codeHash: beta.codeHash, accentColor: beta.theme?.accentColor, episode: beta.episode, background: beta.background,
+      hero: beta.hero,
       ...(ob.meta || {}),
     };
     docs.beta = mf.buildBetaManifest({

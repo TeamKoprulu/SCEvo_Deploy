@@ -79,7 +79,9 @@ const UPLOAD_FOLDERS = [
   { name: 'BetaPayload',  local: 'betapayload',  package: 'campaign' },
   { name: 'MeleePayload', local: 'meleepayload', package: 'melee'    },
   { name: 'BetaMeleePayload', local: 'betameleepayload', package: 'meleebeta' },
-  { name: 'Assets',       local: 'assets',       package: 'campaign' },
+  // Launcher art (replay icons, hero backgrounds) and news images: with a campaign deploy, or on
+  // their own as the Launcher assets package.
+  { name: 'Assets',       local: 'assets',       package: 'campaign', alsoWith: ['assets'] },
   { name: 'Launcher',     local: 'launcher',     package: 'launcher' },
   { name: 'Installer',    local: 'installer',    package: 'launcher' },
 ];
