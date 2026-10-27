@@ -112,6 +112,7 @@
       "source": "Mods\\SC Evolution Complete\\SCEvo_Core.SC2Mod",
       "package": "campaign",
       "channel": "public",
+      "meleeBeta": true,
       "module": {
         "type": "core"
       }
@@ -120,6 +121,7 @@
       "source": "Mods\\SC Evolution Complete\\SCEvo_Legacy.SC2Mod",
       "package": "campaign",
       "channel": "public",
+      "meleeBeta": true,
       "module": {
         "type": "core"
       }
@@ -167,7 +169,8 @@
     {
       "source": "Mods\\SC Evolution Complete\\SCEvo_Multi.SC2Mod",
       "package": "melee",
-      "channel": "public"
+      "channel": "public",
+      "meleeBeta": true
     },
     {
       "source": "Mods\\SC Evolution Complete\\SC2_5015_Balance.SC2Mod",

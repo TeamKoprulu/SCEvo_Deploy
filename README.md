@@ -2,12 +2,13 @@
 
 Packages SC Evo content from the SC2 install and publishes it to Cloudflare R2 for the launcher.
 
-Three packages ship from here, each deployable on its own:
+Four packages ship from here, each deployable on its own:
 
 | Package | Manifest | Payload folder (= R2 prefix) | Installed by the launcher |
 |---|---|---|---|
 | **Campaign** | `update-manifest.json` (public), `beta-manifest.json` (beta), `news-feed.json` | `payload/`, `betapayload/`, `assets/` | under the SC2 folder |
 | **Melee vs AI** | `melee-manifest.json` | `meleepayload/` | mods under the SC2 folder; maps in `%APPDATA%\sc-evo-launcher\melee\` |
+| **Melee beta** | `melee-beta-manifest.json` | `betameleepayload/` | mods under `Mods\SC Evolution Complete Beta\`, only after the player enters the beta code |
 | **Launcher** | `launcher-version.json` | `launcher/`, `installer/` (copied from the launcher repo's `dist-electron/` at deploy time) | the launcher's self-updater |
 
 ## Setup (once per machine)
@@ -25,6 +26,8 @@ Three packages ship from here, each deployable on its own:
 
 - **GUI:** `run.cmd` opens the tool in your browser.
 - **Command line:** `run.cmd help` lists the commands.
+- **Release handbook:** open `docs/index.html` in a browser. It covers every push (asset splitting, mod packaging, Cloudflare, launcher, blog posts, website).
+- **Pre-push checks:** `run.cmd check <blog [post-id]|site|launcher|assets|mods|cdn|all> [--quick]`. Read-only; exits 1 when something must be fixed first (`docs/checks.html`).
 
 Typical release:
 
@@ -88,6 +91,17 @@ run.cmd promote "Loomings3Legacy.SC2Map" public
 - **Blank-looking decals** are reported by the build. `run.cmd decals` lists them, and `run.cmd decals exclude Decal_Zerg_0083_01` leaves one out (stored in the catalog under `melee.decalExclude`). `include` puts it back.
 - **The textures stay untinted.** The launcher colours them with the player colour the way the game does.
 
+## Melee beta (closed test)
+
+A code-locked branch of the melee mods, for testing changes to Core, Legacy and so on without touching the public game or the campaign.
+
+- **Tagging:** on the Catalog tab, click **Melee beta** on a mod (or `run.cmd beta-tag "<source>"`, and `run.cmd beta-tag "<source>" off` to untag). The tag sits beside the mod's own package and channel, so tagging Core leaves the campaign's Core alone. Only mods straight under `Mods\SC Evolution Complete` can be tagged.
+- **Tag the whole chain:** a tagged mod loads its tagged dependencies from the beta folder. If an untagged melee mod (or campaign core mod such as Legacy) depends on a tagged one, the Catalog shows a warning and the build reports it, because that game would load the public copy too. Tag Core, and you tag Multi and Legacy with it.
+- **Build:** **Build melee beta** on the Catalog tab (or `run.cmd build --package meleebeta`). Each tagged mod is packaged from its normal source folder into `betameleepayload/Mods/SC Evolution Complete Beta/`, and its `DocumentInfo` / `DocumentHeader` dependencies on other tagged mods are rewritten to `file:Mods\SC Evolution Complete Beta\<mod>.SC2Mod` (file-only, so the game can't swap in the published public mod). Packed mods are patched with MPQEditor.
+- **Settings:** Manifest tab → **Melee beta** (or `run.cmd melee-beta --on|--off --name "<name>" --code <code> --version <v> --accent <#hex>`). The code is hashed the same way as the campaign beta's; setting a new code locks out players who entered the old one. While the beta is off, the manifest carries no mods and the launcher hides it.
+- **Deploy:** tick **Melee beta** on the Deploy tab (or `run.cmd deploy --package meleebeta`).
+- **On players' PCs:** the Melee tab shows a Public / Beta switch while the beta is on. Beta asks for the code once, then offers to install the beta mods; games started on Beta load the beta copies. Public games and the campaign are unchanged.
+
 ## News: `manifests/news-feed.json`
 
 Edit it on the **News** tab. The launcher shows the cards in `feed`, in order:
@@ -140,11 +154,14 @@ For players who can't use the launcher: **Deploy tab → Build offline .zip** (o
 | `tools/cli.js`, `tools/app.js` | command line, local web server (127.0.0.1, per-run token) |
 | `tools/lib/catalog.js` | catalog load/save/scan/edit |
 | `tools/lib/build.js` | packaging, channel copies, pruning, build state (`tools/.cache/build-state.json`) |
-| `tools/lib/generate.js` | the three manifests from the catalog |
+| `tools/lib/generate.js` | the manifests from the catalog |
+| `tools/lib/meleebeta.js` | melee beta build: tagged mods, dependency rewrite, closure check, its manifest |
 | `tools/lib/mapmeta.js`, `tools/lib/sc2map/` | melee map metadata (`sc2map/` is copied from the launcher's reader; copy it again when the launcher's changes) |
 | `tools/lib/deploy.js`, `r2.js`, `verify.js` | deploy sequence, rclone, checks |
 | `tools/lib/decals.js`, `tools/lib/img/` | player decal atlases for the melee package (DXT5 decode, PNG encode) |
 | `tools/lib/news.js` | news feed resolution (copied from the launcher's `electron/news/posts.js`; copy it again when that changes) |
 | `tools/lib/patreon.js` | Patreon posts for news cards, filled in and image re-hosted on save |
+| `tools/check.js` | pre-push checks (`run.cmd check …`) |
+| `docs/` | the release handbook (static HTML, never uploaded) |
 | `tools/test/` | `node --test "tools/test/*.test.js"` |
 | `legacy/` | the old PowerShell scripts, kept for reference only |
